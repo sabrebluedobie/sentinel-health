@@ -1,0 +1,13 @@
+import React from 'react';
+export const SidebarProvider = ({children})=> <>{children}</>;
+export const Sidebar = ({className='', children})=> <aside className={`w-72 shrink-0 ${className}`}>{children}</aside>;
+export const SidebarHeader = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarContent = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarFooter = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarGroup = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarGroupLabel = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarGroupContent = ({className='', children})=> <div className={className}>{children}</div>;
+export const SidebarMenu = ({className='', children})=> <ul className={className}>{children}</ul>;
+export const SidebarMenuItem = ({className='', children})=> <li className={className}>{children}</li>;
+export const SidebarMenuButton = ({asChild, className='', children})=> (asChild ? children : <button className={className}>{children}</button>);
+export const SidebarTrigger = ({className=''})=> <button className={className}>☰</button>;

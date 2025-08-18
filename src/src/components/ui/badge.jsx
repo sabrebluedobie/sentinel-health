@@ -1,0 +1,1 @@
+import React from 'react'; export const Badge = ({className='', children})=> <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium border ${className}`}>{children}</span>;

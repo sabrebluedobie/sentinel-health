@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base look */
+@layer base {
+  body { @apply bg-brand-100 text-slate-800; }
+}
+
+/* Reusable bits */
+@layer components {
+  .card { @apply bg-white rounded-xl2 shadow-soft border border-slate-200; }
+  .btn { @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-outline { @apply btn border border-brand-600 text-brand-700 hover:bg-brand-100; }
+  .link { @apply text-brand-700 hover:underline; }
+}
