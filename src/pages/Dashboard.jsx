@@ -5,6 +5,8 @@ import { useAuth } from "../providers/AuthProvider.jsx";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
+const logo = "/logo.png"; // Ensure logo path is correct
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();

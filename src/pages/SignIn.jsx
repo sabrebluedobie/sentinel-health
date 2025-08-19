@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-@reference "../../../index.css";
+const logo = "/logo.png"; // Ensure logo path is correct
+
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -30,9 +31,9 @@ export default function SignIn() {
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <img
-            src="/logo.png"
+            src={logo}
             alt="Sentinel Health Logo"
-            className="w-24 h-24 object-contain"
+            className="mx-auto mb-6 h-12 w-auto"
           />
         </div>
 

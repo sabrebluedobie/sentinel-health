@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
+const logo = "/logo.png"; // Ensure logo path is correct
+
 const SYMPTOMS = [
   "nausea","vomiting","light_sensitivity","sound_sensitivity",
   "visual_aura","dizziness","fatigue"
