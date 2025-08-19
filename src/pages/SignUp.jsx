@@ -1,35 +1,30 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setMsg("");
-    setBusy(true);
+    setError(""); setBusy(true);
     const { error } = await supabase.auth.signUp({ email, password: pwd });
     setBusy(false);
     if (error) setError(error.message);
-    else {
-      setMsg("Check your email to confirm your account.");
-      // optionally: navigate("/sign-in");
-    }
+    else navigate(from, { replace: true });
   };
 
   return (
-    <div className="min-h-screen grid place-items-center p-6">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3 border rounded-lg p-6">
-        <h1 className="text-2xl font-semibold">Create account</h1>
+    <div className="min-h-screen grid place-items-center p-6 bg-brand-100">
+      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3 border rounded-xl p-6 bg-white">
+        <h1 className="text-2xl font-semibold text-brand-900">Create account</h1>
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        {msg && <p className="text-green-600 text-sm">{msg}</p>}
         <input
           className="w-full border rounded p-2"
           placeholder="you@email.com"
