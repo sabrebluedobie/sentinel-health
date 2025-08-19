@@ -1,7 +1,28 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
-  // No need to duplicate colors here when using @theme in CSS
-  theme: { extend: {} },
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}"
+  ],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          900: "#173B63",
+          800: "#1B4676",
+          700: "#1F5085",
+          600: "#245B96",
+          500: "#2B6AA8",
+          400: "#4C8FCC",
+          300: "#77B1E6",
+          200: "#A6CEF3",
+          100: "#E6F2FD",
+        },
+      },
+      boxShadow: { soft: "0 8px 24px rgba(0,0,0,.08)" },
+      borderRadius: { xl2: "1rem" },
+    },
+  },
   plugins: [],
 };

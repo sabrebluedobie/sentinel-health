@@ -1,53 +1,32 @@
 import React from "react";
-import { Link, Outlet } from "react-router-dom";
-import logo from "../../src/assets/logo.png"; // place file at src/assets/sentinel-logo.png
+import { Outlet, Link } from "react-router-dom";
+import logoUrl from "../assets/logo.png"; // make sure file exists
 
 export default function Layout() {
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top bar */}
-      <header className="bg-white/90 backdrop-blur border-b border-slate-200">
-  <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-    <img
-      src={logo}
-      alt="Sentinel Health"
-      className="h-[100px] w-[100px] object-contain"
-      style={{
-        width: "100px", height: "100px", top: "5vh", left: "5vw",
-        position: "absolute",
-        marginBottom: "5vh",
-      }}
-    />
-    <div style={{ paddingTop: "120px" }} className="flex flex-col">
-      <span className="text-xl font-semibold text-brand-900 leading-tight">
-        Sentinel Health
-      </span>
-      <span className="text-sm text-slate-500 -mt-0.5">Migraine Tracker</span>
-    </div>
-    <nav className="ml-auto flex items-center gap-3">
-      <Link className="link" to="/dashboard">Dashboard</Link>
-      <Link className="link" to="/log-migraine">Log Migraine</Link>
-    </nav>
-  </div>
-</header>
-
-      {/* Background accent */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-brand-100 via-white to-white"
-      />
-
-      {/* Page content */}
-      <main className="flex-1">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <Outlet />
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logoUrl} alt="Sentinel Health logo"
+                 className="w-10 h-10 object-contain" />
+            <span className="font-semibold text-brand-900">
+              Sentinel Health | Migraine Tracker
+            </span>
+          </Link>
+          <nav className="flex items-center gap-4">
+            <Link to="/log-migraine" className="text-sm text-brand-700 hover:text-brand-900">Log Migraine</Link>
+            <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">Dashboard</Link>
+          </nav>
         </div>
+      </header>
+
+      <main className="container-page">
+        <Outlet />
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 text-sm text-slate-500">
-          © {new Date().getFullYear()} Sentinel Health
-        </div>
+      <footer className="mt-16 border-t py-6 text-center text-sm text-slate-500">
+        © {new Date().getFullYear()} Sentinel Health
       </footer>
     </div>
   );

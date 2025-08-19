@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-const logo = "/logo.png"; // Ensure logo path is correct
+import logoUrl from "../assets/logo.png";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -9,71 +9,44 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const from = useLocation().state?.from?.pathname || "/";
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pwd,
-    });
+    setError(""); setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
     setBusy(false);
     if (error) setError(error.message);
     else navigate(from, { replace: true });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-100 p-6">
-      <div className="w-full max-w-sm bg-white shadow-soft rounded-xl2 p-6">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <img
-            src={logo}
-            alt="Sentinel Health Logo"
-            className="mx-auto mb-6 h-12 w-auto"
-          />
+    <div className="min-h-[calc(100vh-8rem)] grid place-items-center">
+      <div className="card w-full max-w-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <img src={logoUrl} alt="Logo" className="w-10 h-10"/>
+          <h1 className="h1">Sign in</h1>
         </div>
 
-        {/* Title */}
-        <h1 className="text-2xl font-semibold text-center text-brand-900 mb-4">
-          Sign in
-        </h1>
+        {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 
-        {/* Error */}
-        {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-
-        {/* Form */}
         <form onSubmit={onSubmit} className="space-y-3">
-          <input
-            className="w-full border rounded p-2"
-            placeholder="you@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-          />
-          <input
-            className="w-full border rounded p-2"
-            placeholder="Password"
-            value={pwd}
-            onChange={(e) => setPwd(e.target.value)}
-            type="password"
-            required
-          />
-          <button
-            disabled={busy}
-            className="w-full bg-brand-500 hover:bg-brand-700 text-white rounded p-2 transition"
-          >
+          <label className="label" htmlFor="email">Email</label>
+          <input id="email" className="input" type="email"
+                 value={email} onChange={(e)=>setEmail(e.target.value)} required />
+
+          <label className="label" htmlFor="pwd">Password</label>
+          <input id="pwd" className="input" type="password"
+                 value={pwd} onChange={(e)=>setPwd(e.target.value)} required />
+
+          <button disabled={busy} className="btn-primary w-full">
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <p className="text-sm text-center mt-4">
+        <p className="text-sm text-slate-600 mt-4">
           No account?{" "}
-          <Link to="/sign-up" className="text-brand-500 hover:underline">
+          <Link to="/sign-up" className="text-brand-700 hover:text-brand-900 underline">
             Create one
           </Link>
         </p>

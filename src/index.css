@@ -2,24 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Define custom tokens for Tailwind v4 */
-@theme {
-  --color-brand-900: #173B63;
-  --color-brand-700: #1F5085;
-  --color-brand-500: #2B6AA8;
-  --color-brand-400: #4C8FCC;
-  --color-brand-300: #77B1E6;
-  --color-brand-200: #A6CEF3;
-  --color-brand-100: #E6F2FD;
-
-  /* optional extras you used */
-  --radius-xl2: 1rem;
-  --shadow-soft: 0 8px 24px rgba(0,0,0,0.08);
+/* Design tokens: fonts + colors on body/html */
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-brand-100 text-slate-800 antialiased;
+  }
 }
 
-/* (Optional) shared component classes */
+/* Reusable components */
 @layer components {
-  .card {
-    @apply bg-brand-100 rounded-[var(--radius-xl2)] shadow-[var(--shadow-soft)] p-6;
-  }
+  .container-page { @apply max-w-5xl mx-auto p-6; }
+
+  .card { @apply bg-white rounded-xl shadow-soft border; }
+
+  .btn { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition;
+         @apply disabled:opacity-60 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-ghost   { @apply btn bg-white border hover:bg-brand-100; }
+
+  .input { @apply w-full border rounded-lg px-3 py-2 focus:outline-none
+                 focus:ring-2 focus:ring-brand-400 focus:border-brand-400; }
+  .label { @apply text-sm font-medium text-slate-700; }
+}
+
+/* Nice headings */
+@layer utilities {
+  .h1 { @apply text-2xl font-semibold text-brand-900; }
+  .h2 { @apply text-xl font-semibold text-brand-900; }
 }
