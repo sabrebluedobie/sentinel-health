@@ -1,20 +1,41 @@
+// src/router.jsx
 import React from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Layout from "./layout/Layout.jsx";
-import RequireAuth from "./routes/RequireAuth.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import LogMigraine from "./pages/LogMigraine.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
-import NotFound from "./pages/NotFound.jsx";
+import { useAuth } from "./providers/AuthProvider.jsx";
 
-export const router = createBrowserRouter([
+// Small guard to protect private routes
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (!user) return <Navigate to="/sign-in" replace />;
+  return children;
+}
+
+const router = createBrowserRouter([
   {
     path: "/",
     element: <Layout />,
     children: [
+      // public
+      { path: "sign-in", element: <SignIn /> },
+      { path: "sign-up", element: <SignUp /> },
+
+      // private
       {
         index: true,
+        element: (
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "dashboard",
         element: (
           <RequireAuth>
             <Dashboard />
@@ -29,9 +50,11 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: "sign-in", element: <SignIn /> },
-      { path: "sign-up", element: <SignUp /> },
-      { path: "*", element: <NotFound /> }, // catch-all
+
+      // fallback
+      { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
 ]);
+
+export default router;
