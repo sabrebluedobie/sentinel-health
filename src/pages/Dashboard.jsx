@@ -31,7 +31,6 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // --- Summary metrics ---
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -80,51 +79,79 @@ export default function Dashboard() {
   }, [last14Sleep]);
 
   function onSignOut() {
-    // if you later use Supabase auth here, call supabase.auth.signOut()
+    // later: supabase.auth.signOut()
     navigate("/sign-in", { replace: true });
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
       {/* Header + quick actions */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold break-words">
           Sentinel Health — Dashboard{user?.email ? ` (${user.email})` : ""}
         </h1>
-        <div className="flex gap-2">
-          <button className="border px-3 py-2 rounded" onClick={() => navigate("/log")}>
+
+        {/* Actions wrap on small screens */}
+        <div className="flex flex-wrap gap-2">
+          <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
             + Migraine
           </button>
-          <button className="border px-3 py-2 rounded" onClick={() => navigate("/log-glucose")}>
+          <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
             + Glucose
           </button>
-          <button className="border px-3 py-2 rounded" onClick={() => navigate("/log-sleep")}>
+          <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
             + Sleep
           </button>
-          <button className="border px-3 py-2 rounded" onClick={onSignOut}>
+          <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
             Sign out
           </button>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <Card title="Total Migraine Episodes" value={totalEpisodes} />
         <Card title="Avg Glucose (14d)" value={avgGlucose14 ?? "—"} suffix={avgGlucose14 ? "mg/dL" : ""} />
         <Card title="Avg Sleep (14d)" value={avgSleep14 ?? "—"} suffix={avgSleep14 ? "hrs/night" : ""} />
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <LineChart title="Migraine Frequency (30 days)" labels={last30.labels} data={last30.counts} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 min-w-0">
+          <LineChart
+            title="Migraine Frequency (30 days)"
+            labels={last30.labels}
+            data={last30.counts}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
         </div>
-        <PieChart title="Top Symptoms" labels={symptomCounts.labels} data={symptomCounts.data} />
+        <div className="min-w-0">
+          <PieChart
+            title="Top Symptoms"
+            labels={symptomCounts.labels}
+            data={symptomCounts.data}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <LineChart title="Avg Glucose (14 days)" labels={last14Glucose.labels} data={last14Glucose.values} />
-        <LineChart title="Sleep Hours (14 days)" labels={last14Sleep.labels} data={last14Sleep.hours} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <LineChart
+            title="Avg Glucose (14 days)"
+            labels={last14Glucose.labels}
+            data={last14Glucose.values}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
+        <div className="min-w-0">
+          <LineChart
+            title="Sleep Hours (14 days)"
+            labels={last14Sleep.labels}
+            data={last14Sleep.hours}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
       </div>
 
       {/* Recent logs */}
@@ -135,12 +162,11 @@ export default function Dashboard() {
 
 function Card({ title, value, suffix }) {
   return (
-    <div className="bg-white rounded-lg p-4 shadow flex items-center justify-between">
-      <div>
-        <p className="text-xs uppercase text-gray-500">{title}</p>
-        <p className="text-2xl font-semibold">
-          {value}
-          {suffix ? ` ${suffix}` : ""}
+    <div className="bg-white rounded-lg p-4 shadow flex items-center justify-between min-w-0">
+      <div className="min-w-0">
+        <p className="text-xs uppercase text-gray-500 truncate">{title}</p>
+        <p className="text-2xl font-semibold break-words">
+          {value}{suffix ? ` ${suffix}` : ""}
         </p>
       </div>
     </div>
@@ -161,14 +187,16 @@ function RecentEpisodes({ episodes }) {
       <h3 className="text-sm font-semibold mb-2">Recent Episodes</h3>
       <div className="divide-y">
         {episodes.map((ep) => (
-          <div key={ep.id} className="py-2 text-sm flex items-center justify-between">
-            <div>
-              <p className="font-medium">{new Date(ep.date).toLocaleString()}</p>
-              <p className="text-gray-600">
+          <div key={ep.id} className="py-2 text-sm flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium break-words">{new Date(ep.date).toLocaleString()}</p>
+              <p className="text-gray-600 break-words">
                 Pain {ep.pain}/10 · {(ep.symptoms || []).slice(0, 3).join(", ")}
               </p>
             </div>
-            {ep.glucose_at_start && <span className="text-gray-700">{ep.glucose_at_start} mg/dL</span>}
+            {ep.glucose_at_start && (
+              <span className="text-gray-700 shrink-0">{ep.glucose_at_start} mg/dL</span>
+            )}
           </div>
         ))}
       </div>

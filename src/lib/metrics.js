@@ -1,4 +1,3 @@
-// src/lib/metrics.js
 export function daysBack(n, end = new Date()) {
   const arr = [];
   for (let i = n - 1; i >= 0; i--) {
@@ -8,12 +7,10 @@ export function daysBack(n, end = new Date()) {
   }
   return arr;
 }
-
 export function fmt(d) {
   const dd = new Date(d);
-  return dd.toISOString().slice(0,10); // YYYY-MM-DD
+  return dd.toISOString().slice(0,10);
 }
-
 export function countByDate(rows, dateKey) {
   const map = {};
   rows.forEach(r => {
@@ -22,7 +19,6 @@ export function countByDate(rows, dateKey) {
   });
   return map;
 }
-
 export function avgByDate(rows, dateKey, valueKey) {
   const sums = {}, counts = {};
   rows.forEach(r => {
@@ -36,7 +32,6 @@ export function avgByDate(rows, dateKey, valueKey) {
   Object.keys(sums).forEach(k => avg[k] = +(sums[k] / counts[k]).toFixed(1));
   return avg;
 }
-
 export function sumByDateMinutes(sleeps) {
   const sums = {};
   sleeps.forEach(s => {
