@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
 import { supabase } from "../lib/supabase";
+import logo from "../assets/logo.png";
 
 const { data, error } = await supabase.auth.signInWithPassword({
   email,
