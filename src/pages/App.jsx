@@ -1,8 +1,8 @@
 // src/App.jsx
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Layout from "@/layout";
-import { supabase } from "../lib/supabase";
+import Layout from "@/layout";                   // OK (maps to src/layout/index.jsx)
+import { supabase } from "@/lib/supabase";       // ✅ use alias, not ../lib/supabase
 
 export default function App() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function App() {
     })();
 
     // Keep listening for auth changes (login/logout)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         navigate("/sign-in", { replace: true });
       }
@@ -27,12 +27,16 @@ export default function App() {
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe?.();
+      subscription?.unsubscribe?.();
     };
   }, [navigate]);
 
   return (
     <Layout>
-      <div className="space-y-4">
+      <div className="space-y-4 p-6">
         <h2 className="text-2xl font-bold">Hello 👋</h2>
-        <p>If you see this, Vite + React +
+        <p>If you see this, Vite + React + Tailwindcss is working!</p>
+      </div>
+    </Layout>
+  );
+}
