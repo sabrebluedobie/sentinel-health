@@ -1,13 +1,11 @@
+// src/pages/LogMigraine.jsx
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
-const { data, error } = await supabase.auth.signInWithPassword({
-  email,
-  password,
-});
+// NOTE: Removed the bad top-level sign-in call
 
-const logo = "/logo.png"; // Ensure logo path is correct
+const logo = "/logo.png"; // keep if using /public/logo.png
 
 const SYMPTOMS = [
   "nausea","vomiting","light_sensitivity","sound_sensitivity",
@@ -37,7 +35,7 @@ export default function LogMigraine() {
   });
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");       // renamed to avoid shadowing
   const [rows, setRows] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
@@ -51,12 +49,12 @@ export default function LogMigraine() {
 
   async function loadRows() {
     setLoadingList(true);
-    const { data, error } = await supabase
+    const { data, error: err } = await supabase
       .from("migraine_episodes")
       .select("*")
       .order("date", { ascending: false })
       .limit(20);
-    if (error) console.error(error);
+    if (err) console.error(err);
     setRows(data || []);
     setLoadingList(false);
   }
@@ -67,11 +65,11 @@ export default function LogMigraine() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setErrorMsg("");
     setSaving(true);
 
     const payload = {
-      user_id: user.id,
+      user_id: user?.id ?? null,
       date: new Date(form.date).toISOString(),
       pain_level: Number(form.pain_level),
       duration_hours: form.duration_hours ? Number(form.duration_hours) : null,
@@ -85,27 +83,32 @@ export default function LogMigraine() {
       barometric_pressure: form.barometric_pressure ? Number(form.barometric_pressure) : null,
     };
 
-    const { error } = await supabase.from("migraine_episodes").insert(payload);
+    const { error: err } = await supabase.from("migraine_episodes").insert(payload);
     setSaving(false);
-    if (error) {
-      setError(error.message);
+    if (err) {
+      setErrorMsg(err.message);
       return;
     }
     setForm((f) => ({ ...f, duration_hours: "", notes: "" }));
     await loadRows();
   };
 
+  // Optional: disable form if not signed in (or guard this route higher up)
+  const disabled = !user;
+
   return (
     <>
       <div className="p-6">
         <h1 className="text-2xl font-semibold">Log Migraine</h1>
-        <p className="mt-2 text-gray-600">Record a new episode below.</p>
+        <p className="mt-2 text-gray-600">
+          {disabled ? "Sign in to record an episode." : "Record a new episode below."}
+        </p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4 border rounded-lg p-4 mx-6">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <fieldset disabled={disabled} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Start time</span>
             <input
@@ -191,57 +194,59 @@ export default function LogMigraine() {
               placeholder="Rainy, hot, windy…"
             />
           </label>
-        </div>
+        </fieldset>
 
-        <div>
-          <p className="text-sm font-medium mb-2">Symptoms</p>
-          <div className="flex flex-wrap gap-2">
-            {SYMPTOMS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleInArray("symptoms", s)}
-                className={`px-3 py-1 rounded border ${
-                  form.symptoms.includes(s) ? "bg-blue-600 text-white border-blue-600" : ""
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+        <fieldset disabled={disabled}>
+          <div>
+            <p className="text-sm font-medium mb-2">Symptoms</p>
+            <div className="flex flex-wrap gap-2">
+              {SYMPTOMS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleInArray("symptoms", s)}
+                  className={`px-3 py-1 rounded border ${
+                    form.symptoms.includes(s) ? "bg-blue-600 text-white border-blue-600" : ""
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div>
-          <p className="text-sm font-medium mb-2">Triggers</p>
-          <div className="flex flex-wrap gap-2">
-            {TRIGGERS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => toggleInArray("triggers", t)}
-                className={`px-3 py-1 rounded border ${
-                  form.triggers.includes(t) ? "bg-blue-600 text-white border-blue-600" : ""
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+          <div className="mt-3">
+            <p className="text-sm font-medium mb-2">Triggers</p>
+            <div className="flex flex-wrap gap-2">
+              {TRIGGERS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => toggleInArray("triggers", t)}
+                  className={`px-3 py-1 rounded border ${
+                    form.triggers.includes(t) ? "bg-blue-600 text-white border-blue-600" : ""
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Notes</span>
-          <textarea
-            className="border rounded p-2"
-            rows={3}
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </label>
+          <label className="flex flex-col gap-1 mt-3">
+            <span className="text-sm font-medium">Notes</span>
+            <textarea
+              className="border rounded p-2"
+              rows={3}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+          </label>
 
-        <button disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded">
-          {saving ? "Saving…" : "Save episode"}
-        </button>
+          <button disabled={saving || disabled} className="bg-blue-600 text-white px-4 py-2 rounded mt-3">
+            {saving ? "Saving…" : "Save episode"}
+          </button>
+        </fieldset>
       </form>
 
       <section className="p-6">

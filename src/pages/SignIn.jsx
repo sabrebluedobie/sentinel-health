@@ -1,8 +1,8 @@
+// src/pages/SignIn.jsx
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import logo from "../assets/logo.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -17,20 +17,16 @@ export default function SignIn() {
     e.preventDefault();
     setErrorMsg("");
     setBusy(true);
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password: pwd,
       });
-
       if (error) {
         console.error(error);
         setErrorMsg(error.message);
         return;
       }
-
-      // success → go back to previous page
       navigate(from, { replace: true });
     } catch (err) {
       console.error(err);
@@ -42,12 +38,10 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-gray-50">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm"
-      >
+      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm">
         <div className="flex flex-col items-center gap-3">
-          <img src="/logo.png" alt="Sentinel Health" width={100} height={100} />
+          {/* Use the imported asset (or put the file in /public and switch to src="/logo.png") */}
+          <img src={logo} alt="Sentinel Health" width={100} height={100} />
           <h1 className="text-xl font-semibold text-gray-900">
             Sentinel Health&nbsp;|&nbsp;Migraine Tracker
           </h1>
@@ -74,10 +68,7 @@ export default function SignIn() {
           />
         </div>
 
-        <button
-          disabled={busy}
-          className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60"
-        >
+        <button type="submit" disabled={busy} className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60">
           {busy ? "Signing in…" : "Sign in"}
         </button>
 

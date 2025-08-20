@@ -1,11 +1,7 @@
+// src/pages/NotFound.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
-
-const { data, error } = await supabase.auth.signInWithPassword({
-  email,
-  password,
-});
+// import { supabase } from "../lib/supabase"; // not needed here
 
 export default function NotFound() {
   return (
