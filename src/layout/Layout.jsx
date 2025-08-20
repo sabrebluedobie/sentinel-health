@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet, Link } from "react-router-dom";
 import logoUrl from "../assets/logo.png"; // make sure file exists
+import { Analytics } from "@vercel/analytics/next"
 
 export default function Layout() {
   return (
