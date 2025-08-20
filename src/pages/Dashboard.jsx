@@ -1,6 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider.jsx";
+import { supabase } from "../lib/supabase";
+
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
 
 export default function Dashboard() {
   const { user } = useAuth();

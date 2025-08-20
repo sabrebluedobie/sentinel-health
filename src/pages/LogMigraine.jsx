@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
+
 const logo = "/logo.png"; // Ensure logo path is correct
 
 const SYMPTOMS = [
