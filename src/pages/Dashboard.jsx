@@ -79,100 +79,127 @@ export default function Dashboard() {
   }, [last14Sleep]);
 
   function onSignOut() {
-    // later: supabase.auth.signOut()
     navigate("/sign-in", { replace: true });
   }
 
   return (
-  <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
-    {/* Header */}
-    <h1 className="text-xl sm:text-2xl font-bold break-words">
-      Sentinel Health — Dashboard{user?.email ? ` (${user.email})` : ""}
-    </h1>
+    <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
+      {/* Header */}
+      <h1 className="text-xl sm:text-2xl font-bold break-words">
+        Sentinel Health — Dashboard{user?.email ? ` (${user.email})` : ""}
+      </h1>
 
-    {/* Quick actions - now on their own row */}
-    <div className="flex flex-wrap gap-2">
-      <button
-        className="border px-3 py-2 rounded w-full sm:w-auto"
-        onClick={() => navigate("/log")}
-      >
-        + Migraine
-      </button>
-      <button
-        className="border px-3 py-2 rounded w-full sm:w-auto"
-        onClick={() => navigate("/log-glucose")}
-      >
-        + Glucose
-      </button>
-      <button
-        className="border px-3 py-2 rounded w-full sm:w-auto"
-        onClick={() => navigate("/log-sleep")}
-      >
-        + Sleep
-      </button>
-      <button
-        className="border px-3 py-2 rounded w-full sm:w-auto"
-        onClick={onSignOut}
-      >
-        Sign out
-      </button>
-    </div>
-
-    {/* Summary cards */}
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-      <Card title="Total Migraine Episodes" value={totalEpisodes} />
-      <Card
-        title="Avg Glucose (14d)"
-        value={avgGlucose14 ?? "—"}
-        suffix={avgGlucose14 ? "mg/dL" : ""}
-      />
-      <Card
-        title="Avg Sleep (14d)"
-        value={avgSleep14 ?? "—"}
-        suffix={avgSleep14 ? "hrs/night" : ""}
-      />
-    </div>
-
-    {/* Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-      <div className="lg:col-span-2 min-w-0">
-        <LineChart
-          title="Migraine Frequency (30 days)"
-          labels={last30.labels}
-          data={last30.counts}
-          className="h-[240px] sm:h-[280px] lg:h-[320px]"
-        />
+      {/* Quick actions - own row under header */}
+      <div className="flex flex-wrap gap-2">
+        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
+          + Migraine
+        </button>
+        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
+          + Glucose
+        </button>
+        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
+          + Sleep
+        </button>
+        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
+          Sign out
+        </button>
       </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 min-w-0">
+        <Card title="Total Migraine Episodes" value={totalEpisodes ?? 0} />
+        <Card title="Avg Glucose (14d)" value={avgGlucose14} suffix={avgGlucose14 ? "mg/dL" : ""} />
+        <Card title="Avg Sleep (14d)" value={avgSleep14} suffix={avgSleep14 ? "hrs/night" : ""} />
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 min-w-0">
+          <LineChart
+            title="Migraine Frequency (30 days)"
+            labels={last30.labels}
+            data={last30.counts}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
+        <div className="min-w-0">
+          <PieChart
+            title="Top Symptoms"
+            labels={symptomCounts.labels}
+            data={symptomCounts.data}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <LineChart
+            title="Avg Glucose (14 days)"
+            labels={last14Glucose.labels}
+            data={last14Glucose.values}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
+        <div className="min-w-0">
+          <LineChart
+            title="Sleep Hours (14 days)"
+            labels={last14Sleep.labels}
+            data={last14Sleep.hours}
+            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+          />
+        </div>
+      </div>
+
+      {/* Recent logs */}
+      <RecentEpisodes episodes={episodes.slice(0, 8)} />
+    </div>
+  );
+}
+
+/* ---------- Components below the main component ---------- */
+
+function Card({ title, value, suffix }) {
+  const display = (value === null || value === undefined || value === "") ? "—" : value;
+  return (
+    <div className="bg-white rounded-lg p-4 shadow min-w-0 box-border">
       <div className="min-w-0">
-        <PieChart
-          title="Top Symptoms"
-          labels={symptomCounts.labels}
-          data={symptomCounts.data}
-          className="h-[240px] sm:h-[280px] lg:h-[320px]"
-        />
+        <p className="text-xs uppercase text-gray-500 truncate">{title}</p>
+        <p className="text-2xl font-semibold break-words">
+          {display}{suffix ? ` ${suffix}` : ""}
+        </p>
       </div>
     </div>
+  );
+}
 
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-      <div className="min-w-0">
-        <LineChart
-          title="Avg Glucose (14 days)"
-          labels={last14Glucose.labels}
-          data={last14Glucose.values}
-          className="h-[240px] sm:h-[280px] lg:h-[320px]"
-        />
+function RecentEpisodes({ episodes }) {
+  if (!episodes.length)
+    return (
+      <div className="bg-white rounded-lg p-4 shadow">
+        <h3 className="text-sm font-semibold mb-2">Recent Episodes</h3>
+        <p className="text-gray-500 text-sm">No entries yet.</p>
       </div>
-      <div className="min-w-0">
-        <LineChart
-          title="Sleep Hours (14 days)"
-          labels={last14Sleep.labels}
-          data={last14Sleep.hours}
-          className="h-[240px] sm:h-[280px] lg:h-[320px]"
-        />
+    );
+
+  return (
+    <div className="bg-white rounded-lg p-4 shadow">
+      <h3 className="text-sm font-semibold mb-2">Recent Episodes</h3>
+      <div className="divide-y">
+        {episodes.map((ep) => (
+          <div key={ep.id} className="py-2 text-sm flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium break-words">{new Date(ep.date).toLocaleString()}</p>
+              <p className="text-gray-600 break-words">
+                Pain {ep.pain}/10 · {(ep.symptoms || []).slice(0, 3).join(", ")}
+              </p>
+            </div>
+            {ep.glucose_at_start && (
+              <span className="text-gray-700 shrink-0">{ep.glucose_at_start} mg/dL</span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
-
-    {/* Recent logs */}
-    <RecentEpisodes episodes={episodes.slice(0, 8)} />
-  </div>
-)};
+  );
+}
