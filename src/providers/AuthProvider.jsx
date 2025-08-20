@@ -1,28 +1,47 @@
+// src/providers/AuthProvider.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-const AuthCtx = createContext(null);
-export const useAuth = () => useContext(AuthCtx);
+const AuthContext = createContext({ user: null, loading: true });
 
-export default function AuthProvider({ children }) {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [initializing, setInitializing] = useState(true);
+  const [loading, setLoading] = useState(true);
 
+  // Initial session + auth state listener
   useEffect(() => {
-    // Get current session on mount
+    let ignore = false;
+
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user ?? null);
-      setInitializing(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!ignore) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     })();
 
-    // Listen for auth changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      ignore = true;
+      subscription?.unsubscribe();
+    };
   }, []);
 
-  const value = { user, initializing };
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
+// convenient hook
+export const useAuth = () => useContext(AuthContext);
+
+// also provide a default export (harmless if unused)
+export default AuthProvider;
