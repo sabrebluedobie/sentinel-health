@@ -175,4 +175,4 @@ export default function Dashboard() {
     {/* Recent logs */}
     <RecentEpisodes episodes={episodes.slice(0, 8)} />
   </div>
-);
+)};
