@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -47,7 +47,7 @@ export default function SignIn() {
         className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm"
       >
         <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="Sentinel Health" className="w-16 h-16" />
+          <img src="/logo.png" alt="Sentinel Health" width={100} height={100} />
           <h1 className="text-xl font-semibold text-gray-900">
             Sentinel Health&nbsp;|&nbsp;Migraine Tracker
           </h1>
