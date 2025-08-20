@@ -11,6 +11,13 @@ export default function SignIn() {
   const navigate = useNavigate();
   const from = useLocation().state?.from?.pathname || "/";
 
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+if (error) {
+  console.error(error); // See precise message in console/network
+  setError(error.message);
+  return;
+}
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(""); setBusy(true);
