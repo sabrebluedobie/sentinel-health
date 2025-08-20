@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
