@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import logoUrl from "../assets/logo.png";
+import logo from "../assets/logo.png";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export default function SignIn() {
     <div className="min-h-[calc(100vh-8rem)] grid place-items-center">
       <div className="card w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
-          <img src={logoUrl} alt="Logo" className="w-10 h-10"/>
+          <img src={logo} alt="Logo" className="w-10 h-10"/>
           <h1 className="h1">Sign in</h1>
         </div>
 
