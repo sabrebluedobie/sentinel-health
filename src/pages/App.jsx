@@ -2,6 +2,8 @@
 import React from "react";
 import Layout from "@/layout";
 
+const email = user?.email;
+
 export default function App() {
   return (
     <Layout>
