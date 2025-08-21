@@ -187,11 +187,11 @@ function formatLocalAtEntry(dateIso, tzOffsetMinutes) {
 function useSpeechInput({ lang = "en-US", continuous = false, interimResults = true, onResult } = {}) {
   const recognitionRef = useRef(null);
   const [supported, setSupported] = useState(false);
-  the
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [finalized, setFinalized] = useState("");
-
+  // rest of the hook unchanged…
+}
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     if (!SR) return;
