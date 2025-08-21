@@ -6,6 +6,20 @@ import { MigrainEpisode, GlucoseReading, SleepData } from "../entities/client";
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
+// Dashboard.jsx
+import DisclaimerGate from "@/components/DisclaimerGate";
+
+export default function Dashboard() {
+  return (
+    <DisclaimerGate>
+      {/* your existing dashboard here */}
+      <main className="p-4">
+        {/* ... charts/cards/tables ... */}
+      </main>
+    </DisclaimerGate>
+  );
+}
+
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
