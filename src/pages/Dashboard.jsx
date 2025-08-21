@@ -245,32 +245,11 @@ function useSpeechInput({ lang = "en-US", continuous = false, interimResults = t
 
 /** Very light NLP to pull structured values from a transcript. */
 function parseMigraineTranscript(text) {
-  const out = { pain: null, symptoms: [], triggers: [], medsString: "", cleanedNotes: text.trim() };
+  const out = { pain: null, symptoms: [], triggers: [], medsString: "", cleanedNotes: text?.trim?.() || "" };
   if (!text) return out;
   const t = text.toLowerCase();
-  /* ----------------------------- Speech Synthesis (TTS) ----------------------------- */
-/** Minimal talker: speaks a prompt, returns a promise that resolves when audio ends. */
-function speakOnce(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US" } = {}) {
-  return new Promise((resolve, reject) => {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return resolve(); // no-op if not supported
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = rate; utter.pitch = pitch; utter.volume = volume; utter.lang = lang;
-      utter.onend = resolve; utter.onerror = resolve;
-      synth.cancel(); // stop any pending speech
-      synth.speak(utter);
-    } catch { resolve(); }
-  });
-}
 
-/** Helper to stop any current speech. */
-function stopSpeaking() {
-  try { window.speechSynthesis?.cancel(); } catch {}
-}
-
-
-  // Pain 0-10: look for "pain 7" or "pain level 7" or standalone number preceded by "pain"
+  // Pain 0-10: look for "pain 7" or "pain level 7" or standalone number preceded by "pain", or "7/10"
   const painMatch = t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
   if (painMatch) {
     const n = parseInt(painMatch[1], 10);
@@ -302,6 +281,27 @@ function stopSpeaking() {
   return out;
 }
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+/* ----------------------------- Speech Synthesis (TTS) ----------------------------- */
+/** Minimal talker: speaks a prompt, returns a promise that resolves when audio ends. */
+function speakOnce(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US" } = {}) {
+  return new Promise((resolve) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return resolve(); // no-op if not supported
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = rate; utter.pitch = pitch; utter.volume = volume; utter.lang = lang;
+      utter.onend = resolve; utter.onerror = resolve;
+      synth.cancel(); // stop any pending speech
+      synth.speak(utter);
+    } catch { resolve(); }
+  });
+}
+
+/** Helper to stop any current speech. */
+function stopSpeaking() {
+  try { window.speechSynthesis?.cancel(); } catch {}
+}
 
 /* ----------------------------- main component ----------------------------- */
 export default function Dashboard() {
@@ -755,7 +755,6 @@ function MigraineModal({ onClose, user }) {
   // --- Speech to text ---
   const { supported, listening, interim, start, stop } = useSpeechInput({
     onResult: (finalChunk) => {
-      // In free dictation mode (button), we still parse & append
       if (!coach.active) {
         const parsed = parseMigraineTranscript(finalChunk);
         if (parsed.pain != null) setPain(parsed.pain);
@@ -767,7 +766,6 @@ function MigraineModal({ onClose, user }) {
           setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
         setNotes((prev) => (prev ? `${prev}\n${finalChunk}` : finalChunk));
       } else {
-        // Guided mode captures response into coach.state, and we parse per step
         handleCoachAnswer(finalChunk);
       }
     },
@@ -777,14 +775,14 @@ function MigraineModal({ onClose, user }) {
   const [coach, setCoach] = useState({
     active: false,
     step: 0,
-    waiting: false,  // true while listening for an answer
+    waiting: false,
   });
 
   const COACH_STEPS = [
     { key: "pain",     q: "On a scale of zero to ten, what is your pain level right now?" },
     { key: "symptoms", q: "Tell me your symptoms, like nausea or photophobia. You can say multiple." },
     { key: "triggers", q: "Do you notice any possible triggers, such as stress, bright lights, or lack of sleep?" },
-    { key: "meds",     q: "What medications and doses did you take? For example, sumatriptan 50 milligrams." },
+    { key: "meds",     q: "What medications and doses did you take? For example, sumatriptan fifty milligrams." },
     { key: "notes",    q: "Any additional notes you want to add?" },
     { key: "confirm",  q: "Ready to save this entry? Say yes to save, or no to cancel." },
   ];
@@ -793,7 +791,6 @@ function MigraineModal({ onClose, user }) {
     if (!supported) {
       toast.info("Voice works best in Chrome or Edge.");
     }
-    // reset coach to beginning
     setCoach({ active: true, step: 0, waiting: false });
     stopSpeaking();
     await speakOnce("Okay. Let's log your migraine together.");
@@ -812,7 +809,6 @@ function MigraineModal({ onClose, user }) {
     if (!step) return;
     stopSpeaking();
     await speakOnce(step.q);
-    // begin listening for answer
     setCoach((c) => ({ ...c, step: i, waiting: true }));
     try { start(); } catch {}
   }
@@ -821,20 +817,18 @@ function MigraineModal({ onClose, user }) {
     setCoach((c) => {
       const ni = c.step + 1;
       if (ni >= COACH_STEPS.length) return { active: false, step: 0, waiting: false };
-      setTimeout(() => runStep(ni), 200); // nudge to next question
+      setTimeout(() => runStep(ni), 200);
       return { ...c, step: ni, waiting: false };
     });
   }
 
   function handleCoachAnswer(text) {
-    // stop listening for this step
     if (listening) { try { stop(); } catch {} }
     setCoach((c) => ({ ...c, waiting: false }));
     const step = COACH_STEPS[coach.step]?.key;
     const t = text?.trim() || "";
 
     if (!t) {
-      // Ask to repeat
       speakOnce("Sorry, I didn't catch that. Let's try again.");
       runStep(coach.step);
       return;
@@ -884,7 +878,6 @@ function MigraineModal({ onClose, user }) {
         setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
         speakOnce("Medications recorded.");
       } else {
-        // still keep raw text as meds input if they said anything like "ibuprofen 200"
         setMeds((prev) => (prev ? `${prev}; ${t}` : t));
         speakOnce("Okay.");
       }
@@ -902,7 +895,7 @@ function MigraineModal({ onClose, user }) {
       const no  = /\b(no|cancel|wait|stop)\b/i.test(t);
       if (yes) {
         speakOnce("Saving now.");
-        save(); // will close on success
+        save();
         return;
       }
       if (no) {
@@ -917,7 +910,6 @@ function MigraineModal({ onClose, user }) {
 
   useEffect(() => {
     if (!supported) {
-      // One-time tip when the modal opens
       toast.info("Tip: Voice features work best in Chrome or Edge.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1108,135 +1100,6 @@ function MigraineModal({ onClose, user }) {
             {saving ? "Saving…" : "Save"}
           </button>
           <button onClick={() => { if (listening) stop(); stopCoach(); onClose(); }} className="px-4 py-2 rounded border">Cancel</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-
-  return (
-    <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-[#042d4d]">Log Migraine</h3>
-          {/* Voice control */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => (listening ? stop() : start())}
-              className={`px-3 py-1 rounded-md text-white text-sm ${
-                listening ? "bg-red-600" : "bg-[#042d4d]"
-              }`}
-              title={supported ? "Use your voice to fill the form" : "Voice input not supported in this browser"}
-              disabled={!supported}
-            >
-              {listening ? "● Listening…" : "🎙 Speak"}
-            </button>
-          </div>
-        </div>
-
-        {listening && (
-          <div className="mb-2 text-xs text-gray-600">
-            Say things like: “pain 7”, “nausea and photophobia”, “trigger bright lights”, “sumatriptan 50 mg”.
-          </div>
-        )}
-        {listening && interim && (
-          <div className="mb-3 text-sm p-2 bg-gray-50 border rounded">
-            <span className="text-gray-500">Heard: </span>
-            <span className="italic">{interim}</span>
-          </div>
-        )}
-
-        <label className="block text-sm font-medium text-gray-700">
-          Date & Time
-          <input
-            type="datetime-local"
-            value={dateTime}
-            onChange={(e) => setDateTime(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-          />
-        </label>
-
-        <label className="block text-sm font-medium text-gray-700 mt-3">
-          Pain (0–10)
-          <input
-            type="number"
-            min={0}
-            max={10}
-            value={pain}
-            onChange={(e) => setPain(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-          />
-        </label>
-
-        <MultiSelectChips
-          label="Symptoms"
-          options={SYMPTOM_OPTIONS}
-          selected={selectedSymptoms}
-          setSelected={setSelectedSymptoms}
-          color={BRAND.bad}
-        />
-        <label className="block text-sm text-gray-600 mt-2">
-          Add more (comma-separated)
-          <input
-            type="text"
-            placeholder="e.g., jaw pain, brain fog"
-            value={symptomsExtra}
-            onChange={(e) => setSymptomsExtra(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-          />
-        </label>
-
-        <MultiSelectChips
-          label="Possible Triggers"
-          options={TRIGGER_OPTIONS}
-          selected={selectedTriggers}
-          setSelected={setSelectedTriggers}
-          color={BRAND.violet}
-        />
-        <label className="block text-sm text-gray-600 mt-2">
-          Add more (comma-separated)
-          <input
-            type="text"
-            placeholder="e.g., travel, new meds"
-            value={triggersExtra}
-            onChange={(e) => setTriggersExtra(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-          />
-        </label>
-
-        <label className="block text-sm font-medium text-gray-700 mt-3">
-          Medications (semicolon-separated; include dose)
-          <input
-            type="text"
-            placeholder="Sumatriptan 50 mg; Ibuprofen 400 mg"
-            value={meds}
-            onChange={(e) => setMeds(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-          />
-        </label>
-
-        <label className="block text-sm font-medium text-gray-700 mt-3">
-          Notes
-          <textarea
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="mt-1 w-full border rounded px-3 py-2"
-            placeholder="Say anything—voice input will append here too."
-          />
-        </label>
-
-        <div className="mt-4 flex gap-2 sticky bottom-0 bg-white pt-3">
-          <button
-            disabled={saving}
-            onClick={save}
-            className="bg-[#042d4d] text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
-          <button onClick={() => { if (listening) stop(); onClose(); }} className="px-4 py-2 rounded border">Cancel</button>
         </div>
       </div>
     </Modal>
