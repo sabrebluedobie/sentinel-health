@@ -46,7 +46,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "log-migraine",
+        path: "/log",
         element: (
           <RequireAuth>
             <LogMigraine />

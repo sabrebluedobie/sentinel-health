@@ -2,49 +2,48 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
-import { MigrainEpisode, GlucoseReading, SleepData } from "../entities/client";
+
+// 🔁 READ FROM SUPABASE (not entities/localStorage)
+import { Migraines, Glucose, Sleep } from "@/data/supabaseStore";
+
+// charts
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
+
+// metrics + time formatting
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
-// Dashboard.jsx
-import DisclaimerGate from "@/components/DisclaimerGate";
-
-export default function Dashboard() {
-  return (
-    <DisclaimerGate>
-      {/* your existing dashboard here */}
-      <main className="p-4">
-        {/* ... charts/cards/tables ... */}
-      </main>
-    </DisclaimerGate>
-  );
-}
-
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
   const [episodes, setEpisodes] = useState([]);
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
 
+  // Redirect if not signed in
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    (async () => {
+  (async () => {
+    try {
       const [e, g, s] = await Promise.all([
-        MigrainEpisode.list("-date", 500),
-        GlucoseReading.list("-date", 1000),
-        SleepData.list("-date", 365),
+        Migraines.list(500),
+        Glucose.list(1000),
+        Sleep.list(365),
       ]);
       setEpisodes(e || []);
       setGlucose(g || []);
       setSleep(s || []);
-    })();
-  }, []);
+    } catch (err) {
+      console.error("Dashboard load error:", err);
+    }
+  })();
+}, []);
 
+  // --- Summary metrics ---
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -96,25 +95,30 @@ export default function Dashboard() {
     navigate("/sign-in", { replace: true });
   }
 
+  // Header name: first_name (email) if available
+  const headerIdentity = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name} (${user.email})`
+    : user?.email || "";
+
   return (
     <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
       {/* Header */}
       <h1 className="text-xl sm:text-2xl font-bold break-words">
-        Sentinel Health — Dashboard{user?.email ? ` (${user.email})` : ""}
+        Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
       </h1>
 
-      {/* Quick actions - own row under header */}
+      {/* Quick actions */}
       <div className="flex flex-wrap gap-2">
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
+        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
           + Migraine
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
+        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
           + Glucose
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
+        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
           + Sleep
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
+        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
           Sign out
         </button>
       </div>
@@ -171,7 +175,7 @@ export default function Dashboard() {
   );
 }
 
-/* ---------- Components below the main component ---------- */
+/* ---------- Components ---------- */
 
 function Card({ title, value, suffix }) {
   const display = (value === null || value === undefined || value === "") ? "—" : value;
@@ -203,7 +207,11 @@ function RecentEpisodes({ episodes }) {
         {episodes.map((ep) => (
           <div key={ep.id} className="py-2 text-sm flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium break-words">{new Date(ep.date).toLocaleString()}</p>
+              <p className="font-medium break-words">
+                {ep.timezone_offset_min != null
+                  ? formatLocalAtEntry(ep.date, ep.timezone_offset_min)
+                  : new Date(ep.date).toLocaleString()}
+              </p>
               <p className="text-gray-600 break-words">
                 Pain {ep.pain}/10 · {(ep.symptoms || []).slice(0, 3).join(", ")}
               </p>
@@ -214,6 +222,52 @@ function RecentEpisodes({ episodes }) {
           </div>
         ))}
       </div>
+      
+{import.meta.env.MODE !== "production" && (
+  <DebugPanel />
+)}
+
+    </div>
+  );function DebugPanel() {
+  const [info, setInfo] = React.useState({ url: "", uid: "", counts: null, error: "" });
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const url = import.meta.env.VITE_SUPABASE_URL || "(missing)";
+        const { data: { user } } = await supabase.auth.getUser();
+        const uid = user?.id || "(no user)";
+        let counts = null;
+
+        if (uid) {
+          const [mig, glu, slp] = await Promise.all([
+            supabase.from("migraine_episodes").select("*", { count: "exact", head: true }).eq("user_id", uid),
+            supabase.from("glucose_readings").select("*", { count: "exact", head: true }).eq("user_id", uid),
+            supabase.from("sleep_data").select("*", { count: "exact", head: true }).eq("user_id", uid),
+          ]);
+          counts = {
+            migraines: mig.count ?? 0,
+            glucose: glu.count ?? 0,
+            sleep: slp.count ?? 0,
+          };
+        }
+
+        setInfo({ url, uid, counts, error: "" });
+      } catch (e) {
+        setInfo((prev) => ({ ...prev, error: String(e) }));
+      }
+    })();
+  }, []);
+
+  return (
+    <div className="mt-6 text-xs p-3 border rounded bg-gray-50">
+      <div>Supabase URL: <code>{info.url}</code></div>
+      <div>User ID: <code>{info.uid}</code></div>
+      {info.counts && (
+        <div>Counts (RLS-filtered): 🧠 {info.counts.migraines} | 🩸 {info.counts.glucose} | 😴 {info.counts.sleep}</div>
+      )}
+      {info.error && <div className="text-red-600">Debug error: {info.error}</div>}
     </div>
   );
+}
 }
