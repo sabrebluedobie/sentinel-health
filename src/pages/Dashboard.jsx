@@ -24,6 +24,19 @@ const BRAND = {
   violet: "#7c3aed",
 };
 
+/* ----- preset options ----- */
+const SYMPTOM_OPTIONS = [
+  "Nausea", "Vomiting", "Photophobia", "Phonophobia", "Aura",
+  "Dizziness", "Neck pain", "Numbness/tingling", "Blurred vision",
+  "Fatigue", "Osmophobia", "Allodynia"
+];
+
+const TRIGGER_OPTIONS = [
+  "Stress", "Lack of sleep", "Dehydration", "Skipped meal",
+  "Bright lights", "Strong smells", "Hormonal", "Weather",
+  "Heat", "Screen time", "Alcohol", "Chocolate", "Caffeine change"
+];
+
 /* ----------------------------- helpers ----------------------------- */
 function mergeChange(list, payload, key = "id") {
   const { eventType, new: rowNew, old: rowOld } = payload;
@@ -88,15 +101,11 @@ function extractMedications(episodes, maxItems = 12) {
       continue;
     }
     if (Array.isArray(ep?.meds) && ep.meds.length) {
-      for (const s of ep.meds) {
-        rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
-      }
+      for (const s of ep.meds) rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
       continue;
     }
     if (Array.isArray(ep?.treatments) && ep.treatments.length) {
-      for (const s of ep.treatments) {
-        rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
-      }
+      for (const s of ep.treatments) rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
       continue;
     }
   }
@@ -108,7 +117,7 @@ function localTzOffsetMinutes() {
   return -new Date().getTimezoneOffset(); // west of UTC is negative
 }
 
-/* ----------------------------- component ----------------------------- */
+/* ----------------------------- main component ----------------------------- */
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -118,20 +127,23 @@ export default function Dashboard() {
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
 
-  // modal state
+  // quick-log modal state
   const [openMigraine, setOpenMigraine] = useState(false);
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
 
+  // auth redirect
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
+  // disclaimer
   useEffect(() => {
     const accepted = localStorage.getItem("sentinelDisclaimerAccepted");
     setShowDisclaimer(!accepted);
   }, []);
 
+  // initial load
   useEffect(() => {
     (async () => {
       try {
@@ -145,6 +157,7 @@ export default function Dashboard() {
     })();
   }, []);
 
+  // realtime
   useEffect(() => {
     if (!user?.id) return;
     const uid = user.id;
@@ -169,7 +182,7 @@ export default function Dashboard() {
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
-  // ---- metrics
+  // metrics
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -217,10 +230,6 @@ export default function Dashboard() {
 
   const recentMeds = useMemo(() => extractMedications(episodes, 12), [episodes]);
 
-  function onSignOut() {
-    navigate("/sign-in", { replace: true });
-  }
-
   const headerIdentity = user?.user_metadata?.first_name
     ? `${user.user_metadata.first_name} (${user.email})`
     : user?.email || "";
@@ -229,6 +238,10 @@ export default function Dashboard() {
     localStorage.setItem("sentinelDisclaimerAccepted", "true");
     setShowDisclaimer(false);
   };
+
+  function onSignOut() {
+    navigate("/sign-in", { replace: true });
+  }
 
   /* ----------------------------- UI ----------------------------- */
   return (
@@ -495,7 +508,7 @@ function DebugPanel() {
   );
 }
 
-/* ---------- Modals ---------- */
+/* ---------- Modal shell ---------- */
 function Modal({ children, onClose, noClose = false }) {
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
@@ -515,12 +528,56 @@ function Modal({ children, onClose, noClose = false }) {
   );
 }
 
-/* ----- Migraine Log Modal ----- */
+/* ---------- Chip selector ---------- */
+function MultiSelectChips({ label, options, selected, setSelected, color = "#042d4d" }) {
+  function toggle(item) {
+    setSelected((prev) =>
+      prev.includes(item) ? prev.filter((v) => v !== item) : [...prev, item]
+    );
+  }
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <button
+              type="button"
+              key={opt}
+              onClick={() => toggle(opt)}
+              className={`px-3 py-1 rounded-full border text-sm ${
+                active ? "text-white" : "text-gray-700"
+              }`}
+              style={{
+                backgroundColor: active ? color : "white",
+                borderColor: active ? color : "#e5e7eb",
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Quick-log Modals ---------- */
 function MigraineModal({ onClose, user }) {
   const [saving, setSaving] = useState(false);
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16)); // yyyy-mm-ddTHH:MM
   const [pain, setPain] = useState(5);
-  const [symptoms, setSymptoms] = useState("");
+
+  // NEW: chips
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [selectedTriggers, setSelectedTriggers] = useState([]);
+
+  // free-text add-ons
+  const [symptomsExtra, setSymptomsExtra] = useState("");
+  const [triggersExtra, setTriggersExtra] = useState("");
+
+  // meds + notes
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
@@ -528,7 +585,6 @@ function MigraineModal({ onClose, user }) {
     if (!user?.id) return;
     setSaving(true);
     try {
-      // Try to build a medications array if provided
       const medications =
         meds.trim() === ""
           ? null
@@ -538,22 +594,28 @@ function MigraineModal({ onClose, user }) {
               return { name, dose };
             });
 
-      const { error } = await supabase.from("migraine_episodes").insert({
+      const extraSymptoms = symptomsExtra.split(",").map((s) => s.trim()).filter(Boolean);
+      const symptoms = Array.from(new Set([...selectedSymptoms, ...extraSymptoms]));
+
+      const extraTriggers = triggersExtra.split(",").map((s) => s.trim()).filter(Boolean);
+      const triggers = Array.from(new Set([...selectedTriggers, ...extraTriggers]));
+
+      const payload = {
         user_id: user.id,
         date: new Date(dateTime).toISOString(),
         pain: Number(pain),
-        symptoms: symptoms
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        medications, // nullable array
+        symptoms,                 // text[]
+        triggers,                 // text[]
+        medications,              // json/jsonb
         medication_notes: notes || null,
         timezone_offset_min: localTzOffsetMinutes(),
         created_at: new Date().toISOString(),
-      });
+      };
 
+      const { error } = await supabase.from("migraine_episodes").insert(payload);
       if (error) throw error;
-      onClose();
+
+      onClose(); // realtime updates list
     } catch (e) {
       alert(e.message || "Failed to save migraine entry.");
     } finally {
@@ -588,13 +650,38 @@ function MigraineModal({ onClose, user }) {
           />
         </label>
 
-        <label className="block text-sm font-medium text-gray-700 mt-3">
-          Symptoms (comma-separated)
+        <MultiSelectChips
+          label="Symptoms"
+          options={SYMPTOM_OPTIONS}
+          selected={selectedSymptoms}
+          setSelected={setSelectedSymptoms}
+          color="#dc2626"
+        />
+        <label className="block text-sm text-gray-600 mt-2">
+          Add more (comma-separated)
           <input
             type="text"
-            placeholder="nausea, light sensitivity, aura"
-            value={symptoms}
-            onChange={(e) => setSymptoms(e.target.value)}
+            placeholder="e.g., jaw pain, brain fog"
+            value={symptomsExtra}
+            onChange={(e) => setSymptomsExtra(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <MultiSelectChips
+          label="Possible Triggers"
+          options={TRIGGER_OPTIONS}
+          selected={selectedTriggers}
+          setSelected={setSelectedTriggers}
+          color="#7c3aed"
+        />
+        <label className="block text-sm text-gray-600 mt-2">
+          Add more (comma-separated)
+          <input
+            type="text"
+            placeholder="e.g., travel, new meds"
+            value={triggersExtra}
+            onChange={(e) => setTriggersExtra(e.target.value)}
             className="mt-1 w-full border rounded px-3 py-2"
           />
         </label>
@@ -635,7 +722,6 @@ function MigraineModal({ onClose, user }) {
   );
 }
 
-/* ----- Glucose Log Modal ----- */
 function GlucoseModal({ onClose, user }) {
   const [saving, setSaving] = useState(false);
   const [value, setValue] = useState("");
@@ -701,7 +787,6 @@ function GlucoseModal({ onClose, user }) {
   );
 }
 
-/* ----- Sleep Log Modal ----- */
 function SleepModal({ onClose, user }) {
   const [saving, setSaving] = useState(false);
   const nowIso = new Date().toISOString().slice(0, 16);
