@@ -15,6 +15,7 @@ import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/
 // if you put this file in src/utils, adjust to "../utils/timeUtils.js"
 import { formatLocalAtEntry } from "@/lib/timeUtils";
 
+
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -28,23 +29,22 @@ export default function Dashboard() {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
-  // ✅ Load data from Supabase
   useEffect(() => {
-    (async () => {
-      try {
-        const [e, g, s] = await Promise.all([
-          Migraines.list(500),
-          Glucose.list(1000),
-          Sleep.list(365),
-        ]);
-        setEpisodes(e || []);
-        setGlucose(g || []);
-        setSleep(s || []);
-      } catch (err) {
-        console.error("Dashboard load error:", err);
-      }
-    })();
-  }, []);
+  (async () => {
+    try {
+      const [e, g, s] = await Promise.all([
+        Migraines.list(500),
+        Glucose.list(1000),
+        Sleep.list(365),
+      ]);
+      setEpisodes(e || []);
+      setGlucose(g || []);
+      setSleep(s || []);
+    } catch (err) {
+      console.error("Dashboard load error:", err);
+    }
+  })();
+}, []);
 
   // --- Summary metrics ---
   const totalEpisodes = episodes.length;
@@ -225,6 +225,52 @@ function RecentEpisodes({ episodes }) {
           </div>
         ))}
       </div>
+      
+{import.meta.env.MODE !== "production" && (
+  <DebugPanel />
+)}
+
+    </div>
+  );function DebugPanel() {
+  const [info, setInfo] = React.useState({ url: "", uid: "", counts: null, error: "" });
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const url = import.meta.env.VITE_SUPABASE_URL || "(missing)";
+        const { data: { user } } = await supabase.auth.getUser();
+        const uid = user?.id || "(no user)";
+        let counts = null;
+
+        if (uid) {
+          const [mig, glu, slp] = await Promise.all([
+            supabase.from("migraine_episodes").select("*", { count: "exact", head: true }).eq("user_id", uid),
+            supabase.from("glucose_readings").select("*", { count: "exact", head: true }).eq("user_id", uid),
+            supabase.from("sleep_data").select("*", { count: "exact", head: true }).eq("user_id", uid),
+          ]);
+          counts = {
+            migraines: mig.count ?? 0,
+            glucose: glu.count ?? 0,
+            sleep: slp.count ?? 0,
+          };
+        }
+
+        setInfo({ url, uid, counts, error: "" });
+      } catch (e) {
+        setInfo((prev) => ({ ...prev, error: String(e) }));
+      }
+    })();
+  }, []);
+
+  return (
+    <div className="mt-6 text-xs p-3 border rounded bg-gray-50">
+      <div>Supabase URL: <code>{info.url}</code></div>
+      <div>User ID: <code>{info.uid}</code></div>
+      {info.counts && (
+        <div>Counts (RLS-filtered): 🧠 {info.counts.migraines} | 🩸 {info.counts.glucose} | 😴 {info.counts.sleep}</div>
+      )}
+      {info.error && <div className="text-red-600">Debug error: {info.error}</div>}
     </div>
   );
+}
 }
