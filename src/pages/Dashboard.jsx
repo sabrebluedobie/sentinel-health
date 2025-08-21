@@ -13,7 +13,6 @@ import PieChart from "../components/charts/PieChart.jsx";
 // metrics + time formatting
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
 import { formatLocalAtEntry } from "@/lib/timeUtils";
-
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
