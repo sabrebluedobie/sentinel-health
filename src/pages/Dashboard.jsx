@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
@@ -20,7 +20,7 @@ const BRAND = {
   good: "#16a34a",
   warn: "#f59e0b",
   bad: "#dc2626",
-  info: "#2563eb", // blue-600
+  info: "#2563eb",
   violet: "#7c3aed",
 };
 
@@ -38,16 +38,59 @@ const CHART_COLORS = [
 
 /* ----- preset options ----- */
 const SYMPTOM_OPTIONS = [
-  "Nausea", "Vomiting", "Photophobia", "Phonophobia", "Aura",
-  "Dizziness", "Neck pain", "Numbness/tingling", "Blurred vision",
-  "Fatigue", "Osmophobia", "Allodynia"
+  "Nausea","Vomiting","Photophobia","Phonophobia","Aura",
+  "Dizziness","Neck pain","Numbness/tingling","Blurred vision",
+  "Fatigue","Osmophobia","Allodynia"
 ];
 
 const TRIGGER_OPTIONS = [
-  "Stress", "Lack of sleep", "Dehydration", "Skipped meal",
-  "Bright lights", "Strong smells", "Hormonal", "Weather",
-  "Heat", "Screen time", "Alcohol", "Chocolate", "Caffeine change"
+  "Stress","Lack of sleep","Dehydration","Skipped meal",
+  "Bright lights","Strong smells","Hormonal","Weather",
+  "Heat","Screen time","Alcohol","Chocolate","Caffeine change"
 ];
+
+/* ----------------------------- Toast System ----------------------------- */
+const ToastContext = createContext(null);
+export const useToast = () => useContext(ToastContext);
+
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  function push(type, msg) {
+    const id = Date.now() + Math.random();
+    setToasts((t) => [...t, { id, type, msg }]);
+    setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+    }, 3200);
+  }
+  const api = {
+    success: (m) => push("success", m),
+    error: (m) => push("error", m),
+    info: (m) => push("info", m),
+  };
+  return (
+    <ToastContext.Provider value={api}>
+      {children}
+      <div className="fixed bottom-4 right-4 space-y-2 z-[1200]">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`px-3 py-2 rounded-lg shadow text-white text-sm flex items-center gap-2`}
+            style={{
+              backgroundColor:
+                t.type === "success" ? "#16a34a" : t.type === "error" ? "#dc2626" : "#2563eb",
+              maxWidth: "min(90vw, 360px)",
+            }}
+          >
+            <span>
+              {t.type === "success" ? "✅" : t.type === "error" ? "⚠️" : "ℹ️"}
+            </span>
+            <span className="leading-snug">{t.msg}</span>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
 
 /* ----------------------------- helpers ----------------------------- */
 function mergeChange(list, payload, key = "id") {
@@ -129,6 +172,116 @@ function localTzOffsetMinutes() {
   return -new Date().getTimezoneOffset();
 }
 
+function formatLocalAtEntry(dateIso, tzOffsetMinutes) {
+  try {
+    const d = new Date(dateIso);
+    const adjusted = new Date(d.getTime() - (new Date().getTimezoneOffset() - tzOffsetMinutes) * 60000);
+    return adjusted.toLocaleString();
+  } catch {
+    return new Date(dateIso).toLocaleString();
+  }
+}
+
+/* ----------------------------- Speech (Web Speech API) ----------------------------- */
+/** Minimal hook for dictation using Web Speech API (Chrome/Edge/Samsung Internet). */
+function useSpeechInput({ lang = "en-US", continuous = false, interimResults = true, onResult } = {}) {
+  const recognitionRef = useRef(null);
+  const [supported, setSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [finalized, setFinalized] = useState("");
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = lang;
+    rec.continuous = continuous;
+    rec.interimResults = interimResults;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => setListening(true);
+    rec.onend = () => setListening(false);
+    rec.onerror = (e) => {
+      // Common: "no-speech", "audio-capture", "not-allowed"
+      console.warn("Speech error:", e.error);
+    };
+    rec.onresult = (ev) => {
+      let interimText = "";
+      let finalText = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        (r.isFinal ? (finalText += r[0].transcript) : (interimText += r[0].transcript));
+      }
+      if (interimResults) setInterim(interimText);
+      if (finalText) {
+        setFinalized((prev) => (prev ? `${prev} ${finalText}` : finalText));
+        onResult?.(finalText);
+      }
+    };
+
+    recognitionRef.current = rec;
+    setSupported(true);
+    return () => {
+      try { rec.stop(); } catch {}
+      recognitionRef.current = null;
+    };
+  }, [lang, continuous, interimResults, onResult]);
+
+  const start = () => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    setInterim("");
+    try { rec.start(); } catch {}
+  };
+  const stop = () => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    try { rec.stop(); } catch {}
+  };
+
+  return { supported, listening, interim, finalized, start, stop, reset: () => { setInterim(""); setFinalized(""); } };
+}
+
+/** Very light NLP to pull structured values from a transcript. */
+function parseMigraineTranscript(text) {
+  const out = { pain: null, symptoms: [], triggers: [], medsString: "", cleanedNotes: text.trim() };
+  if (!text) return out;
+  const t = text.toLowerCase();
+
+  // Pain 0-10: look for "pain 7" or "pain level 7" or standalone number preceded by "pain"
+  const painMatch = t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
+  if (painMatch) {
+    const n = parseInt(painMatch[1], 10);
+    if (!isNaN(n) && n >= 0 && n <= 10) out.pain = n;
+  }
+
+  // Symptoms/triggers: simple keyword hit from presets
+  const norm = (s) => s.toLowerCase();
+  const tWords = ` ${t.replace(/[^\w\s]/g, " ")} `;
+
+  SYMPTOM_OPTIONS.forEach((s) => {
+    if (tWords.includes(` ${norm(s)} `)) out.symptoms.push(s);
+  });
+  TRIGGER_OPTIONS.forEach((s) => {
+    if (tWords.includes(` ${norm(s)} `)) out.triggers.push(s);
+  });
+
+  // Medications: naive capture of patterns like "sumatriptan 50 mg", "ibuprofen 400 milligrams"
+  const medRegex = /\b([a-zA-Z][a-zA-Z\-]+)\s+(\d{1,4})\s*(mg|milligram|milligrams|mcg|microgram|g|ml|milliliter|milliliters)\b/g;
+  const meds = [];
+  let m;
+  while ((m = medRegex.exec(t)) !== null) {
+    const name = m[1];
+    const dose = `${m[2]} ${m[3]}`;
+    meds.push(`${capitalize(name)} ${dose.toUpperCase()}`);
+  }
+  if (meds.length) out.medsString = meds.join("; ");
+
+  return out;
+}
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
 /* ----------------------------- main component ----------------------------- */
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -170,21 +323,12 @@ export default function Dashboard() {
     const uid = user.id;
     const channel = supabase
       .channel("dashboard-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${uid}` },
-        (p) => setEpisodes((prev) => mergeChange(prev, p))
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${uid}` },
-        (p) => setGlucose((prev) => mergeChange(prev, p))
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sleep_data", filter: `user_id=eq.${uid}` },
-        (p) => setSleep((prev) => mergeChange(prev, p))
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${uid}` },
+        (p) => setEpisodes((prev) => mergeChange(prev, p)))
+      .on("postgres_changes", { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${uid}` },
+        (p) => setGlucose((prev) => mergeChange(prev, p)))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sleep_data", filter: `user_id=eq.${uid}` },
+        (p) => setSleep((prev) => mergeChange(prev, p)))
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
@@ -251,146 +395,121 @@ export default function Dashboard() {
 
   /* ----------------------------- UI ----------------------------- */
   return (
-    <div className="min-h-screen bg-[#ececec]">
-      {/* Top bar */}
-      <header className="bg-[#042d4d] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
-          <div className="h-6 w-6 rounded bg-white/20" />
-          <h1 className="text-base sm:text-lg font-semibold">
-            Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
-          </h1>
-          <span className="ml-auto text-xs px-2 py-1 rounded border border-white/30 bg-white/10">
-            Realtime: <span className="font-semibold">ON</span>
-          </span>
-        </div>
-      </header>
+    <ToastProvider>
+      <div className="min-h-screen bg-[#ececec]">
+        {/* Top bar */}
+        <header className="bg-[#042d4d] text-white">
+          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+            <div className="h-6 w-6 rounded bg-white/20" />
+            <h1 className="text-base sm:text-lg font-semibold">
+              Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
+            </h1>
+            <span className="ml-auto text-xs px-2 py-1 rounded border border-white/30 bg-white/10">
+              Realtime: <span className="font-semibold">ON</span>
+            </span>
+          </div>
+        </header>
 
-      {/* Disclaimer Modal */}
-      {showDisclaimer && (
-        <Modal onClose={() => {}} noClose>
-          <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-[#042d4d] mb-2">Medical Disclaimer</h2>
-            <p className="text-sm text-gray-700">
-              Sentinel Health is a personal tracking tool and does not replace professional medical advice,
-              diagnosis, or treatment. Always consult your physician with any questions regarding a medical condition.
-              Do not make changes to your treatment without first consulting your physician.
-            </p>
+        {/* Disclaimer Modal */}
+        {showDisclaimer && (
+          <Modal onClose={() => {}} noClose>
+            <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
+              <h2 className="text-lg font-semibold text-[#042d4d] mb-2">Medical Disclaimer</h2>
+              <p className="text-sm text-gray-700">
+                Sentinel Health is a personal tracking tool and does not replace professional medical advice,
+                diagnosis, or treatment. Always consult your physician with any questions regarding a medical condition.
+                Do not make changes to your treatment without first consulting your physician.
+              </p>
+              <button
+                onClick={dismissDisclaimer}
+                className="mt-4 w-full rounded-md bg-[#042d4d] px-4 py-2 text-white hover:opacity-90"
+              >
+                I Understand
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Main */}
+        <main className="mx-auto max-w-7xl px-4 py-5 space-y-5">
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={dismissDisclaimer}
-              className="mt-4 w-full rounded-md bg-[#042d4d] px-4 py-2 text-white hover:opacity-90"
+              type="button"
+              className="bg-[#042d4d] text-white px-3 py-2 rounded shadow hover:opacity-90"
+              onClick={() => setOpenMigraine(true)}
             >
-              I Understand
+              + Migraine
+            </button>
+            <button
+              type="button"
+              className="bg-[#7c3aed] text-white px-3 py-2 rounded shadow hover:opacity-95"
+              onClick={() => setOpenGlucose(true)}
+            >
+              + Glucose
+            </button>
+            <button
+              type="button"
+              className="bg-[#2563eb] text-white px-3 py-2 rounded shadow hover:opacity-95"
+              onClick={() => setOpenSleep(true)}
+            >
+              + Sleep
+            </button>
+            <button
+              type="button"
+              className="ml-auto border border-[#042d4d] text-[#042d4d] px-3 py-2 rounded hover:bg-[#042d4d]/5"
+              onClick={onSignOut}
+            >
+              Sign out
             </button>
           </div>
-        </Modal>
-      )}
 
-      {/* Main */}
-      <main className="mx-auto max-w-7xl px-4 py-5 space-y-5">
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="bg-[#042d4d] text-white px-3 py-2 rounded shadow hover:opacity-90"
-            onClick={() => setOpenMigraine(true)}
-          >
-            + Migraine
-          </button>
-          <button
-            type="button"
-            className="bg-[#7c3aed] text-white px-3 py-2 rounded shadow hover:opacity-95"
-            onClick={() => setOpenGlucose(true)}
-          >
-            + Glucose
-          </button>
-          <button
-            type="button"
-            className="bg-[#2563eb] text-white px-3 py-2 rounded shadow hover:opacity-95"
-            onClick={() => setOpenSleep(true)}
-          >
-            + Sleep
-          </button>
-          <button
-            type="button"
-            className="ml-auto border border-[#042d4d] text-[#042d4d] px-3 py-2 rounded hover:bg-[#042d4d]/5"
-            onClick={onSignOut}
-          >
-            Sign out
-          </button>
-        </div>
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard title="Total Migraine Episodes" value={totalEpisodes ?? 0} bg="bg-red-50" ring="ring-red-200" accent="text-red-700" />
+            <StatCard title="Avg Glucose (14d)" value={avgGlucose14 ?? "—"} suffix={avgGlucose14 ? "mg/dL" : ""} bg="bg-blue-50" ring="ring-blue-200" accent="text-blue-700" />
+            <StatCard title="Avg Sleep (14d)" value={avgSleep14 ?? "—"} suffix={avgSleep14 ? "hrs/night" : ""} bg="bg-emerald-50" ring="ring-emerald-200" accent="text-emerald-700" />
+          </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard title="Total Migraine Episodes" value={totalEpisodes ?? 0} bg="bg-red-50" ring="ring-red-200" accent="text-red-700" />
-          <StatCard title="Avg Glucose (14d)" value={avgGlucose14 ?? "—"} suffix={avgGlucose14 ? "mg/dL" : ""} bg="bg-blue-50" ring="ring-blue-200" accent="text-blue-700" />
-          <StatCard title="Avg Sleep (14d)" value={avgSleep14 ?? "—"} suffix={avgSleep14 ? "hrs/night" : ""} bg="bg-emerald-50" ring="ring-emerald-200" accent="text-emerald-700" />
-        </div>
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
+                <LineChart title="" labels={last30.labels} data={last30.counts} color={BRAND.bad} strokeWidth={2} className="h-[280px]" />
+              </Panel>
+            </div>
+            <div>
+              <Panel title="Top Symptoms" borderColor={BRAND.violet}>
+                <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={CHART_COLORS} className="h-[280px]" />
+              </Panel>
+            </div>
+          </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
-              <LineChart
-                title=""
-                labels={last30.labels}
-                data={last30.counts}
-                color={BRAND.bad}
-                strokeWidth={2}
-                className="h-[280px]"
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
+              <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={BRAND.info} strokeWidth={2} className="h-[280px]" />
+            </Panel>
+            <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
+              <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={BRAND.good} strokeWidth={2} className="h-[280px]" />
             </Panel>
           </div>
-          <div>
-            <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-              <PieChart
-                title=""
-                labels={symptomCounts.labels}
-                data={symptomCounts.data}
-                colors={CHART_COLORS}
-                className="h-[280px]"
-              />
-            </Panel>
+
+          {/* Recent logs + meds */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <RecentEpisodes episodes={episodes.slice(0, 8)} />
+            <RecentMedications meds={recentMeds} />
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
-            <LineChart
-              title=""
-              labels={last14Glucose.labels}
-              data={last14Glucose.values}
-              color={BRAND.info}
-              strokeWidth={2}
-              className="h-[280px]"
-            />
-          </Panel>
-          <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
-            <LineChart
-              title=""
-              labels={last14Sleep.labels}
-              data={last14Sleep.hours}
-              color={BRAND.good}
-              strokeWidth={2}
-              className="h-[280px]"
-            />
-          </Panel>
-        </div>
+          {/* Dev debug */}
+          {import.meta.env.MODE !== "production" && <DebugPanel />}
+        </main>
 
-        {/* Recent logs + meds */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RecentEpisodes episodes={episodes.slice(0, 8)} />
-          <RecentMedications meds={recentMeds} />
-        </div>
-
-        {/* Dev debug */}
-        {import.meta.env.MODE !== "production" && <DebugPanel />}
-      </main>
-
-      {/* ----- Quick Log Modals ----- */}
-      {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
-      {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
-      {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
-    </div>
+        {/* ----- Quick Log Modals ----- */}
+        {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
+        {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
+        {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
+      </div>
+    </ToastProvider>
   );
 }
 
@@ -545,9 +664,7 @@ function DebugPanel() {
 function Modal({ children, onClose, noClose = false }) {
   return (
     <div className="fixed inset-0 z-[1100] bg-black/50">
-      {/* Scrollable overlay */}
       <div className="absolute inset-0 overflow-y-auto">
-        {/* Center the dialog and add padding so it’s not flush to edges */}
         <div className="min-h-full flex items-center justify-center p-4">
           <div className="relative w-full max-w-lg">
             {!noClose && (
@@ -599,6 +716,8 @@ function MultiSelectChips({ label, options, selected, setSelected, color = "#042
 
 /* ---------- Quick-log Modals ---------- */
 function MigraineModal({ onClose, user }) {
+  const toast = useToast();
+
   const [saving, setSaving] = useState(false);
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16)); // yyyy-mm-ddTHH:MM
   const [pain, setPain] = useState(5);
@@ -612,8 +731,32 @@ function MigraineModal({ onClose, user }) {
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
+  // --- Speech ---
+  const { supported, listening, interim, start, stop } = useSpeechInput({
+    onResult: (finalChunk) => {
+      const parsed = parseMigraineTranscript(finalChunk);
+      if (parsed.pain != null) setPain(parsed.pain);
+      if (parsed.symptoms.length)
+        setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...parsed.symptoms])));
+      if (parsed.triggers.length)
+        setSelectedTriggers((prev) => Array.from(new Set([...prev, ...parsed.triggers])));
+      if (parsed.medsString)
+        setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
+      setNotes((prev) => (prev ? `${prev}\n${finalChunk}` : finalChunk));
+    },
+  });
+
+  useEffect(() => {
+    if (!supported) {
+      // Only inform once when the modal opens
+      toast.info("Tip: Voice input works best in Chrome/Edge (Web Speech API).");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supported]);
+
   async function save() {
     if (!user?.id) return;
+    if (listening) stop();
     setSaving(true);
     try {
       const medications =
@@ -646,9 +789,10 @@ function MigraineModal({ onClose, user }) {
       const { error } = await supabase.from("migraine_episodes").insert(payload);
       if (error) throw error;
 
+      toast.success("Migraine log saved.");
       onClose(); // realtime updates list
     } catch (e) {
-      alert(e.message || "Failed to save migraine entry.");
+      toast.error(e.message || "Failed to save migraine entry.");
     } finally {
       setSaving(false);
     }
@@ -657,7 +801,35 @@ function MigraineModal({ onClose, user }) {
   return (
     <Modal onClose={onClose}>
       <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-[#042d4d] mb-3">Log Migraine</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-[#042d4d]">Log Migraine</h3>
+          {/* Voice control */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => (listening ? stop() : start())}
+              className={`px-3 py-1 rounded-md text-white text-sm ${
+                listening ? "bg-red-600" : "bg-[#042d4d]"
+              }`}
+              title={supported ? "Use your voice to fill the form" : "Voice input not supported in this browser"}
+              disabled={!supported}
+            >
+              {listening ? "● Listening…" : "🎙 Speak"}
+            </button>
+          </div>
+        </div>
+
+        {listening && (
+          <div className="mb-2 text-xs text-gray-600">
+            Say things like: “pain 7”, “nausea and photophobia”, “trigger bright lights”, “sumatriptan 50 mg”.
+          </div>
+        )}
+        {listening && interim && (
+          <div className="mb-3 text-sm p-2 bg-gray-50 border rounded">
+            <span className="text-gray-500">Heard: </span>
+            <span className="italic">{interim}</span>
+          </div>
+        )}
 
         <label className="block text-sm font-medium text-gray-700">
           Date & Time
@@ -735,6 +907,7 @@ function MigraineModal({ onClose, user }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="mt-1 w-full border rounded px-3 py-2"
+            placeholder="Say anything—voice input will append here too."
           />
         </label>
 
@@ -746,7 +919,7 @@ function MigraineModal({ onClose, user }) {
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+          <button onClick={() => { if (listening) stop(); onClose(); }} className="px-4 py-2 rounded border">Cancel</button>
         </div>
       </div>
     </Modal>
@@ -754,6 +927,7 @@ function MigraineModal({ onClose, user }) {
 }
 
 function GlucoseModal({ onClose, user }) {
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [value, setValue] = useState("");
   const [when, setWhen] = useState(() => new Date().toISOString().slice(0, 16));
@@ -769,9 +943,10 @@ function GlucoseModal({ onClose, user }) {
         created_at: new Date().toISOString(),
       });
       if (error) throw error;
+      toast.success("Glucose reading saved.");
       onClose();
     } catch (e) {
-      alert(e.message || "Failed to save glucose reading.");
+      toast.error(e.message || "Failed to save glucose reading.");
     } finally {
       setSaving(false);
     }
@@ -819,6 +994,7 @@ function GlucoseModal({ onClose, user }) {
 }
 
 function SleepModal({ onClose, user }) {
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
   const nowIso = new Date().toISOString().slice(0, 16);
   const [start, setStart] = useState(nowIso);
@@ -842,9 +1018,10 @@ function SleepModal({ onClose, user }) {
         created_at: new Date().toISOString(),
       });
       if (error) throw error;
+      toast.success("Sleep entry saved.");
       onClose();
     } catch (e) {
-      alert(e.message || "Failed to save sleep entry.");
+      toast.error(e.message || "Failed to save sleep entry.");
     } finally {
       setSaving(false);
     }
@@ -898,15 +1075,4 @@ function SleepModal({ onClose, user }) {
       </div>
     </Modal>
   );
-}
-
-/* ---------- tiny util ---------- */
-function formatLocalAtEntry(dateIso, tzOffsetMinutes) {
-  try {
-    const d = new Date(dateIso);
-    const adjusted = new Date(d.getTime() - (new Date().getTimezoneOffset() - tzOffsetMinutes) * 60000);
-    return adjusted.toLocaleString();
-  } catch {
-    return new Date(dateIso).toLocaleString();
-  }
 }
