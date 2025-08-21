@@ -2,35 +2,50 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
-import { MigrainEpisode, GlucoseReading, SleepData } from "../entities/client";
+
+// ✅ use Supabase store instead of local entities
+import { Migraines, Glucose, Sleep } from "@/data/supabaseStore";
+
+// charts
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
+
+// metrics + time formatting
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
+import { formatLocalAtEntry } from "@/lib/timeUtils";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
   const [episodes, setEpisodes] = useState([]);
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
 
+  // Gate unauthenticated users
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
+  // Load data from Supabase
   useEffect(() => {
     (async () => {
-      const [e, g, s] = await Promise.all([
-        MigrainEpisode.list("-date", 500),
-        GlucoseReading.list("-date", 1000),
-        SleepData.list("-date", 365),
-      ]);
-      setEpisodes(e || []);
-      setGlucose(g || []);
-      setSleep(s || []);
+      try {
+        const [e, g, s] = await Promise.all([
+          Migraines.list(500),
+          Glucose.list(1000),
+          Sleep.list(365),
+        ]);
+        setEpisodes(e || []);
+        setGlucose(g || []);
+        setSleep(s || []);
+      } catch (err) {
+        console.error("Dashboard load error:", err);
+      }
     })();
   }, []);
 
+  // Summary metrics
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -43,6 +58,7 @@ export default function Dashboard() {
 
   const last14Glucose = useMemo(() => {
     const window = daysBack(14);
+    // Our glucose rows use device_time + value_mgdl
     const avg = avgByDate(glucose, "device_time", "value_mgdl");
     const labels = window.map(fmt);
     const values = labels.map((l) => avg[l] ?? null);
@@ -51,6 +67,7 @@ export default function Dashboard() {
 
   const last14Sleep = useMemo(() => {
     const window = daysBack(14);
+    // sumByDateMinutes expects sleep rows with start/end; your helper handles it
     const sumMins = sumByDateMinutes(sleep);
     const labels = window.map(fmt);
     const hours = labels.map((l) => (sumMins[l] || 0) / 60);
@@ -82,25 +99,46 @@ export default function Dashboard() {
     navigate("/sign-in", { replace: true });
   }
 
+  // Header name: first_name (email) if available
+  const headerIdentity = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name} (${user.email})`
+    : user?.email || "";
+
   return (
     <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
       {/* Header */}
       <h1 className="text-xl sm:text-2xl font-bold break-words">
-        Sentinel Health — Dashboard{user?.email ? ` (${user.email})` : ""}
+        Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
       </h1>
 
       {/* Quick actions - own row under header */}
       <div className="flex flex-wrap gap-2">
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
+        <button
+          type="button"
+          className="border px-3 py-2 rounded w-full sm:w-auto"
+          onClick={() => navigate("/log")}
+        >
           + Migraine
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
+        <button
+          type="button"
+          className="border px-3 py-2 rounded w-full sm:w-auto"
+          onClick={() => navigate("/log-glucose")}
+        >
           + Glucose
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
+        <button
+          type="button"
+          className="border px-3 py-2 rounded w-full sm:w-auto"
+          onClick={() => navigate("/log-sleep")}
+        >
           + Sleep
         </button>
-        <button className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
+        <button
+          type="button"
+          className="border px-3 py-2 rounded w-full sm:w-auto"
+          onClick={onSignOut}
+        >
           Sign out
         </button>
       </div>
@@ -189,7 +227,12 @@ function RecentEpisodes({ episodes }) {
         {episodes.map((ep) => (
           <div key={ep.id} className="py-2 text-sm flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium break-words">{new Date(ep.date).toLocaleString()}</p>
+              {/* show the exact local time at entry if available; fall back to plain UTC->local */}
+              <p className="font-medium break-words">
+                {ep.timezone_offset_min != null
+                  ? formatLocalAtEntry(ep.date, ep.timezone_offset_min)
+                  : new Date(ep.date).toLocaleString()}
+              </p>
               <p className="text-gray-600 break-words">
                 Pain {ep.pain}/10 · {(ep.symptoms || []).slice(0, 3).join(", ")}
               </p>
