@@ -190,8 +190,7 @@ function useSpeechInput({ lang = "en-US", continuous = false, interimResults = t
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [finalized, setFinalized] = useState("");
-  // rest of the hook unchanged…
-}
+
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     if (!SR) return;
@@ -204,6 +203,7 @@ function useSpeechInput({ lang = "en-US", continuous = false, interimResults = t
     rec.onstart = () => setListening(true);
     rec.onend = () => setListening(false);
     rec.onerror = (e) => {
+      // Common: "no-speech", "audio-capture", "not-allowed"
       console.warn("Speech error:", e.error);
     };
     rec.onresult = (ev) => {
@@ -249,12 +249,14 @@ function parseMigraineTranscript(text) {
   if (!text) return out;
   const t = text.toLowerCase();
 
+  // Pain 0-10: look for "pain 7" or "pain level 7" or standalone number preceded by "pain", or "7/10"
   const painMatch = t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
   if (painMatch) {
     const n = parseInt(painMatch[1], 10);
     if (!isNaN(n) && n >= 0 && n <= 10) out.pain = n;
   }
 
+  // Symptoms/triggers: simple keyword hit from presets
   const norm = (s) => s.toLowerCase();
   const tWords = ` ${t.replace(/[^\w\s]/g, " ")} `;
 
@@ -265,6 +267,7 @@ function parseMigraineTranscript(text) {
     if (tWords.includes(` ${norm(s)} `)) out.triggers.push(s);
   });
 
+  // Medications: naive capture of patterns like "sumatriptan 50 mg", "ibuprofen 400 milligrams"
   const medRegex = /\b([a-zA-Z][a-zA-Z\-]+)\s+(\d{1,4})\s*(mg|milligram|milligrams|mcg|microgram|g|ml|milliliter|milliliters)\b/g;
   const meds = [];
   let m;
@@ -279,55 +282,25 @@ function parseMigraineTranscript(text) {
 }
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-/* ----------------------------- TTS engines ----------------------------- */
-/** Browser TTS helper (Web Speech API). */
-function speakBrowser(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US", voiceName } = {}) {
+/* ----------------------------- Speech Synthesis (TTS) ----------------------------- */
+/** Minimal talker: speaks a prompt, returns a promise that resolves when audio ends. */
+function speakOnce(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US" } = {}) {
   return new Promise((resolve) => {
     try {
       const synth = window.speechSynthesis;
-      if (!synth) return resolve();
-      const u = new SpeechSynthesisUtterance(text);
-      Object.assign(u, { rate, pitch, volume, lang });
-      const voices = synth.getVoices?.() || [];
-      const match = voices.find(v => v.name === voiceName);
-      if (match) u.voice = match;
-      u.onend = resolve; u.onerror = resolve;
-      synth.cancel();
-      synth.speak(u);
+      if (!synth) return resolve(); // no-op if not supported
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = rate; utter.pitch = pitch; utter.volume = volume; utter.lang = lang;
+      utter.onend = resolve; utter.onerror = resolve;
+      synth.cancel(); // stop any pending speech
+      synth.speak(utter);
     } catch { resolve(); }
   });
 }
-function stopSpeaking() { try { window.speechSynthesis?.cancel(); } catch {} }
 
-/** LMNT cloud TTS via Supabase Edge Function. */
-async function speakLMNT(text, { voiceId = "morgan", format = "mp3" } = {}) {
-  try {
-    const res = await fetch("/functions/v1/tts-lmnt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice: voiceId, format }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const buf = await res.arrayBuffer();
-    const blob = new Blob([buf], { type: format === "webm" ? "audio/webm" : "audio/mpeg" });
-    const url = URL.createObjectURL(blob);
-    await new Promise((resolve) => {
-      const audio = new Audio(url);
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.play().catch(() => resolve());
-    });
-  } catch (e) {
-    console.warn("LMNT speak error:", e);
-  }
-}
-
-/** Smart speak: engine = 'browser' | 'lmnt' */
-function speakSmart(text, { engine = "browser", browserVoiceName, lmntVoiceId } = {}) {
-  if (engine === "lmnt") {
-    return speakLMNT(text, { voiceId: lmntVoiceId || "morgan" });
-  }
-  return speakBrowser(text, { voiceName: browserVoiceName });
+/** Helper to stop any current speech. */
+function stopSpeaking() {
+  try { window.speechSynthesis?.cancel(); } catch {}
 }
 
 /* ----------------------------- main component ----------------------------- */
@@ -779,52 +752,6 @@ function MigraineModal({ onClose, user }) {
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
-  // --- Voice engine + voices
-  const [engine, setEngine] = useState(localStorage.getItem("ttsEngine") || "browser");
-  const [browserVoices, setBrowserVoices] = useState([]);
-  const [browserVoiceName, setBrowserVoiceName] = useState(localStorage.getItem("ttsBrowserVoice") || "");
-  const [lmntVoices, setLmntVoices] = useState([]);
-  const [lmntVoiceId, setLmntVoiceId] = useState(localStorage.getItem("ttsLmntVoice") || "");
-
-  // load browser voices
-  useEffect(() => {
-    function loadVoices() {
-      const v = window.speechSynthesis?.getVoices?.() || [];
-      setBrowserVoices(v);
-      if (!browserVoiceName && v.length) setBrowserVoiceName(v[0].name);
-    }
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-      loadVoices();
-    }
-  }, []);
-
-  // load LMNT voices when chosen
-  useEffect(() => {
-    if (engine !== "lmnt") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/functions/v1/lmnt-voices");
-        if (!res.ok) throw new Error(await res.text());
-        const list = await res.json();
-        if (!cancelled) {
-          setLmntVoices(list || []);
-          if (!lmntVoiceId && list?.[0]?.id) setLmntVoiceId(list[0].id);
-        }
-      } catch (e) {
-        console.warn("LMNT voices error", e);
-        toast.error("Could not load LMNT voices.");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [engine]);
-
-  // persist settings
-  useEffect(() => { localStorage.setItem("ttsEngine", engine); }, [engine]);
-  useEffect(() => { localStorage.setItem("ttsBrowserVoice", browserVoiceName || ""); }, [browserVoiceName]);
-  useEffect(() => { localStorage.setItem("ttsLmntVoice", lmntVoiceId || ""); }, [lmntVoiceId]);
-
   // --- Speech to text ---
   const { supported, listening, interim, start, stop } = useSpeechInput({
     onResult: (finalChunk) => {
@@ -860,17 +787,13 @@ function MigraineModal({ onClose, user }) {
     { key: "confirm",  q: "Ready to save this entry? Say yes to save, or no to cancel." },
   ];
 
-  async function ask(text) {
-    await speakSmart(text, { engine, browserVoiceName, lmntVoiceId });
-  }
-
   async function startCoach() {
-    if (!supported && engine === "browser") {
-      toast.info("Voice capture works best in Chrome or Edge.");
+    if (!supported) {
+      toast.info("Voice works best in Chrome or Edge.");
     }
     setCoach({ active: true, step: 0, waiting: false });
     stopSpeaking();
-    await ask("Okay. Let's log your migraine together.");
+    await speakOnce("Okay. Let's log your migraine together.");
     runStep(0);
   }
 
@@ -885,7 +808,7 @@ function MigraineModal({ onClose, user }) {
     const step = COACH_STEPS[i];
     if (!step) return;
     stopSpeaking();
-    await ask(step.q);
+    await speakOnce(step.q);
     setCoach((c) => ({ ...c, step: i, waiting: true }));
     try { start(); } catch {}
   }
@@ -906,7 +829,7 @@ function MigraineModal({ onClose, user }) {
     const t = text?.trim() || "";
 
     if (!t) {
-      ask("Sorry, I didn't catch that. Let's try again.");
+      speakOnce("Sorry, I didn't catch that. Let's try again.");
       runStep(coach.step);
       return;
     }
@@ -915,10 +838,10 @@ function MigraineModal({ onClose, user }) {
       const parsed = parseMigraineTranscript(t);
       if (parsed.pain != null) {
         setPain(parsed.pain);
-        ask(`Got it. Pain level ${parsed.pain}.`);
+        speakOnce(`Got it. Pain level ${parsed.pain}.`);
         return nextStep();
       } else {
-        ask("Please say a number from zero to ten.");
+        speakOnce("Please say a number from zero to ten.");
         return runStep(coach.step);
       }
     }
@@ -929,9 +852,9 @@ function MigraineModal({ onClose, user }) {
       const unique = Array.from(new Set([...(parsed.symptoms || []), ...extras]));
       if (unique.length) {
         setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...unique])));
-        ask("Symptoms noted.");
+        speakOnce("Symptoms noted.");
       } else {
-        ask("Okay, no symptoms noted.");
+        speakOnce("Okay, no symptoms noted.");
       }
       return nextStep();
     }
@@ -942,9 +865,9 @@ function MigraineModal({ onClose, user }) {
       const unique = Array.from(new Set([...(parsed.triggers || []), ...extras]));
       if (unique.length) {
         setSelectedTriggers((prev) => Array.from(new Set([...prev, ...unique])));
-        ask("Triggers noted.");
+        speakOnce("Triggers noted.");
       } else {
-        ask("Okay, no triggers noted.");
+        speakOnce("Okay, no triggers noted.");
       }
       return nextStep();
     }
@@ -953,17 +876,17 @@ function MigraineModal({ onClose, user }) {
       const parsed = parseMigraineTranscript(t);
       if (parsed.medsString) {
         setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
-        ask("Medications recorded.");
+        speakOnce("Medications recorded.");
       } else {
         setMeds((prev) => (prev ? `${prev}; ${t}` : t));
-        ask("Okay.");
+        speakOnce("Okay.");
       }
       return nextStep();
     }
 
     if (step === "notes") {
       setNotes((prev) => (prev ? `${prev}\n${t}` : t));
-      ask("Added to notes.");
+      speakOnce("Added to notes.");
       return nextStep();
     }
 
@@ -971,25 +894,26 @@ function MigraineModal({ onClose, user }) {
       const yes = /\b(yes|save|yeah|yep|sure|confirm)\b/i.test(t);
       const no  = /\b(no|cancel|wait|stop)\b/i.test(t);
       if (yes) {
-        ask("Saving now.");
+        speakOnce("Saving now.");
         save();
         return;
       }
       if (no) {
-        ask("Okay, not saving. You can review or change anything manually.");
+        speakOnce("Okay, not saving. You can review or change anything manually.");
         stopCoach();
         return;
       }
-      ask("Please say yes to save, or no to cancel.");
+      speakOnce("Please say yes to save, or no to cancel.");
       return runStep(coach.step);
     }
   }
 
   useEffect(() => {
-    if (!supported && engine === "browser") {
-      toast.info("Tip: Safari iOS does not support speech recognition; use dictation mic or switch to LMNT engine.");
+    if (!supported) {
+      toast.info("Tip: Voice features work best in Chrome or Edge.");
     }
-  }, [supported, engine]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supported]);
 
   async function save() {
     if (!user?.id) return;
@@ -1015,9 +939,9 @@ function MigraineModal({ onClose, user }) {
         user_id: user.id,
         date: new Date(dateTime).toISOString(),
         pain: Number(pain),
-        symptoms,
-        triggers,
-        medications,
+        symptoms,                 // text[]
+        triggers,                 // text[]
+        medications,              // json/jsonb
         medication_notes: notes || null,
         timezone_offset_min: localTzOffsetMinutes(),
         created_at: new Date().toISOString(),
@@ -1028,7 +952,7 @@ function MigraineModal({ onClose, user }) {
 
       toast.success("Migraine log saved.");
       stopSpeaking();
-      onClose();
+      onClose(); // realtime updates list
     } catch (e) {
       toast.error(e.message || "Failed to save migraine entry.");
       stopSpeaking();
@@ -1049,7 +973,7 @@ function MigraineModal({ onClose, user }) {
               onClick={() => (listening ? stop() : start())}
               className={`px-3 py-1 rounded-md text-white text-sm ${listening ? "bg-red-600" : "bg-[#042d4d]"}`}
               title={supported ? "Dictate freely; I’ll parse fields" : "Voice input not supported in this browser"}
-              disabled={coach.active}
+              disabled={!supported || coach.active}
             >
               {listening ? "● Listening…" : "🎙 Dictate"}
             </button>
@@ -1059,6 +983,7 @@ function MigraineModal({ onClose, user }) {
                 type="button"
                 onClick={startCoach}
                 className="px-3 py-1 rounded-md text-white text-sm bg-emerald-600"
+                disabled={!supported}
                 title="Guided voice Q&A"
               >
                 🗣 Start Voice Coach
@@ -1074,59 +999,6 @@ function MigraineModal({ onClose, user }) {
               </button>
             )}
           </div>
-        </div>
-
-        {/* Voice settings */}
-        <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label className="text-sm text-gray-700">
-            Engine
-            <select
-              className="mt-1 w-full border rounded px-2 py-1"
-              value={engine}
-              onChange={(e) => setEngine(e.target.value)}
-            >
-              <option value="browser">Browser (SpeechSynthesis)</option>
-              <option value="lmnt">LMNT (cloud)</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Browser = offline & instant. LMNT = higher quality voices.
-            </p>
-          </label>
-
-          {engine === "browser" ? (
-            <label className="text-sm text-gray-700">
-              Voice
-              <select
-                className="mt-1 w-full border rounded px-2 py-1"
-                value={browserVoiceName}
-                onChange={(e) => setBrowserVoiceName(e.target.value)}
-              >
-                {browserVoices.map((v) => (
-                  <option key={v.name} value={v.name}>
-                    {v.name} {v.lang ? `(${v.lang})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <label className="text-sm text-gray-700">
-              LMNT Voice
-              <select
-                className="mt-1 w-full border rounded px-2 py-1"
-                value={lmntVoiceId}
-                onChange={(e) => setLmntVoiceId(e.target.value)}
-              >
-                {lmntVoices.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name || v.id}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Need to add your API key in Supabase and deploy the <code>tts-lmnt</code> & <code>lmnt-voices</code> functions.
-              </p>
-            </label>
-          )}
         </div>
 
         {coach.active && coach.waiting && (
