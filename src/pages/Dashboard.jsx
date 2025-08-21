@@ -268,7 +268,7 @@ export default function Dashboard() {
       {/* Disclaimer Modal */}
       {showDisclaimer && (
         <Modal onClose={() => {}} noClose>
-          <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20">
+          <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-[#042d4d] mb-2">Medical Disclaimer</h2>
             <p className="text-sm text-gray-700">
               Sentinel Health is a personal tracking tool and does not replace professional medical advice,
@@ -330,7 +330,6 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
             <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
-              {/* Explicit line color (red) */}
               <LineChart
                 title=""
                 labels={last30.labels}
@@ -343,7 +342,6 @@ export default function Dashboard() {
           </div>
           <div>
             <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-              {/* Explicit pie slice palette */}
               <PieChart
                 title=""
                 labels={symptomCounts.labels}
@@ -543,21 +541,27 @@ function DebugPanel() {
   );
 }
 
-/* ---------- Modal shell ---------- */
+/* ---------- Modal shell (scroll-safe) ---------- */
 function Modal({ children, onClose, noClose = false }) {
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
-      <div className="relative w-full max-w-lg">
-        {!noClose && (
-          <button
-            onClick={onClose}
-            className="absolute -top-2 -right-2 bg-white text-gray-700 border rounded-full w-8 h-8 shadow hover:bg-gray-50"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        )}
-        {children}
+    <div className="fixed inset-0 z-[1100] bg-black/50">
+      {/* Scrollable overlay */}
+      <div className="absolute inset-0 overflow-y-auto">
+        {/* Center the dialog and add padding so it’s not flush to edges */}
+        <div className="min-h-full flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg">
+            {!noClose && (
+              <button
+                onClick={onClose}
+                className="absolute -top-2 -right-2 bg-white text-gray-700 border rounded-full w-8 h-8 shadow hover:bg-gray-50"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            )}
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -581,13 +585,8 @@ function MultiSelectChips({ label, options, selected, setSelected, color = "#042
               type="button"
               key={opt}
               onClick={() => toggle(opt)}
-              className={`px-3 py-1 rounded-full border text-sm ${
-                active ? "text-white" : "text-gray-700"
-              }`}
-              style={{
-                backgroundColor: active ? color : "white",
-                borderColor: active ? color : "#e5e7eb",
-              }}
+              className={`px-3 py-1 rounded-full border text-sm ${active ? "text-white" : "text-gray-700"}`}
+              style={{ backgroundColor: active ? color : "white", borderColor: active ? color : "#e5e7eb" }}
             >
               {opt}
             </button>
@@ -657,7 +656,7 @@ function MigraineModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20">
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-[#042d4d] mb-3">Log Migraine</h3>
 
         <label className="block text-sm font-medium text-gray-700">
@@ -739,7 +738,7 @@ function MigraineModal({ onClose, user }) {
           />
         </label>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2 sticky bottom-0 bg-white pt-3">
           <button
             disabled={saving}
             onClick={save}
@@ -780,7 +779,7 @@ function GlucoseModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#7c3aed]/20">
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#7c3aed]/20 max-h-[85vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-[#7c3aed] mb-3">Log Glucose</h3>
 
         <label className="block text-sm font-medium text-gray-700">
@@ -804,7 +803,7 @@ function GlucoseModal({ onClose, user }) {
           />
         </label>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2 sticky bottom-0 bg-white pt-3">
           <button
             disabled={saving}
             onClick={save}
@@ -853,7 +852,7 @@ function SleepModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#2563eb]/20">
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#2563eb]/20 max-h-[85vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-[#2563eb] mb-3">Log Sleep</h3>
 
         <label className="block text-sm font-medium text-gray-700">
@@ -886,7 +885,7 @@ function SleepModal({ onClose, user }) {
           />
         </label>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2 sticky bottom-0 bg-white pt-3">
           <button
             disabled={saving}
             onClick={save}
