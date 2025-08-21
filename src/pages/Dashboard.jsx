@@ -3,38 +3,45 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
-// 🔁 READ FROM SUPABASE (not entities/localStorage)
+// Data readers
 import { Migraines, Glucose, Sleep } from "@/data/supabaseStore";
-import { supabase } from "@/lib/supabase"; // Realtime + auth for DebugPanel
+import { supabase } from "@/lib/supabase";
 
-// charts
+// Charts
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
-// metrics + time formatting
+// Metrics utils
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
 
-/* ----------------------------- helpers ----------------------------- */
+/* ----------------------------- colors ----------------------------- */
+// Using Tailwind arbitrary values so no config change required.
+const BRAND = {
+  primary: "#042d4d",        // Sentinel deep blue
+  primaryLight: "#e6eef6",   // very light blue tint
+  surface: "#ffffff",
+  soft: "#ececec",           // soft neutral (from Bluedobie pref)
+  good: "#16a34a",           // green-600
+  warn: "#f59e0b",           // amber-500
+  bad: "#dc2626",            // red-600
+  info: "#3b82f6",           // blue-500
+  violet: "#7c3aed",         // violet-600
+};
 
-/** Merge a realtime change into a list state using a row key (default: "id"). */
+/* ----------------------------- helpers ----------------------------- */
 function mergeChange(list, payload, key = "id") {
   const { eventType, new: rowNew, old: rowOld } = payload;
   if (eventType === "INSERT") {
     if (!list.find((r) => r[key] === rowNew[key])) return [rowNew, ...list];
     return list.map((r) => (r[key] === rowNew[key] ? rowNew : r));
   }
-  if (eventType === "UPDATE") {
-    return list.map((r) => (r[key] === rowNew[key] ? rowNew : r));
-  }
-  if (eventType === "DELETE") {
-    return list.filter((r) => r[key] !== rowOld[key]);
-  }
+  if (eventType === "UPDATE") return list.map((r) => (r[key] === rowNew[key] ? rowNew : r));
+  if (eventType === "DELETE") return list.filter((r) => r[key] !== rowOld[key]);
   return list;
 }
 
-/** Extract a concise meds string from a single episode (supports multiple shapes). */
+// meds helpers (from previous step)
 function medsSummaryFromEpisode(ep) {
-  // Array of structured meds: [{ name, dose, unit, route, taken_at, notes }]
   if (Array.isArray(ep?.medications) && ep.medications.length) {
     return ep.medications
       .map((m) => {
@@ -44,36 +51,21 @@ function medsSummaryFromEpisode(ep) {
       })
       .join(", ");
   }
-
-  // Single fields (name + dose)
   if (ep?.medication_name || ep?.medication_dose || ep?.medication) {
     const nm = ep.medication_name || ep.medication || "Medication";
     const ds = [ep.medication_dose, ep.medication_unit].filter(Boolean).join(" ");
     return [nm, ds].filter(Boolean).join(" ");
   }
-
-  // Arrays of strings (meds/treatments)
   if (Array.isArray(ep?.meds) && ep.meds.length) return ep.meds.join(", ");
   if (Array.isArray(ep?.treatments) && ep.treatments.length) return ep.treatments.join(", ");
-
-  // Freeform notes about medication
   if (ep?.medication_notes) return String(ep.medication_notes);
-
-  return ""; // none found
+  return "";
 }
 
-/** Flatten medications from episodes into a list for a "Recent Medications" panel. */
-function extractMedications(episodes, maxItems = 20) {
+function extractMedications(episodes, maxItems = 12) {
   const rows = [];
   for (const ep of episodes) {
-    const baseTime =
-      ep?.taken_at ||
-      ep?.started_at ||
-      ep?.start_time ||
-      ep?.date ||
-      ep?.created_at ||
-      null;
-
+    const baseTime = ep?.taken_at || ep?.started_at || ep?.start_time || ep?.date || ep?.created_at || null;
     if (Array.isArray(ep?.medications) && ep.medications.length) {
       for (const m of ep.medications) {
         rows.push({
@@ -88,7 +80,6 @@ function extractMedications(episodes, maxItems = 20) {
       }
       continue;
     }
-
     if (ep?.medication_name || ep?.medication || ep?.medication_dose || ep?.medication_notes) {
       rows.push({
         id: `${ep.id}:single`,
@@ -101,82 +92,46 @@ function extractMedications(episodes, maxItems = 20) {
       });
       continue;
     }
-
     if (Array.isArray(ep?.meds) && ep.meds.length) {
       for (const s of ep.meds) {
-        rows.push({
-          id: `${ep.id}:${s}`,
-          at: baseTime,
-          name: s,
-          dose: "",
-          route: "",
-          notes: "",
-          episodeId: ep.id,
-        });
+        rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
       }
       continue;
     }
-
     if (Array.isArray(ep?.treatments) && ep.treatments.length) {
       for (const s of ep.treatments) {
-        rows.push({
-          id: `${ep.id}:${s}`,
-          at: baseTime,
-          name: s,
-          dose: "",
-          route: "",
-          notes: "",
-          episodeId: ep.id,
-        });
+        rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
       }
       continue;
     }
   }
-
-  // Sort newest first by 'at' (fallback to episode id order if missing)
-  rows.sort((a, b) => {
-    const ta = a.at ? new Date(a.at).getTime() : 0;
-    const tb = b.at ? new Date(b.at).getTime() : 0;
-    return tb - ta;
-  });
-
+  rows.sort((a, b) => (b.at ? new Date(b.at).getTime() : 0) - (a.at ? new Date(a.at).getTime() : 0));
   return rows.slice(0, maxItems);
 }
 
 /* ----------------------------- component ----------------------------- */
-
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Disclaimer
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-
-  // Data
   const [episodes, setEpisodes] = useState([]);
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
 
-  // Redirect if not signed in
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
-  // Show disclaimer on first load (remember acceptance)
   useEffect(() => {
     const accepted = localStorage.getItem("sentinelDisclaimerAccepted");
     setShowDisclaimer(!accepted);
   }, []);
 
-  // Initial load
   useEffect(() => {
     (async () => {
       try {
-        const [e, g, s] = await Promise.all([
-          Migraines.list(500),
-          Glucose.list(1000),
-          Sleep.list(365),
-        ]);
+        const [e, g, s] = await Promise.all([Migraines.list(500), Glucose.list(1000), Sleep.list(365)]);
         setEpisodes(e || []);
         setGlucose(g || []);
         setSleep(s || []);
@@ -186,11 +141,9 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // Realtime subscriptions (user-scoped)
   useEffect(() => {
     if (!user?.id) return;
     const uid = user.id;
-
     const channel = supabase
       .channel("dashboard-live")
       .on(
@@ -209,13 +162,10 @@ export default function Dashboard() {
         (p) => setSleep((prev) => mergeChange(prev, p))
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
-  // --- Summary metrics ---
+  // ---- metrics
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -244,9 +194,7 @@ export default function Dashboard() {
 
   const symptomCounts = useMemo(() => {
     const counts = {};
-    episodes.forEach((ep) => {
-      (ep.symptoms || []).forEach((s) => (counts[s] = (counts[s] || 0) + 1));
-    });
+    episodes.forEach((ep) => (ep.symptoms || []).forEach((s) => (counts[s] = (counts[s] || 0) + 1)));
     const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
     return { labels: entries.map((e) => e[0]), data: entries.map((e) => e[1]) };
   }, [episodes]);
@@ -263,7 +211,6 @@ export default function Dashboard() {
     return +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   }, [last14Sleep]);
 
-  // Derived: recent medications (flattened from episodes)
   const recentMeds = useMemo(() => extractMedications(episodes, 12), [episodes]);
 
   function onSignOut() {
@@ -279,13 +226,27 @@ export default function Dashboard() {
     setShowDisclaimer(false);
   };
 
+  /* ----------------------------- UI ----------------------------- */
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4 space-y-6">
+    <div className="min-h-screen bg-[#ececec]">
+      {/* Top bar */}
+      <header className="bg-[#042d4d] text-white">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+          <div className="h-6 w-6 rounded bg-white/20" />
+          <h1 className="text-base sm:text-lg font-semibold">
+            Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
+          </h1>
+          <span className="ml-auto text-xs px-2 py-1 rounded border border-white/30 bg-white/10">
+            Realtime: <span className="font-semibold">ON</span>
+          </span>
+        </div>
+      </header>
+
       {/* Disclaimer Modal */}
       {showDisclaimer && (
         <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 shadow-xl max-w-lg mx-4">
-            <h2 className="text-lg font-semibold mb-2">Medical Disclaimer</h2>
+          <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20">
+            <h2 className="text-lg font-semibold text-[#042d4d] mb-2">Medical Disclaimer</h2>
             <p className="text-sm text-gray-700">
               Sentinel Health is a personal tracking tool and does not replace professional medical advice,
               diagnosis, or treatment. Always consult your physician with any questions regarding a medical condition.
@@ -293,7 +254,7 @@ export default function Dashboard() {
             </p>
             <button
               onClick={dismissDisclaimer}
-              className="mt-4 w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              className="mt-4 w-full rounded-md bg-[#042d4d] px-4 py-2 text-white hover:opacity-90"
             >
               I Understand
             </button>
@@ -301,142 +262,198 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Header */}
-      <h1 className="text-xl sm:text-2xl font-bold break-words">
-        Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
-      </h1>
+      {/* Main */}
+      <main className="mx-auto max-w-7xl px-4 py-5 space-y-5">
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="bg-[#042d4d] text-white px-3 py-2 rounded shadow hover:opacity-90"
+            onClick={() => navigate("/log")}
+          >
+            + Migraine
+          </button>
+          <button
+            type="button"
+            className="bg-[#7c3aed] text-white px-3 py-2 rounded shadow hover:opacity-95"
+            onClick={() => navigate("/log-glucose")}
+          >
+            + Glucose
+          </button>
+          <button
+            type="button"
+            className="bg-[#3b82f6] text-white px-3 py-2 rounded shadow hover:opacity-95"
+            onClick={() => navigate("/log-sleep")}
+          >
+            + Sleep
+          </button>
+          <button
+            type="button"
+            className="ml-auto border border-[#042d4d] text-[#042d4d] px-3 py-2 rounded hover:bg-[#042d4d]/5"
+            onClick={onSignOut}
+          >
+            Sign out
+          </button>
+        </div>
 
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log")}>
-          + Migraine
-        </button>
-        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-glucose")}>
-          + Glucose
-        </button>
-        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={() => navigate("/log-sleep")}>
-          + Sleep
-        </button>
-        <button type="button" className="border px-3 py-2 rounded w-full sm:w-auto" onClick={onSignOut}>
-          Sign out
-        </button>
-
-        {/* Realtime indicator (visible when user loaded) */}
-        {user?.id && (
-          <span className="ml-auto text-xs text-gray-600 px-2 py-1 border rounded">
-            Realtime: <span className="font-semibold">ON</span>
-          </span>
-        )}
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 min-w-0">
-        <Card title="Total Migraine Episodes" value={totalEpisodes ?? 0} />
-        <Card title="Avg Glucose (14d)" value={avgGlucose14} suffix={avgGlucose14 ? "mg/dL" : ""} />
-        <Card title="Avg Sleep (14d)" value={avgSleep14} suffix={avgSleep14 ? "hrs/night" : ""} />
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="lg:col-span-2 min-w-0">
-          <LineChart
-            title="Migraine Frequency (30 days)"
-            labels={last30.labels}
-            data={last30.counts}
-            className="h-[240px] sm:h-[280px] lg:h-[320px]"
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard
+            title="Total Migraine Episodes"
+            value={totalEpisodes ?? 0}
+            bg="bg-red-50"
+            ring="ring-red-200"
+            accent="text-red-700"
+          />
+          <StatCard
+            title="Avg Glucose (14d)"
+            value={avgGlucose14 ?? "—"}
+            suffix={avgGlucose14 ? "mg/dL" : ""}
+            bg="bg-blue-50"
+            ring="ring-blue-200"
+            accent="text-blue-700"
+          />
+          <StatCard
+            title="Avg Sleep (14d)"
+            value={avgSleep14 ?? "—"}
+            suffix={avgSleep14 ? "hrs/night" : ""}
+            bg="bg-emerald-50"
+            ring="ring-emerald-200"
+            accent="text-emerald-700"
           />
         </div>
-        <div className="min-w-0">
-          <PieChart
-            title="Top Symptoms"
-            labels={symptomCounts.labels}
-            data={symptomCounts.data}
-            className="h-[240px] sm:h-[280px] lg:h-[320px]"
-          />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <LineChart
-            title="Avg Glucose (14 days)"
-            labels={last14Glucose.labels}
-            data={last14Glucose.values}
-            className="h-[240px] sm:h-[280px] lg:h-[320px]"
-          />
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
+              <LineChart
+                title=""
+                labels={last30.labels}
+                data={last30.counts}
+                // Many chart wrappers accept a color/stroke prop; harmless if ignored
+                color={BRAND.bad}
+                className="h-[280px]"
+              />
+            </Panel>
+          </div>
+          <div>
+            <Panel title="Top Symptoms" borderColor={BRAND.violet}>
+              <PieChart
+                title=""
+                labels={symptomCounts.labels}
+                data={symptomCounts.data}
+                colors={[BRAND.violet, BRAND.info, BRAND.bad, BRAND.good, BRAND.warn, BRAND.primary]}
+                className="h-[280px]"
+              />
+            </Panel>
+          </div>
         </div>
-        <div className="min-w-0">
-          <LineChart
-            title="Sleep Hours (14 days)"
-            labels={last14Sleep.labels}
-            data={last14Sleep.hours}
-            className="h-[240px] sm:h-[280px] lg:h-[320px]"
-          />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
+            <LineChart
+              title=""
+              labels={last14Glucose.labels}
+              data={last14Glucose.values}
+              color={BRAND.info}
+              className="h-[280px]"
+            />
+          </Panel>
+          <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
+            <LineChart
+              title=""
+              labels={last14Sleep.labels}
+              data={last14Sleep.hours}
+              color={BRAND.good}
+              className="h-[280px]"
+            />
+          </Panel>
         </div>
-      </div>
 
-      {/* Recent logs + Recent medications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        <RecentEpisodes episodes={episodes.slice(0, 8)} />
-        <RecentMedications meds={recentMeds} />
-      </div>
+        {/* Recent logs + meds */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RecentEpisodes episodes={episodes.slice(0, 8)} />
+          <RecentMedications meds={recentMeds} />
+        </div>
 
-      {/* Debug (non-prod only) */}
-      {import.meta.env.MODE !== "production" && <DebugPanel />}
+        {/* Dev debug */}
+        {import.meta.env.MODE !== "production" && <DebugPanel />}
+      </main>
     </div>
   );
 }
 
-/* ---------- Components ---------- */
+/* ----------------------------- subcomponents ----------------------------- */
 
-function Card({ title, value, suffix }) {
-  const display = (value === null || value === undefined || value === "") ? "—" : value;
+function StatCard({ title, value, suffix, bg, ring, accent }) {
   return (
-    <div className="bg-white rounded-lg p-4 shadow min-w-0 box-border">
-      <div className="min-w-0">
-        <p className="text-xs uppercase text-gray-500 truncate">{title}</p>
-        <p className="text-2xl font-semibold break-words">
-          {display}{suffix ? ` ${suffix}` : ""}
-        </p>
+    <div className={`rounded-xl ${bg} p-4 shadow-sm ring-1 ${ring}`}>
+      <p className="text-xs uppercase tracking-wide text-gray-600">{title}</p>
+      <p className={`text-2xl font-semibold ${accent}`}>
+        {value}{suffix ? ` ${suffix}` : ""}
+      </p>
+    </div>
+  );
+}
+
+function Panel({ title, children, borderColor }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden ring-1 ring-gray-200">
+      <div
+        className="px-4 py-2 font-semibold text-sm text-[#042d4d] border-b"
+        style={{ borderColor: `${BRAND.primary}22` }}
+      >
+        {title}
       </div>
+      <div className="p-3">{children}</div>
+      <div className="h-1" style={{ backgroundColor: borderColor }} />
     </div>
   );
 }
 
 function RecentEpisodes({ episodes }) {
-  if (!episodes.length)
+  if (!episodes.length) {
     return (
-      <div className="bg-white rounded-lg p-4 shadow">
-        <h3 className="text-sm font-semibold mb-2">Recent Episodes</h3>
+      <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
+        <h3 className="text-sm font-semibold text-[#042d4d] mb-2">Recent Episodes</h3>
         <p className="text-gray-500 text-sm">No entries yet.</p>
       </div>
     );
-
+  }
   return (
-    <div className="bg-white rounded-lg p-4 shadow">
-      <h3 className="text-sm font-semibold mb-2">Recent Episodes</h3>
+    <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
+      <h3 className="text-sm font-semibold text-[#042d4d] mb-2">Recent Episodes</h3>
       <div className="divide-y">
         {episodes.map((ep) => {
           const medsText = medsSummaryFromEpisode(ep);
           return (
             <div key={ep.id} className="py-2 text-sm flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium break-words">
+                <p className="font-medium text-gray-900">
                   {ep.timezone_offset_min != null
                     ? formatLocalAtEntry(ep.date, ep.timezone_offset_min)
                     : new Date(ep.date).toLocaleString()}
                 </p>
-                <p className="text-gray-600 break-words">
-                  Pain {ep.pain}/10 · {(ep.symptoms || []).slice(0, 3).join(", ")}
+                <p className="text-gray-600">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-red-500 inline-block" />
+                    Pain {ep.pain}/10
+                  </span>
+                  {Array.isArray(ep.symptoms) && ep.symptoms.length > 0 && (
+                    <span className="ml-2 text-gray-700">
+                      · {ep.symptoms.slice(0, 3).join(", ")}
+                    </span>
+                  )}
                 </p>
                 {medsText && (
-                  <p className="text-gray-700 mt-0.5">
-                    <span className="font-medium">Meds:</span> {medsText}
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium text-[#042d4d]">Meds:</span> {medsText}
                   </p>
                 )}
               </div>
               {ep.glucose_at_start && (
-                <span className="text-gray-700 shrink-0">{ep.glucose_at_start} mg/dL</span>
+                <span className="text-[#7c3aed] font-medium shrink-0">{ep.glucose_at_start} mg/dL</span>
               )}
             </div>
           );
@@ -448,8 +465,8 @@ function RecentEpisodes({ episodes }) {
 
 function RecentMedications({ meds }) {
   return (
-    <div className="bg-white rounded-lg p-4 shadow min-w-0">
-      <h3 className="text-sm font-semibold mb-2">Recent Medications</h3>
+    <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
+      <h3 className="text-sm font-semibold text-[#042d4d] mb-2">Recent Medications</h3>
       {!meds.length ? (
         <p className="text-gray-500 text-sm">No medications recorded.</p>
       ) : (
@@ -458,11 +475,11 @@ function RecentMedications({ meds }) {
             <li key={m.id} className="py-2 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium break-words">
-                    {m.name} {m.dose ? `— ${m.dose}` : ""}
+                  <p className="font-medium text-gray-900">
+                    {m.name} {m.dose ? <span className="text-gray-700">— {m.dose}</span> : ""}
                   </p>
                   {(m.route || m.notes) && (
-                    <p className="text-gray-600 break-words">
+                    <p className="text-gray-600">
                       {[m.route, m.notes].filter(Boolean).join(" · ")}
                     </p>
                   )}
@@ -476,13 +493,11 @@ function RecentMedications({ meds }) {
         </ul>
       )}
       <p className="mt-2 text-xs text-gray-500">
-        Pulled from episode entries. To add meds, include them when logging a migraine.
+        Pulled from episode entries. Add meds when logging a migraine.
       </p>
     </div>
   );
 }
-
-/* ---------- Debug panel (dev only) ---------- */
 
 function DebugPanel() {
   const [info, setInfo] = React.useState({ url: "", uid: "", counts: null, error: "" });
@@ -501,11 +516,7 @@ function DebugPanel() {
             supabase.from("glucose_readings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
             supabase.from("sleep_data").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           ]);
-          counts = {
-            migraines: mig.count ?? 0,
-            glucose: glu.count ?? 0,
-            sleep: slp.count ?? 0,
-          };
+          counts = { migraines: mig.count ?? 0, glucose: glu.count ?? 0, sleep: slp.count ?? 0 };
         }
 
         setInfo({ url, uid, counts, error: "" });
@@ -516,23 +527,29 @@ function DebugPanel() {
   }, []);
 
   return (
-    <div className="mt-6 text-xs p-3 border rounded bg-gray-50">
-      <div>Supabase URL: <code>{info.url}</code></div>
-      <div>User ID: <code>{info.uid}</code></div>
+    <div className="mt-6 text-xs p-3 border rounded bg-white ring-1 ring-gray-200">
+      <div>
+        Supabase URL: <code>{info.url}</code>
+      </div>
+      <div>
+        User ID: <code>{info.uid}</code>
+      </div>
       {info.counts && (
-        <div>Counts (RLS-filtered): 🧠 {info.counts.migraines} | 🩸 {info.counts.glucose} | 😴 {info.counts.sleep}</div>
+        <div>
+          Counts: <span className="text-red-600">🧠 {info.counts.migraines}</span>{" "}
+          <span className="text-violet-700">🩸 {info.counts.glucose}</span>{" "}
+          <span className="text-blue-700">😴 {info.counts.sleep}</span>
+        </div>
       )}
       {info.error && <div className="text-red-600">Debug error: {info.error}</div>}
     </div>
   );
 }
 
-/* ---------- tiny util from your codebase ---------- */
-
+/* ---------- tiny util ---------- */
 function formatLocalAtEntry(dateIso, tzOffsetMinutes) {
   try {
     const d = new Date(dateIso);
-    // adjust by the stored offset to display the local-at-entry time
     const adjusted = new Date(d.getTime() - (new Date().getTimezoneOffset() - tzOffsetMinutes) * 60000);
     return adjusted.toLocaleString();
   } catch {
