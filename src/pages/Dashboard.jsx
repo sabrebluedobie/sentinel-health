@@ -248,6 +248,27 @@ function parseMigraineTranscript(text) {
   const out = { pain: null, symptoms: [], triggers: [], medsString: "", cleanedNotes: text.trim() };
   if (!text) return out;
   const t = text.toLowerCase();
+  /* ----------------------------- Speech Synthesis (TTS) ----------------------------- */
+/** Minimal talker: speaks a prompt, returns a promise that resolves when audio ends. */
+function speakOnce(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US" } = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return resolve(); // no-op if not supported
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = rate; utter.pitch = pitch; utter.volume = volume; utter.lang = lang;
+      utter.onend = resolve; utter.onerror = resolve;
+      synth.cancel(); // stop any pending speech
+      synth.speak(utter);
+    } catch { resolve(); }
+  });
+}
+
+/** Helper to stop any current speech. */
+function stopSpeaking() {
+  try { window.speechSynthesis?.cancel(); } catch {}
+}
+
 
   // Pain 0-10: look for "pain 7" or "pain level 7" or standalone number preceded by "pain"
   const painMatch = t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
@@ -731,25 +752,173 @@ function MigraineModal({ onClose, user }) {
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
-  // --- Speech ---
+  // --- Speech to text ---
   const { supported, listening, interim, start, stop } = useSpeechInput({
     onResult: (finalChunk) => {
-      const parsed = parseMigraineTranscript(finalChunk);
-      if (parsed.pain != null) setPain(parsed.pain);
-      if (parsed.symptoms.length)
-        setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...parsed.symptoms])));
-      if (parsed.triggers.length)
-        setSelectedTriggers((prev) => Array.from(new Set([...prev, ...parsed.triggers])));
-      if (parsed.medsString)
-        setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
-      setNotes((prev) => (prev ? `${prev}\n${finalChunk}` : finalChunk));
+      // In free dictation mode (button), we still parse & append
+      if (!coach.active) {
+        const parsed = parseMigraineTranscript(finalChunk);
+        if (parsed.pain != null) setPain(parsed.pain);
+        if (parsed.symptoms.length)
+          setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...parsed.symptoms])));
+        if (parsed.triggers.length)
+          setSelectedTriggers((prev) => Array.from(new Set([...prev, ...parsed.triggers])));
+        if (parsed.medsString)
+          setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
+        setNotes((prev) => (prev ? `${prev}\n${finalChunk}` : finalChunk));
+      } else {
+        // Guided mode captures response into coach.state, and we parse per step
+        handleCoachAnswer(finalChunk);
+      }
     },
   });
 
+  // --- Voice Coach (guided Q&A) ---
+  const [coach, setCoach] = useState({
+    active: false,
+    step: 0,
+    waiting: false,  // true while listening for an answer
+  });
+
+  const COACH_STEPS = [
+    { key: "pain",     q: "On a scale of zero to ten, what is your pain level right now?" },
+    { key: "symptoms", q: "Tell me your symptoms, like nausea or photophobia. You can say multiple." },
+    { key: "triggers", q: "Do you notice any possible triggers, such as stress, bright lights, or lack of sleep?" },
+    { key: "meds",     q: "What medications and doses did you take? For example, sumatriptan 50 milligrams." },
+    { key: "notes",    q: "Any additional notes you want to add?" },
+    { key: "confirm",  q: "Ready to save this entry? Say yes to save, or no to cancel." },
+  ];
+
+  async function startCoach() {
+    if (!supported) {
+      toast.info("Voice works best in Chrome or Edge.");
+    }
+    // reset coach to beginning
+    setCoach({ active: true, step: 0, waiting: false });
+    stopSpeaking();
+    await speakOnce("Okay. Let's log your migraine together.");
+    runStep(0);
+  }
+
+  function stopCoach() {
+    stopSpeaking();
+    if (listening) stop();
+    setCoach({ active: false, step: 0, waiting: false });
+    toast.info("Voice Coach stopped. You can continue manually.");
+  }
+
+  async function runStep(i) {
+    const step = COACH_STEPS[i];
+    if (!step) return;
+    stopSpeaking();
+    await speakOnce(step.q);
+    // begin listening for answer
+    setCoach((c) => ({ ...c, step: i, waiting: true }));
+    try { start(); } catch {}
+  }
+
+  function nextStep() {
+    setCoach((c) => {
+      const ni = c.step + 1;
+      if (ni >= COACH_STEPS.length) return { active: false, step: 0, waiting: false };
+      setTimeout(() => runStep(ni), 200); // nudge to next question
+      return { ...c, step: ni, waiting: false };
+    });
+  }
+
+  function handleCoachAnswer(text) {
+    // stop listening for this step
+    if (listening) { try { stop(); } catch {} }
+    setCoach((c) => ({ ...c, waiting: false }));
+    const step = COACH_STEPS[coach.step]?.key;
+    const t = text?.trim() || "";
+
+    if (!t) {
+      // Ask to repeat
+      speakOnce("Sorry, I didn't catch that. Let's try again.");
+      runStep(coach.step);
+      return;
+    }
+
+    if (step === "pain") {
+      const parsed = parseMigraineTranscript(t);
+      if (parsed.pain != null) {
+        setPain(parsed.pain);
+        speakOnce(`Got it. Pain level ${parsed.pain}.`);
+        return nextStep();
+      } else {
+        speakOnce("Please say a number from zero to ten.");
+        return runStep(coach.step);
+      }
+    }
+
+    if (step === "symptoms") {
+      const parsed = parseMigraineTranscript(t);
+      const extras = t.split(",").map(s => s.trim()).filter(Boolean);
+      const unique = Array.from(new Set([...(parsed.symptoms || []), ...extras]));
+      if (unique.length) {
+        setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...unique])));
+        speakOnce("Symptoms noted.");
+      } else {
+        speakOnce("Okay, no symptoms noted.");
+      }
+      return nextStep();
+    }
+
+    if (step === "triggers") {
+      const parsed = parseMigraineTranscript(t);
+      const extras = t.split(",").map(s => s.trim()).filter(Boolean);
+      const unique = Array.from(new Set([...(parsed.triggers || []), ...extras]));
+      if (unique.length) {
+        setSelectedTriggers((prev) => Array.from(new Set([...prev, ...unique])));
+        speakOnce("Triggers noted.");
+      } else {
+        speakOnce("Okay, no triggers noted.");
+      }
+      return nextStep();
+    }
+
+    if (step === "meds") {
+      const parsed = parseMigraineTranscript(t);
+      if (parsed.medsString) {
+        setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
+        speakOnce("Medications recorded.");
+      } else {
+        // still keep raw text as meds input if they said anything like "ibuprofen 200"
+        setMeds((prev) => (prev ? `${prev}; ${t}` : t));
+        speakOnce("Okay.");
+      }
+      return nextStep();
+    }
+
+    if (step === "notes") {
+      setNotes((prev) => (prev ? `${prev}\n${t}` : t));
+      speakOnce("Added to notes.");
+      return nextStep();
+    }
+
+    if (step === "confirm") {
+      const yes = /\b(yes|save|yeah|yep|sure|confirm)\b/i.test(t);
+      const no  = /\b(no|cancel|wait|stop)\b/i.test(t);
+      if (yes) {
+        speakOnce("Saving now.");
+        save(); // will close on success
+        return;
+      }
+      if (no) {
+        speakOnce("Okay, not saving. You can review or change anything manually.");
+        stopCoach();
+        return;
+      }
+      speakOnce("Please say yes to save, or no to cancel.");
+      return runStep(coach.step);
+    }
+  }
+
   useEffect(() => {
     if (!supported) {
-      // Only inform once when the modal opens
-      toast.info("Tip: Voice input works best in Chrome/Edge (Web Speech API).");
+      // One-time tip when the modal opens
+      toast.info("Tip: Voice features work best in Chrome or Edge.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supported]);
@@ -790,13 +959,161 @@ function MigraineModal({ onClose, user }) {
       if (error) throw error;
 
       toast.success("Migraine log saved.");
+      stopSpeaking();
       onClose(); // realtime updates list
     } catch (e) {
       toast.error(e.message || "Failed to save migraine entry.");
+      stopSpeaking();
     } finally {
       setSaving(false);
     }
   }
+
+  return (
+    <Modal onClose={() => { if (listening) stop(); stopCoach(); onClose(); }}>
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <h3 className="text-lg font-semibold text-[#042d4d]">Log Migraine</h3>
+          <div className="flex items-center gap-2">
+            {/* Free dictation button */}
+            <button
+              type="button"
+              onClick={() => (listening ? stop() : start())}
+              className={`px-3 py-1 rounded-md text-white text-sm ${listening ? "bg-red-600" : "bg-[#042d4d]"}`}
+              title={supported ? "Dictate freely; I’ll parse fields" : "Voice input not supported in this browser"}
+              disabled={!supported || coach.active}
+            >
+              {listening ? "● Listening…" : "🎙 Dictate"}
+            </button>
+            {/* Voice Coach controls */}
+            {!coach.active ? (
+              <button
+                type="button"
+                onClick={startCoach}
+                className="px-3 py-1 rounded-md text-white text-sm bg-emerald-600"
+                disabled={!supported}
+                title="Guided voice Q&A"
+              >
+                🗣 Start Voice Coach
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={stopCoach}
+                className="px-3 py-1 rounded-md text-white text-sm bg-gray-700"
+                title="Stop voice Q&A"
+              >
+                ⏹ Stop Coach
+              </button>
+            )}
+          </div>
+        </div>
+
+        {coach.active && coach.waiting && (
+          <div className="mb-2 text-xs text-gray-600">Listening for your answer…</div>
+        )}
+        {(listening && interim) && !coach.active && (
+          <div className="mb-3 text-sm p-2 bg-gray-50 border rounded">
+            <span className="text-gray-500">Heard: </span>
+            <span className="italic">{interim}</span>
+          </div>
+        )}
+
+        <label className="block text-sm font-medium text-gray-700">
+          Date & Time
+          <input
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Pain (0–10)
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={pain}
+            onChange={(e) => setPain(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <MultiSelectChips
+          label="Symptoms"
+          options={SYMPTOM_OPTIONS}
+          selected={selectedSymptoms}
+          setSelected={setSelectedSymptoms}
+          color={BRAND.bad}
+        />
+        <label className="block text-sm text-gray-600 mt-2">
+          Add more (comma-separated)
+          <input
+            type="text"
+            placeholder="e.g., jaw pain, brain fog"
+            value={symptomsExtra}
+            onChange={(e) => setSymptomsExtra(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <MultiSelectChips
+          label="Possible Triggers"
+          options={TRIGGER_OPTIONS}
+          selected={selectedTriggers}
+          setSelected={setSelectedTriggers}
+          color={BRAND.violet}
+        />
+        <label className="block text-sm text-gray-600 mt-2">
+          Add more (comma-separated)
+          <input
+            type="text"
+            placeholder="e.g., travel, new meds"
+            value={triggersExtra}
+            onChange={(e) => setTriggersExtra(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Medications (semicolon-separated; include dose)
+          <input
+            type="text"
+            placeholder="Sumatriptan 50 mg; Ibuprofen 400 mg"
+            value={meds}
+            onChange={(e) => setMeds(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Notes
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+            placeholder="Say anything—voice input or Voice Coach will append here."
+          />
+        </label>
+
+        <div className="mt-4 flex gap-2 sticky bottom-0 bg-white pt-3">
+          <button
+            disabled={saving}
+            onClick={save}
+            className="bg-[#042d4d] text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={() => { if (listening) stop(); stopCoach(); onClose(); }} className="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 
   return (
     <Modal onClose={onClose}>
