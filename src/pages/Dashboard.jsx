@@ -1,5 +1,4 @@
 // src/pages/Dashboard.jsx
-// touch
 import React, { useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
@@ -42,6 +41,21 @@ const PALETTES = {
   bold: ["#1f2937","#ef4444","#10b981","#2563eb","#7c3aed","#f59e0b","#0ea5e9","#f97316"],
 };
 const CHART_COLORS = PALETTES[localStorage.getItem("app.chartPalette") || "default"] || DEFAULT_CHART_COLORS;
+
+/** Per-chart custom colors (overrides) */
+function getChartLineColor(key, fallback) {
+  const v = localStorage.getItem(key);
+  return v && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
+}
+
+/** Per-symptom color map for pies: stored as JSON object { "Nausea": "#ff0000", ... } */
+function getPieSymptomColorMap() {
+  try {
+    const raw = localStorage.getItem("app.pieSymptomColors");
+    const obj = raw ? JSON.parse(raw) : {};
+    return obj && typeof obj === "object" ? obj : {};
+  } catch { return {}; }
+}
 
 /* ----- preset options (fallbacks; user can override from Settings) ----- */
 const SYMPTOM_OPTIONS_DEFAULT = [
@@ -453,6 +467,20 @@ export default function Dashboard() {
   }, [last14Sleep]);
 
   const recentMeds = useMemo(() => extractMedications(episodes, 12), [episodes]);
+  // Chart color overrides from Settings
+  const colorMigraineLine = getChartLineColor("app.color.line.migraine", BRAND.bad);
+  const colorGlucoseLine  = getChartLineColor("app.color.line.glucose", BRAND.info);
+  const colorSleepLine    = getChartLineColor("app.color.line.sleep", BRAND.good);
+
+  // Pie symptom color mapping
+  const pieSymptomColorsMap = getPieSymptomColorMap();
+  const pieColors = useMemo(() => {
+    return symptomCounts.labels.map((label, i) => {
+      const c = pieSymptomColorsMap[label];
+      return c && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c) ? c : CHART_COLORS[i % CHART_COLORS.length];
+    });
+  }, [symptomCounts.labels, pieSymptomColorsMap]);
+
 
   const headerIdentity = user?.user_metadata?.first_name
     ? `${user.user_metadata.first_name} (${user.email})`
@@ -561,22 +589,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
               <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
-                <LineChart title="" labels={last30.labels} data={last30.counts} color={BRAND.bad} strokeWidth={2} className="h-[280px]" />
+                <LineChart title="" labels={last30.labels} data={last30.counts} color={colorMigraineLine} strokeWidth={2} className="h-[280px]" />
               </Panel>
             </div>
             <div>
               <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-                <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={CHART_COLORS} className="h-[280px]" />
+                <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={pieColors} className="h-[280px]" />
               </Panel>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
-              <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={BRAND.info} strokeWidth={2} className="h-[280px]" />
+              <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={colorGlucoseLine} strokeWidth={2} className="h-[280px]" />
             </Panel>
             <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
-              <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={BRAND.good} strokeWidth={2} className="h-[280px]" />
+              <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={colorSleepLine} strokeWidth={2} className="h-[280px]" />
             </Panel>
           </div>
 
@@ -1438,9 +1466,26 @@ function SettingsModal({ onClose }) {
   const [symptomOptions, setSymptomOptions] = useState(() => {
     try { return JSON.parse(localStorage.getItem("app.symptomOptions") || "null") || SYMPTOM_OPTIONS_DEFAULT; } catch { return SYMPTOM_OPTIONS_DEFAULT; }
   });
-  const [triggerOptions, setTriggerOptions] = useState(() => {
+  const [triggerOptions,
+      colorMigraineLine: localStorage.getItem("app.color.line.migraine") || colorMigraineLine,
+      colorGlucoseLine: localStorage.getItem("app.color.line.glucose") || colorGlucoseLine,
+      colorSleepLine: localStorage.getItem("app.color.line.sleep") || colorSleepLine,
+      pieSymptomColors: getPieSymptomColorMap(), setTriggerOptions] = useState(() => {
     try { return JSON.parse(localStorage.getItem("app.triggerOptions") || "null") || TRIGGER_OPTIONS_DEFAULT; } catch { return TRIGGER_OPTIONS_DEFAULT; }
   });
+  // Chart color overrides
+  const [colorMigraineLine, setColorMigraineLine] = useState(localStorage.getItem("app.color.line.migraine") || BRAND.bad);
+  const [colorGlucoseLine, setColorGlucoseLine] = useState(localStorage.getItem("app.color.line.glucose") || BRAND.info);
+  const [colorSleepLine, setColorSleepLine] = useState(localStorage.getItem("app.color.line.sleep") || BRAND.good);
+
+  // Symptom color mapping text (one per line: Symptom=#HEX)
+  const [symptomColorText, setSymptomColorText] = useState(() => {
+    try {
+      const obj = JSON.parse(localStorage.getItem("app.pieSymptomColors") || "{}");
+      return Object.entries(obj).map(([k,v]) => `${k}=${v}`).join("\n");
+    } catch { return ""; }
+  });
+
 
   const [browserVoices, setBrowserVoices] = useState([]);
   const [lmntVoices, setLmntVoices] = useState([]);
@@ -1491,6 +1536,21 @@ function SettingsModal({ onClose }) {
     // apply theme live
     document.documentElement.style.setProperty("--brand", themeColor);
 
+    // Save chart line colors
+    localStorage.setItem("app.color.line.migraine", colorMigraineLine);
+    localStorage.setItem("app.color.line.glucose", colorGlucoseLine);
+    localStorage.setItem("app.color.line.sleep", colorSleepLine);
+
+    // Parse and save symptom color mapping
+    try {
+      const map = {};
+      symptomColorText.split(/\n+/).map(s=>s.trim()).filter(Boolean).forEach(line => {
+        const [k, v] = line.split("=");
+        if (k && v && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim())) map[k.trim()] = v.trim();
+      });
+      localStorage.setItem("app.pieSymptomColors", JSON.stringify(map));
+    } catch {}
+
     onClose();
   }
 
@@ -1503,6 +1563,10 @@ function SettingsModal({ onClose }) {
     const data = {
       ttsEngine: engine, ttsBrowserVoice: browserVoiceName, ttsLmntVoice: lmntVoiceId, ttsRate, ttsPitch,
       themeColor, chartPalette, fontScale, realtimeOn, symptomOptions, triggerOptions,
+      colorMigraineLine: localStorage.getItem("app.color.line.migraine") || colorMigraineLine,
+      colorGlucoseLine: localStorage.getItem("app.color.line.glucose") || colorGlucoseLine,
+      colorSleepLine: localStorage.getItem("app.color.line.sleep") || colorSleepLine,
+      pieSymptomColors: getPieSymptomColorMap(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1529,6 +1593,12 @@ function SettingsModal({ onClose }) {
         if (typeof obj.realtimeOn === "boolean") setRealtimeOn(obj.realtimeOn);
         if (Array.isArray(obj.symptomOptions)) setSymptomOptions(obj.symptomOptions);
         if (Array.isArray(obj.triggerOptions)) setTriggerOptions(obj.triggerOptions);
+        if (obj.colorMigraineLine) setColorMigraineLine(obj.colorMigraineLine);
+        if (obj.colorGlucoseLine) setColorGlucoseLine(obj.colorGlucoseLine);
+        if (obj.colorSleepLine) setColorSleepLine(obj.colorSleepLine);
+        if (obj.pieSymptomColors && typeof obj.pieSymptomColors === "object") {
+          setSymptomColorText(Object.entries(obj.pieSymptomColors).map(([k,v])=>`${k}=${v}`).join("\n"));
+        }
         alert("Imported preferences. Click Save.");
       } catch {
         alert("Invalid settings file.");
@@ -1583,6 +1653,53 @@ function SettingsModal({ onClose }) {
         {/* UI & Theme */}
         <section className="mb-4">
           <h4 className="text-sm font-semibold text-gray-800 mb-2">UI & Theme</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="text-sm text-gray-700">
+              Brand color
+              <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} />
+            </label>
+            <label className="text-sm text-gray-700">
+              Chart palette
+              <select className="mt-1 w-full border rounded px-2 py-1" value={chartPalette} onChange={(e)=>setChartPalette(e.target.value)}>
+                <option value="default">Default</option>
+                <option value="pastel">Pastel</option>
+                <option value="bold">Bold</option>
+              </select>
+            </label>
+            <label className="text-sm text-gray-700">
+              Font size
+              <select className="mt-1 w-full border rounded px-2 py-1" value={fontScale} onChange={(e)=>setFontScale(e.target.value)}>
+                <option value="normal">Normal</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4">
+            <h5 className="text-sm font-semibold text-gray-800 mb-2">Chart Colors</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="text-sm text-gray-700">
+                Migraine line
+                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorMigraineLine} onChange={(e)=>setColorMigraineLine(e.target.value)} />
+              </label>
+              <label className="text-sm text-gray-700">
+                Glucose line
+                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorGlucoseLine} onChange={(e)=>setColorGlucoseLine(e.target.value)} />
+              </label>
+              <label className="text-sm text-gray-700">
+                Sleep line
+                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorSleepLine} onChange={(e)=>setColorSleepLine(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-3">
+              <label className="text-sm text-gray-700 block">
+                Pie symptom colors (one per line, e.g. <code>Nausea=#ff0000</code>)
+              </label>
+              <textarea rows={4} className="mt-1 w-full border rounded px-2 py-1" value={symptomColorText} onChange={(e)=>setSymptomColorText(e.target.value)} />
+              <p className="text-xs text-gray-500 mt-1">Colors will be matched by symptom label; unmapped labels fall back to the palette.</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="text-sm text-gray-700">
               Brand color
