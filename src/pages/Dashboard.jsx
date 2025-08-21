@@ -3,29 +3,25 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
-// Data readers
 import { Migraines, Glucose, Sleep } from "@/data/supabaseStore";
 import { supabase } from "@/lib/supabase";
 
-// Charts
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
-// Metrics utils
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
 
 /* ----------------------------- colors ----------------------------- */
-// Using Tailwind arbitrary values so no config change required.
 const BRAND = {
-  primary: "#042d4d",        // Sentinel deep blue
-  primaryLight: "#e6eef6",   // very light blue tint
+  primary: "#042d4d",
+  primaryLight: "#e6eef6",
   surface: "#ffffff",
-  soft: "#ececec",           // soft neutral (from Bluedobie pref)
-  good: "#16a34a",           // green-600
-  warn: "#f59e0b",           // amber-500
-  bad: "#dc2626",            // red-600
-  info: "#3b82f6",           // blue-500
-  violet: "#7c3aed",         // violet-600
+  soft: "#ececec",
+  good: "#16a34a",
+  warn: "#f59e0b",
+  bad: "#dc2626",
+  info: "#3b82f6",
+  violet: "#7c3aed",
 };
 
 /* ----------------------------- helpers ----------------------------- */
@@ -40,7 +36,6 @@ function mergeChange(list, payload, key = "id") {
   return list;
 }
 
-// meds helpers (from previous step)
 function medsSummaryFromEpisode(ep) {
   if (Array.isArray(ep?.medications) && ep.medications.length) {
     return ep.medications
@@ -109,6 +104,10 @@ function extractMedications(episodes, maxItems = 12) {
   return rows.slice(0, maxItems);
 }
 
+function localTzOffsetMinutes() {
+  return -new Date().getTimezoneOffset(); // west of UTC is negative
+}
+
 /* ----------------------------- component ----------------------------- */
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -118,6 +117,11 @@ export default function Dashboard() {
   const [episodes, setEpisodes] = useState([]);
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
+
+  // modal state
+  const [openMigraine, setOpenMigraine] = useState(false);
+  const [openGlucose, setOpenGlucose] = useState(false);
+  const [openSleep, setOpenSleep] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
@@ -244,7 +248,7 @@ export default function Dashboard() {
 
       {/* Disclaimer Modal */}
       {showDisclaimer && (
-        <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center">
+        <Modal onClose={() => {}} noClose>
           <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border border-[#042d4d]/20">
             <h2 className="text-lg font-semibold text-[#042d4d] mb-2">Medical Disclaimer</h2>
             <p className="text-sm text-gray-700">
@@ -259,7 +263,7 @@ export default function Dashboard() {
               I Understand
             </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Main */}
@@ -269,21 +273,21 @@ export default function Dashboard() {
           <button
             type="button"
             className="bg-[#042d4d] text-white px-3 py-2 rounded shadow hover:opacity-90"
-            onClick={() => navigate("/log")}
+            onClick={() => setOpenMigraine(true)}
           >
             + Migraine
           </button>
           <button
             type="button"
             className="bg-[#7c3aed] text-white px-3 py-2 rounded shadow hover:opacity-95"
-            onClick={() => navigate("/log-glucose")}
+            onClick={() => setOpenGlucose(true)}
           >
             + Glucose
           </button>
           <button
             type="button"
             className="bg-[#3b82f6] text-white px-3 py-2 rounded shadow hover:opacity-95"
-            onClick={() => navigate("/log-sleep")}
+            onClick={() => setOpenSleep(true)}
           >
             + Sleep
           </button>
@@ -298,76 +302,31 @@ export default function Dashboard() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            title="Total Migraine Episodes"
-            value={totalEpisodes ?? 0}
-            bg="bg-red-50"
-            ring="ring-red-200"
-            accent="text-red-700"
-          />
-          <StatCard
-            title="Avg Glucose (14d)"
-            value={avgGlucose14 ?? "—"}
-            suffix={avgGlucose14 ? "mg/dL" : ""}
-            bg="bg-blue-50"
-            ring="ring-blue-200"
-            accent="text-blue-700"
-          />
-          <StatCard
-            title="Avg Sleep (14d)"
-            value={avgSleep14 ?? "—"}
-            suffix={avgSleep14 ? "hrs/night" : ""}
-            bg="bg-emerald-50"
-            ring="ring-emerald-200"
-            accent="text-emerald-700"
-          />
+          <StatCard title="Total Migraine Episodes" value={totalEpisodes ?? 0} bg="bg-red-50" ring="ring-red-200" accent="text-red-700" />
+          <StatCard title="Avg Glucose (14d)" value={avgGlucose14 ?? "—"} suffix={avgGlucose14 ? "mg/dL" : ""} bg="bg-blue-50" ring="ring-blue-200" accent="text-blue-700" />
+          <StatCard title="Avg Sleep (14d)" value={avgSleep14 ?? "—"} suffix={avgSleep14 ? "hrs/night" : ""} bg="bg-emerald-50" ring="ring-emerald-200" accent="text-emerald-700" />
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
             <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
-              <LineChart
-                title=""
-                labels={last30.labels}
-                data={last30.counts}
-                // Many chart wrappers accept a color/stroke prop; harmless if ignored
-                color={BRAND.bad}
-                className="h-[280px]"
-              />
+              <LineChart title="" labels={last30.labels} data={last30.counts} color={BRAND.bad} className="h-[280px]" />
             </Panel>
           </div>
           <div>
             <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-              <PieChart
-                title=""
-                labels={symptomCounts.labels}
-                data={symptomCounts.data}
-                colors={[BRAND.violet, BRAND.info, BRAND.bad, BRAND.good, BRAND.warn, BRAND.primary]}
-                className="h-[280px]"
-              />
+              <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={[BRAND.violet, BRAND.info, BRAND.bad, BRAND.good, BRAND.warn, BRAND.primary]} className="h-[280px]" />
             </Panel>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
-            <LineChart
-              title=""
-              labels={last14Glucose.labels}
-              data={last14Glucose.values}
-              color={BRAND.info}
-              className="h-[280px]"
-            />
+            <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={BRAND.info} className="h-[280px]" />
           </Panel>
           <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
-            <LineChart
-              title=""
-              labels={last14Sleep.labels}
-              data={last14Sleep.hours}
-              color={BRAND.good}
-              className="h-[280px]"
-            />
+            <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={BRAND.good} className="h-[280px]" />
           </Panel>
         </div>
 
@@ -380,6 +339,11 @@ export default function Dashboard() {
         {/* Dev debug */}
         {import.meta.env.MODE !== "production" && <DebugPanel />}
       </main>
+
+      {/* ----- Quick Log Modals ----- */}
+      {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
+      {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
+      {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
     </div>
   );
 }
@@ -400,10 +364,7 @@ function StatCard({ title, value, suffix, bg, ring, accent }) {
 function Panel({ title, children, borderColor }) {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden ring-1 ring-gray-200">
-      <div
-        className="px-4 py-2 font-semibold text-sm text-[#042d4d] border-b"
-        style={{ borderColor: `${BRAND.primary}22` }}
-      >
+      <div className="px-4 py-2 font-semibold text-sm text-[#042d4d] border-b" style={{ borderColor: `${BRAND.primary}22` }}>
         {title}
       </div>
       <div className="p-3">{children}</div>
@@ -441,9 +402,7 @@ function RecentEpisodes({ episodes }) {
                     Pain {ep.pain}/10
                   </span>
                   {Array.isArray(ep.symptoms) && ep.symptoms.length > 0 && (
-                    <span className="ml-2 text-gray-700">
-                      · {ep.symptoms.slice(0, 3).join(", ")}
-                    </span>
+                    <span className="ml-2 text-gray-700">· {ep.symptoms.slice(0, 3).join(", ")}</span>
                   )}
                 </p>
                 {medsText && (
@@ -479,22 +438,16 @@ function RecentMedications({ meds }) {
                     {m.name} {m.dose ? <span className="text-gray-700">— {m.dose}</span> : ""}
                   </p>
                   {(m.route || m.notes) && (
-                    <p className="text-gray-600">
-                      {[m.route, m.notes].filter(Boolean).join(" · ")}
-                    </p>
+                    <p className="text-gray-600">{[m.route, m.notes].filter(Boolean).join(" · ")}</p>
                   )}
                 </div>
-                <div className="text-gray-600 shrink-0">
-                  {m.at ? new Date(m.at).toLocaleString() : ""}
-                </div>
+                <div className="text-gray-600 shrink-0">{m.at ? new Date(m.at).toLocaleString() : ""}</div>
               </div>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-xs text-gray-500">
-        Pulled from episode entries. Add meds when logging a migraine.
-      </p>
+      <p className="mt-2 text-xs text-gray-500">Pulled from episode entries. Add meds when logging a migraine.</p>
     </div>
   );
 }
@@ -528,12 +481,8 @@ function DebugPanel() {
 
   return (
     <div className="mt-6 text-xs p-3 border rounded bg-white ring-1 ring-gray-200">
-      <div>
-        Supabase URL: <code>{info.url}</code>
-      </div>
-      <div>
-        User ID: <code>{info.uid}</code>
-      </div>
+      <div>Supabase URL: <code>{info.url}</code></div>
+      <div>User ID: <code>{info.uid}</code></div>
       {info.counts && (
         <div>
           Counts: <span className="text-red-600">🧠 {info.counts.migraines}</span>{" "}
@@ -543,6 +492,295 @@ function DebugPanel() {
       )}
       {info.error && <div className="text-red-600">Debug error: {info.error}</div>}
     </div>
+  );
+}
+
+/* ---------- Modals ---------- */
+function Modal({ children, onClose, noClose = false }) {
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
+      <div className="relative w-full max-w-lg">
+        {!noClose && (
+          <button
+            onClick={onClose}
+            className="absolute -top-2 -right-2 bg-white text-gray-700 border rounded-full w-8 h-8 shadow hover:bg-gray-50"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ----- Migraine Log Modal ----- */
+function MigraineModal({ onClose, user }) {
+  const [saving, setSaving] = useState(false);
+  const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16)); // yyyy-mm-ddTHH:MM
+  const [pain, setPain] = useState(5);
+  const [symptoms, setSymptoms] = useState("");
+  const [meds, setMeds] = useState(""); // "name dose; name dose"
+  const [notes, setNotes] = useState("");
+
+  async function save() {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      // Try to build a medications array if provided
+      const medications =
+        meds.trim() === ""
+          ? null
+          : meds.split(";").map((chunk) => {
+              const [name, ...doseParts] = chunk.trim().split(" ");
+              const dose = doseParts.join(" ").trim();
+              return { name, dose };
+            });
+
+      const { error } = await supabase.from("migraine_episodes").insert({
+        user_id: user.id,
+        date: new Date(dateTime).toISOString(),
+        pain: Number(pain),
+        symptoms: symptoms
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        medications, // nullable array
+        medication_notes: notes || null,
+        timezone_offset_min: localTzOffsetMinutes(),
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+      onClose();
+    } catch (e) {
+      alert(e.message || "Failed to save migraine entry.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#042d4d]/20">
+        <h3 className="text-lg font-semibold text-[#042d4d] mb-3">Log Migraine</h3>
+
+        <label className="block text-sm font-medium text-gray-700">
+          Date & Time
+          <input
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Pain (0–10)
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={pain}
+            onChange={(e) => setPain(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Symptoms (comma-separated)
+          <input
+            type="text"
+            placeholder="nausea, light sensitivity, aura"
+            value={symptoms}
+            onChange={(e) => setSymptoms(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Medications (semicolon-separated; include dose)
+          <input
+            type="text"
+            placeholder="Sumatriptan 50 mg; Ibuprofen 400 mg"
+            value={meds}
+            onChange={(e) => setMeds(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Notes
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            disabled={saving}
+            onClick={save}
+            className="bg-[#042d4d] text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ----- Glucose Log Modal ----- */
+function GlucoseModal({ onClose, user }) {
+  const [saving, setSaving] = useState(false);
+  const [value, setValue] = useState("");
+  const [when, setWhen] = useState(() => new Date().toISOString().slice(0, 16));
+
+  async function save() {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("glucose_readings").insert({
+        user_id: user.id,
+        value_mgdl: Number(value),
+        device_time: new Date(when).toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      onClose();
+    } catch (e) {
+      alert(e.message || "Failed to save glucose reading.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#7c3aed]/20">
+        <h3 className="text-lg font-semibold text-[#7c3aed] mb-3">Log Glucose</h3>
+
+        <label className="block text-sm font-medium text-gray-700">
+          Value (mg/dL)
+          <input
+            type="number"
+            inputMode="numeric"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Time
+          <input
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            disabled={saving}
+            onClick={save}
+            className="bg-[#7c3aed] text-white px-4 py-2 rounded hover:opacity-95 disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ----- Sleep Log Modal ----- */
+function SleepModal({ onClose, user }) {
+  const [saving, setSaving] = useState(false);
+  const nowIso = new Date().toISOString().slice(0, 16);
+  const [start, setStart] = useState(nowIso);
+  const [end, setEnd] = useState(nowIso);
+  const [notes, setNotes] = useState("");
+
+  async function save() {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      const startIso = new Date(start).toISOString();
+      const endIso = new Date(end).toISOString();
+      const durationMinutes = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+
+      const { error } = await supabase.from("sleep_data").insert({
+        user_id: user.id,
+        start_time: startIso,
+        end_time: endIso,
+        duration_minutes: durationMinutes,
+        notes: notes || null,
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      onClose();
+    } catch (e) {
+      alert(e.message || "Failed to save sleep entry.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#3b82f6]/20">
+        <h3 className="text-lg font-semibold text-[#3b82f6] mb-3">Log Sleep</h3>
+
+        <label className="block text-sm font-medium text-gray-700">
+          Start
+          <input
+            type="datetime-local"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          End
+          <input
+            type="datetime-local"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 mt-3">
+          Notes
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="mt-1 w-full border rounded px-3 py-2"
+          />
+        </label>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            disabled={saving}
+            onClick={save}
+            className="bg-[#3b82f6] text-white px-4 py-2 rounded hover:opacity-95 disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
