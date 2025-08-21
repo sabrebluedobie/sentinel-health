@@ -320,7 +320,7 @@ function stopSpeaking() { try { window.speechSynthesis?.cancel(); } catch {} }
 
 async function speakLMNT(text, { voiceId = "morgan", format = "mp3" } = {}) {
   try {
-    const res = await fetch("/functions/v1/tts-lmnt", {
+    const res = await fetch("/api/tts-lmnt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, voice: voiceId, format }),
@@ -877,7 +877,7 @@ function MigraineModal({ onClose, user }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/functions/v1/lmnt-voices");
+        const res = await fetch("/api/lmnt-voices");
         if (!res.ok) throw new Error(await res.text());
         const list = await res.json();
         if (!cancelled) {
@@ -1501,7 +1501,7 @@ function SettingsModal({ onClose }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/functions/v1/lmnt-voices");
+        const res = await fetch("/api/lmnt-voices");
         const list = res.ok ? await res.json() : [];
         if (!cancelled) {
           setLmntVoices(list || []);
