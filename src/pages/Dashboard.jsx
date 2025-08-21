@@ -20,9 +20,21 @@ const BRAND = {
   good: "#16a34a",
   warn: "#f59e0b",
   bad: "#dc2626",
-  info: "#3b82f6",
+  info: "#2563eb", // blue-600
   violet: "#7c3aed",
 };
+
+/** Global chart palette for categorical series (pie slices, multiple lines/bars). */
+const CHART_COLORS = [
+  BRAND.primary,
+  BRAND.bad,
+  BRAND.good,
+  BRAND.info,
+  BRAND.violet,
+  BRAND.warn,
+  "#0ea5e9", // sky-500
+  "#f97316", // orange-500
+];
 
 /* ----- preset options ----- */
 const SYMPTOM_OPTIONS = [
@@ -114,7 +126,7 @@ function extractMedications(episodes, maxItems = 12) {
 }
 
 function localTzOffsetMinutes() {
-  return -new Date().getTimezoneOffset(); // west of UTC is negative
+  return -new Date().getTimezoneOffset();
 }
 
 /* ----------------------------- main component ----------------------------- */
@@ -127,23 +139,19 @@ export default function Dashboard() {
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
 
-  // quick-log modal state
   const [openMigraine, setOpenMigraine] = useState(false);
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
 
-  // auth redirect
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
-  // disclaimer
   useEffect(() => {
     const accepted = localStorage.getItem("sentinelDisclaimerAccepted");
     setShowDisclaimer(!accepted);
   }, []);
 
-  // initial load
   useEffect(() => {
     (async () => {
       try {
@@ -157,7 +165,6 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // realtime
   useEffect(() => {
     if (!user?.id) return;
     const uid = user.id;
@@ -182,7 +189,6 @@ export default function Dashboard() {
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
-  // metrics
   const totalEpisodes = episodes.length;
 
   const last30 = useMemo(() => {
@@ -299,7 +305,7 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
-            className="bg-[#3b82f6] text-white px-3 py-2 rounded shadow hover:opacity-95"
+            className="bg-[#2563eb] text-white px-3 py-2 rounded shadow hover:opacity-95"
             onClick={() => setOpenSleep(true)}
           >
             + Sleep
@@ -324,22 +330,51 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
             <Panel title="Migraine Frequency (30 days)" borderColor={BRAND.bad}>
-              <LineChart title="" labels={last30.labels} data={last30.counts} color={BRAND.bad} className="h-[280px]" />
+              {/* Explicit line color (red) */}
+              <LineChart
+                title=""
+                labels={last30.labels}
+                data={last30.counts}
+                color={BRAND.bad}
+                strokeWidth={2}
+                className="h-[280px]"
+              />
             </Panel>
           </div>
           <div>
             <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-              <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={[BRAND.violet, BRAND.info, BRAND.bad, BRAND.good, BRAND.warn, BRAND.primary]} className="h-[280px]" />
+              {/* Explicit pie slice palette */}
+              <PieChart
+                title=""
+                labels={symptomCounts.labels}
+                data={symptomCounts.data}
+                colors={CHART_COLORS}
+                className="h-[280px]"
+              />
             </Panel>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Avg Glucose (14 days)" borderColor={BRAND.info}>
-            <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={BRAND.info} className="h-[280px]" />
+            <LineChart
+              title=""
+              labels={last14Glucose.labels}
+              data={last14Glucose.values}
+              color={BRAND.info}
+              strokeWidth={2}
+              className="h-[280px]"
+            />
           </Panel>
           <Panel title="Sleep Hours (14 days)" borderColor={BRAND.good}>
-            <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={BRAND.good} className="h-[280px]" />
+            <LineChart
+              title=""
+              labels={last14Sleep.labels}
+              data={last14Sleep.hours}
+              color={BRAND.good}
+              strokeWidth={2}
+              className="h-[280px]"
+            />
           </Panel>
         </div>
 
@@ -569,15 +604,12 @@ function MigraineModal({ onClose, user }) {
   const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16)); // yyyy-mm-ddTHH:MM
   const [pain, setPain] = useState(5);
 
-  // NEW: chips
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [selectedTriggers, setSelectedTriggers] = useState([]);
 
-  // free-text add-ons
   const [symptomsExtra, setSymptomsExtra] = useState("");
   const [triggersExtra, setTriggersExtra] = useState("");
 
-  // meds + notes
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
@@ -655,7 +687,7 @@ function MigraineModal({ onClose, user }) {
           options={SYMPTOM_OPTIONS}
           selected={selectedSymptoms}
           setSelected={setSelectedSymptoms}
-          color="#dc2626"
+          color={BRAND.bad}
         />
         <label className="block text-sm text-gray-600 mt-2">
           Add more (comma-separated)
@@ -673,7 +705,7 @@ function MigraineModal({ onClose, user }) {
           options={TRIGGER_OPTIONS}
           selected={selectedTriggers}
           setSelected={setSelectedTriggers}
-          color="#7c3aed"
+          color={BRAND.violet}
         />
         <label className="block text-sm text-gray-600 mt-2">
           Add more (comma-separated)
@@ -821,8 +853,8 @@ function SleepModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#3b82f6]/20">
-        <h3 className="text-lg font-semibold text-[#3b82f6] mb-3">Log Sleep</h3>
+      <div className="bg-white rounded-xl p-6 shadow-2xl border border-[#2563eb]/20">
+        <h3 className="text-lg font-semibold text-[#2563eb] mb-3">Log Sleep</h3>
 
         <label className="block text-sm font-medium text-gray-700">
           Start
@@ -858,7 +890,7 @@ function SleepModal({ onClose, user }) {
           <button
             disabled={saving}
             onClick={save}
-            className="bg-[#3b82f6] text-white px-4 py-2 rounded hover:opacity-95 disabled:opacity-60"
+            className="bg-[#2563eb] text-white px-4 py-2 rounded hover:opacity-95 disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save"}
           </button>
