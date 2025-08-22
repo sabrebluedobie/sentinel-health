@@ -3,7 +3,7 @@ import { Line } from "react-chartjs-2";
 import { Chart, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from "chart.js";
 Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
-export default function LineChart({ labels, data, title, className = "h-[280px]" }) {
+export default function LineChart({ labels, data, color="#2563eb", strokeWidth=2, title, className = "h-[280px]" }) {
   return (
     <div className={`bg-white rounded-lg p-3 sm:p-4 shadow w-full ${className}`}>
       <h3 className="text-sm font-semibold mb-2">{title}</h3>

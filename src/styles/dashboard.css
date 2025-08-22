@@ -1,0 +1,8 @@
+// Sentinel Starter Kit — 2025-08-22T19:28:17.351757Z
+
+:root { --brand: #042d4d; }
+@supports(padding:max(0px)) {
+  .safe-pad { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+}
+.main { background: #ececec; min-height: 100vh; overflow-x: hidden; }
+.header { background: var(--brand); color:#fff; }
