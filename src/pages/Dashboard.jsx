@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
+import logo from "./../public/favicon.png";
 // If you have these, keep them; otherwise you can comment them out.
 // import "./../styles/theme.css";
 // import "./../styles/legacy-look.css";
