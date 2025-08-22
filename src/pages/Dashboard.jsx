@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
-import "./../styles/legacy-look.css"; // optional: restores simpler visuals
+
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
 import { Panel, StatCard } from "../components/common/Cards.jsx";
