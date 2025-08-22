@@ -1,10 +1,9 @@
 // src/pages/Dashboard.jsx
-// Sentinel Dashboard — version: 2025-08-22-restore-settings-logout
+// Sentinel Dashboard — version: 2025-08-22-header-two-rows
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
-import logo from "./../public/favicon.png";
-// If you have these, keep them; otherwise you can comment them out.
+// If you added these earlier, keep them; they help the blue background + legibility.
 // import "./../styles/theme.css";
 // import "./../styles/legacy-look.css";
 
@@ -28,6 +27,16 @@ import { getDisclaimerConsent, upsertDisclaimerConsent } from "../services/conse
 import { getCurrentPalette, getChartLineColor, getPieSymptomColorMap } from "../lib/brand.js";
 import { daysBack, fmt, countByDate, avgByDate, sumSleepHoursByDate } from "../lib/helpers.js";
 
+// Small helper for greeting
+function getFirstName(user) {
+  if (!user) return "";
+  const meta = user.user_metadata || {};
+  if (meta.first_name) return String(meta.first_name);
+  if (meta.full_name) return String(meta.full_name).split(" ")[0];
+  if (user.email) return String(user.email).split("@")[0];
+  return "";
+}
+
 export default function Dashboard() {
   // ---- auth ----
   const [user, setUser] = useState(null);
@@ -48,7 +57,6 @@ export default function Dashboard() {
     try {
       await supabase.auth.signOut();
     } finally {
-      // redirect to your login route; change if your login path differs
       window.location.href = "/login";
     }
   };
@@ -142,47 +150,130 @@ export default function Dashboard() {
   if (!authChecked) return <div style={{ padding: 16 }}>Loading…</div>;
   if (!user) return <div style={{ padding: 16 }}>Please sign in to view your dashboard.</div>;
 
-  // ---- render ----
+  const firstName = getFirstName(user);
+
   return (
     <ToastProvider>
       <div className="main">
-        <header className="header safe-pad" style={{ padding: "8px 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-            <div style={{ width: 24, height: 24, background: "rgba(255,255,255,.2)", borderRadius: 6 }} />
-            <div style={{ fontWeight: 600 }}>Sentinel — Dashboard</div>
+        {/* ===== Header: Row 1 (title + welcome + settings/logout) ===== */}
+        <header
+          className="header safe-pad"
+          style={{
+            padding: "10px 12px",
+            background: "var(--brand,#042d4d)",
+            color: "#fff",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {/* Left: title + welcome */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <a
+                href="https://sentinel-health.webflow.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Visit Sentinel Health website"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}
+              >
+                <img src="/icon-32.png" alt="Sentinel" width={22} height={22} style={{ borderRadius: 6 }} />
+                <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>Sentinel – Dashboard</div>
+              </a>
+              <div style={{ opacity: 0.85 }}>|</div>
+              <div style={{ whiteSpace: "nowrap" }}>Welcome{firstName ? `, ${firstName}` : ""}</div>
+            </div>
 
-            {/* Actions at TOP */}
-            <div className="actions-compact" style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={() => setOpenMigraine(true)} style={{ background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Migraine</button>
-              <button onClick={() => setOpenGlucose(true)} style={{ background: "#7c3aed", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Glucose</button>
-              <button onClick={() => setOpenSleep(true)} style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Sleep</button>
-
-              {/* Education (optional) */}
-              <button onClick={() => setOpenEducation(true)} style={{ background: "#f59e0b", color: "#111827", padding: "8px 12px", borderRadius: 8 }}>
-                Education
-              </button>
-
-              {/* Settings (restored) */}
+            {/* Right: Settings + Logout */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
                 onClick={() => setOpenSettings(true)}
-                style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}
-                aria-label="Open settings"
-                title="Settings"
+                style={{
+                  fontSize: 12,
+                  padding: "8px 12px",
+                  background: "rgba(255,255,255,.14)",
+                  border: "1px solid rgba(255,255,255,.25)",
+                  borderRadius: 6,
+                  color: "#fff",
+                }}
               >
                 Settings
               </button>
-
-              {/* Logout (new) */}
               <button
                 onClick={handleLogout}
-                style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}
-                aria-label="Log out"
-                title="Log out"
+                style={{
+                  fontSize: 12,
+                  padding: "8px 12px",
+                  background: "rgba(255,255,255,.14)",
+                  border: "1px solid rgba(255,255,255,.25)",
+                  borderRadius: 6,
+                  color: "#fff",
+                }}
               >
                 Logout
               </button>
             </div>
           </div>
+
+          {/* ===== Header: Row 2 (action buttons) ===== */}
+          <div
+            style={{
+              marginTop: 10,
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+              gap: 8,
+            }}
+          >
+            <button
+              onClick={() => setOpenEducation(true)}
+              style={{
+                background: "#f59e0b", color: "#111827", padding: "10px 12px",
+                borderRadius: 10, fontWeight: 600,
+              }}
+            >
+              Education
+            </button>
+            <button
+              onClick={() => setOpenMigraine(true)}
+              style={{
+                background: "#063b63", color: "#fff", padding: "10px 12px",
+                borderRadius: 10, fontWeight: 600,
+              }}
+            >
+              Migraine
+            </button>
+            <button
+              onClick={() => setOpenGlucose(true)}
+              style={{
+                background: "#7c3aed", color: "#fff", padding: "10px 12px",
+                borderRadius: 10, fontWeight: 600,
+              }}
+            >
+              Blood Sugar
+            </button>
+            <button
+              onClick={() => setOpenSleep(true)}
+              style={{
+                background: "#2563eb", color: "#fff", padding: "10px 12px",
+                borderRadius: 10, fontWeight: 600,
+              }}
+            >
+              Sleep
+            </button>
+          </div>
+
+          {/* Mobile tightening */}
+          <style>{`
+            @media (max-width: 640px) {
+              header.header .actions-compact { gap: 6px; }
+              header.header button { padding: 8px 10px !important; }
+              header.header .action-row { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+            }
+          `}</style>
         </header>
 
         {/* Disclaimer */}
@@ -203,6 +294,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ===== Main content ===== */}
         <main style={{ padding: "16px 12px" }}>
           <div className="grid grid-3">
             <StatCard title="Total Episodes" value={episodes.length || 0} />
