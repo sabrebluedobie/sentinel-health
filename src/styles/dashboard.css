@@ -1,8 +1,114 @@
-// Sentinel Starter Kit — 2025-08-22T19:28:17.351757Z
+/* src/styles/theme.css
+   Blue background + legible, high-contrast UI with sane borders/spacing.
+   Applies via data attributes set on <body> by Settings.
+*/
 
-:root { --brand: #042d4d; }
-@supports(padding:max(0px)) {
-  .safe-pad { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+/* Base tokens */
+:root {
+  --brand: #042d4d;             /* deep blue */
+  --panel-bg: #ffffff;
+  --panel-border: #dde3ea;
+  --text: #0f172a;               /* slate-900 */
+  --text-subtle: #475569;        /* slate-600 */
+  --metric-label: #64748b;       /* slate-500 */
+  --focus: #2563eb;              /* blue-600 */
+  --radius: 10px;
+  --border-w: 1px;
+  --card-pad: 12px;
+  --panel-pad: 12px;
+  --font-scale: 1;               /* user-adjustable */
+  --contrast-mult: 1;            /* user-adjustable (1..1.15) */
 }
-.main { background: #ececec; min-height: 100vh; overflow-x: hidden; }
-.header { background: var(--brand); color:#fff; }
+
+/* Blue background mode */
+body[data-theme-bg="blue"] {
+  background: radial-gradient(1000px 600px at 20% -10%, #0a4a7a 0%, #042d4d 40%, #041f36 100%);
+  color-scheme: light;
+}
+
+body[data-theme-bg="light"] {
+  background: #f6f9fc;
+}
+
+body[data-contrast="high"] {
+  --panel-border: #cbd5e1;
+  --text-subtle: #334155;
+}
+
+/* Global typography scaling + improved legibility */
+html, body {
+  font-size: calc(16px * var(--font-scale));
+  color: var(--text);
+}
+
+/* Header reads well on blue */
+.header {
+  background: var(--brand) !important;
+  color: #fff !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Panels */
+.panel {
+  background: var(--panel-bg) !important;
+  border: var(--border-w) solid var(--panel-border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 1px 2px rgba(2,6,23,0.04) !important;
+}
+.panel-title {
+  padding: 10px 12px !important;
+  font-weight: 700 !important;
+  color: var(--brand) !important;
+  border-bottom: var(--border-w) solid #eef2f7 !important;
+}
+.panel-body {
+  padding: var(--panel-pad) !important;
+}
+
+/* Stat cards */
+.metric {
+  background: var(--panel-bg) !important;
+  border: var(--border-w) solid var(--panel-border) !important;
+  border-radius: var(--radius) !important;
+  padding: var(--card-pad) !important;
+}
+.metric > div:first-child {
+  color: color-mix(in oklab, var(--metric-label) 100%, black calc((var(--contrast-mult) - 1) * 100%));
+  font-size: 0.8rem !important;
+  letter-spacing: .01em !important;
+}
+.metric > div:last-child {
+  font-weight: 800 !important;
+}
+
+/* Buttons */
+button {
+  border-radius: 8px !important;
+  border: 1px solid rgba(0,0,0,0.08) !important;
+}
+.header .actions-compact button {
+  border: 1px solid rgba(255,255,255,0.28) !important;
+}
+
+/* Inputs */
+input, select, textarea {
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 8px !important;
+}
+
+/* Modal shell (works with your Modal.jsx) */
+.modal-card {
+  background: var(--panel-bg) !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 12px !important;
+  color: var(--text) !important;
+}
+.modal-backdrop {
+  background: rgba(0,0,0,.45) !important;
+}
+
+/* Chart height tightened slightly on phones */
+@media (max-width: 480px) {
+  .h-\[280px\] { height: 220px !important; }
+}
