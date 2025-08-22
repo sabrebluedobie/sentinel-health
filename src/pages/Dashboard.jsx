@@ -1,18 +1,38 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  createContext,
+  useContext,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
 
+// Data + backend
 import { Migraines, Glucose, Sleep } from "@/data/supabaseStore";
 import { supabase } from "@/lib/supabase";
 
+// Charts
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
-import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
+// Metrics helpers
+import {
+  daysBack,
+  countByDate,
+  avgByDate,
+  sumByDateMinutes,
+  fmt,
+} from "../lib/metrics";
+
+// Education UI (keep alias if configured)
 import { EducationButton, EducationModal } from "@/components/Education";
 
-/* ----------------------------- colors ----------------------------- */
+/* ==========================================================================
+   THEME & PALETTE
+   ========================================================================== */
 const BRAND = {
   primary: localStorage.getItem("app.themeColor") || "#042d4d",
   primaryLight: "#e6eef6",
@@ -25,7 +45,6 @@ const BRAND = {
   violet: "#7c3aed",
 };
 
-/** Global chart palette for categorical series (pie slices, multiple lines/bars). */
 const DEFAULT_CHART_COLORS = [
   BRAND.primary,
   BRAND.bad,
@@ -33,44 +52,65 @@ const DEFAULT_CHART_COLORS = [
   BRAND.info,
   BRAND.violet,
   BRAND.warn,
-  "#0ea5e9", // sky-500
-  "#f97316", // orange-500
+  "#0ea5e9",
+  "#f97316",
 ];
 const PALETTES = {
   default: DEFAULT_CHART_COLORS,
   pastel: ["#8ecae6","#219ebc","#ffb703","#fb8500","#90be6d","#577590","#e5989b","#6a4c93"],
   bold: ["#1f2937","#ef4444","#10b981","#2563eb","#7c3aed","#f59e0b","#0ea5e9","#f97316"],
 };
-const CHART_COLORS = PALETTES[localStorage.getItem("app.chartPalette") || "default"] || DEFAULT_CHART_COLORS;
+const CHART_COLORS =
+  PALETTES[localStorage.getItem("app.chartPalette") || "default"] ||
+  DEFAULT_CHART_COLORS;
 
-/** Per-chart custom colors (overrides) */
 function getChartLineColor(key, fallback) {
   const v = localStorage.getItem(key);
   return v && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
 }
-
-/** Per-symptom color map for pies: stored as JSON object { "Nausea": "#ff0000", ... } */
 function getPieSymptomColorMap() {
   try {
     const raw = localStorage.getItem("app.pieSymptomColors");
     const obj = raw ? JSON.parse(raw) : {};
     return obj && typeof obj === "object" ? obj : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
-/* ----- preset options (fallbacks; user can override from Settings) ----- */
 const SYMPTOM_OPTIONS_DEFAULT = [
-  "Nausea","Vomiting","Photophobia","Phonophobia","Aura",
-  "Dizziness","Neck pain","Numbness/tingling","Blurred vision",
-  "Fatigue","Osmophobia","Allodynia"
+  "Nausea",
+  "Vomiting",
+  "Photophobia",
+  "Phonophobia",
+  "Aura",
+  "Dizziness",
+  "Neck pain",
+  "Numbness/tingling",
+  "Blurred vision",
+  "Fatigue",
+  "Osmophobia",
+  "Allodynia",
 ];
 const TRIGGER_OPTIONS_DEFAULT = [
-  "Stress","Lack of sleep","Dehydration","Skipped meal",
-  "Bright lights","Strong smells","Hormonal","Weather",
-  "Heat","Screen time","Alcohol","Chocolate","Caffeine change"
+  "Stress",
+  "Lack of sleep",
+  "Dehydration",
+  "Skipped meal",
+  "Bright lights",
+  "Strong smells",
+  "Hormonal",
+  "Weather",
+  "Heat",
+  "Screen time",
+  "Alcohol",
+  "Chocolate",
+  "Caffeine change",
 ];
 
-/* ----------------------------- Toast System ----------------------------- */
+/* ==========================================================================
+   TOASTS
+   ========================================================================== */
 const ToastContext = createContext(null);
 export const useToast = () => useContext(ToastContext);
 
@@ -79,9 +119,7 @@ function ToastProvider({ children }) {
   function push(type, msg) {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, type, msg }]);
-    setTimeout(() => {
-      setToasts((t) => t.filter((x) => x.id !== id));
-    }, 3200);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   }
   const api = {
     success: (m) => push("success", m),
@@ -95,16 +133,18 @@ function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`px-3 py-2 rounded-lg shadow text-white text-sm flex items-center gap-2`}
+            className="px-3 py-2 rounded-lg shadow text-white text-sm flex items-center gap-2"
             style={{
               backgroundColor:
-                t.type === "success" ? "#16a34a" : t.type === "error" ? "#dc2626" : "#2563eb",
+                t.type === "success"
+                  ? "#16a34a"
+                  : t.type === "error"
+                  ? "#dc2626"
+                  : "#2563eb",
               maxWidth: "min(90vw, 360px)",
             }}
           >
-            <span>
-              {t.type === "success" ? "✅" : t.type === "error" ? "⚠️" : "ℹ️"}
-            </span>
+            <span>{t.type === "success" ? "✅" : t.type === "error" ? "⚠️" : "ℹ️"}</span>
             <span className="leading-snug">{t.msg}</span>
           </div>
         ))}
@@ -113,7 +153,9 @@ function ToastProvider({ children }) {
   );
 }
 
-/* ----------------------------- helpers ----------------------------- */
+/* ==========================================================================
+   HELPERS (DB change merge, meds summary, etc.)
+   ========================================================================== */
 function mergeChange(list, payload, key = "id") {
   const { eventType, new: rowNew, old: rowOld } = payload;
   if (eventType === "INSERT") {
@@ -149,7 +191,13 @@ function medsSummaryFromEpisode(ep) {
 function extractMedications(episodes, maxItems = 12) {
   const rows = [];
   for (const ep of episodes) {
-    const baseTime = ep?.taken_at || ep?.started_at || ep?.start_time || ep?.date || ep?.created_at || null;
+    const baseTime =
+      ep?.taken_at ||
+      ep?.started_at ||
+      ep?.start_time ||
+      ep?.date ||
+      ep?.created_at ||
+      null;
     if (Array.isArray(ep?.medications) && ep.medications.length) {
       for (const m of ep.medications) {
         rows.push({
@@ -177,15 +225,37 @@ function extractMedications(episodes, maxItems = 12) {
       continue;
     }
     if (Array.isArray(ep?.meds) && ep.meds.length) {
-      for (const s of ep.meds) rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
+      for (const s of ep.meds)
+        rows.push({
+          id: `${ep.id}:${s}`,
+          at: baseTime,
+          name: s,
+          dose: "",
+          route: "",
+          notes: "",
+          episodeId: ep.id,
+        });
       continue;
     }
     if (Array.isArray(ep?.treatments) && ep.treatments.length) {
-      for (const s of ep.treatments) rows.push({ id: `${ep.id}:${s}`, at: baseTime, name: s, dose: "", route: "", notes: "", episodeId: ep.id });
+      for (const s of ep.treatments)
+        rows.push({
+          id: `${ep.id}:${s}`,
+          at: baseTime,
+          name: s,
+          dose: "",
+          route: "",
+          notes: "",
+          episodeId: ep.id,
+        });
       continue;
     }
   }
-  rows.sort((a, b) => (b.at ? new Date(b.at).getTime() : 0) - (a.at ? new Date(a.at).getTime() : 0));
+  rows.sort(
+    (a, b) =>
+      (b.at ? new Date(b.at).getTime() : 0) -
+      (a.at ? new Date(a.at).getTime() : 0)
+  );
   return rows.slice(0, maxItems);
 }
 
@@ -196,15 +266,24 @@ function localTzOffsetMinutes() {
 function formatLocalAtEntry(dateIso, tzOffsetMinutes) {
   try {
     const d = new Date(dateIso);
-    const adjusted = new Date(d.getTime() - (new Date().getTimezoneOffset() - tzOffsetMinutes) * 60000);
+    const adjusted = new Date(
+      d.getTime() - (new Date().getTimezoneOffset() - tzOffsetMinutes) * 60000
+    );
     return adjusted.toLocaleString();
   } catch {
     return new Date(dateIso).toLocaleString();
   }
 }
 
-/* ----------------------------- Speech (Web Speech API) ----------------------------- */
-function useSpeechInput({ lang = "en-US", continuous = false, interimResults = true, onResult } = {}) {
+/* ==========================================================================
+   SPEECH (WEB SPEECH API) + TTS
+   ========================================================================== */
+function useSpeechInput({
+  lang = "en-US",
+  continuous = false,
+  interimResults = true,
+  onResult,
+} = {}) {
   const recognitionRef = useRef(null);
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
@@ -241,7 +320,9 @@ function useSpeechInput({ lang = "en-US", continuous = false, interimResults = t
     recognitionRef.current = rec;
     setSupported(true);
     return () => {
-      try { rec.stop(); } catch {}
+      try {
+        rec.stop();
+      } catch {}
       recognitionRef.current = null;
     };
   }, [lang, continuous, interimResults, onResult]);
@@ -250,24 +331,45 @@ function useSpeechInput({ lang = "en-US", continuous = false, interimResults = t
     const rec = recognitionRef.current;
     if (!rec) return;
     setInterim("");
-    try { rec.start(); } catch {}
+    try {
+      rec.start();
+    } catch {}
   };
   const stop = () => {
     const rec = recognitionRef.current;
     if (!rec) return;
-    try { rec.stop(); } catch {}
+    try {
+      rec.stop();
+    } catch {}
   };
 
-  return { supported, listening, interim, finalized, start, stop, reset: () => { setInterim(""); setFinalized(""); } };
+  return {
+    supported,
+    listening,
+    interim,
+    finalized,
+    start,
+    stop,
+    reset: () => {
+      setInterim("");
+      setFinalized("");
+    },
+  };
 }
 
-/* ----------------------------- Parsing from transcript ----------------------------- */
 function parseMigraineTranscript(text) {
-  const out = { pain: null, symptoms: [], triggers: [], medsString: "", cleanedNotes: text?.trim?.() || "" };
+  const out = {
+    pain: null,
+    symptoms: [],
+    triggers: [],
+    medsString: "",
+    cleanedNotes: text?.trim?.() || "",
+  };
   if (!text) return out;
   const t = text.toLowerCase();
 
-  const painMatch = t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
+  const painMatch =
+    t.match(/pain(?:\s*level)?\s*(\d{1,2})/) || t.match(/\b(\d{1,2})\/?10\b/);
   if (painMatch) {
     const n = parseInt(painMatch[1], 10);
     if (!isNaN(n) && n >= 0 && n <= 10) out.pain = n;
@@ -286,7 +388,8 @@ function parseMigraineTranscript(text) {
     if (tWords.includes(` ${norm(s)} `)) out.triggers.push(s);
   });
 
-  const medRegex = /\b([a-zA-Z][a-zA-Z\-]+)\s+(\d{1,4})\s*(mg|milligram|milligrams|mcg|microgram|g|ml|milliliter|milliliters)\b/g;
+  const medRegex =
+    /\b([a-zA-Z][a-zA-Z\-]+)\s+(\d{1,4})\s*(mg|milligram|milligrams|mcg|microgram|g|ml|milliliter|milliliters)\b/g;
   const meds = [];
   let m;
   while ((m = medRegex.exec(t)) !== null) {
@@ -298,10 +401,14 @@ function parseMigraineTranscript(text) {
 
   return out;
 }
-function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
 
-/* ----------------------------- TTS engines ----------------------------- */
-function speakBrowser(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US", voiceName } = {}) {
+function speakBrowser(
+  text,
+  { rate = 1, pitch = 1, volume = 1, lang = "en-US", voiceName } = {}
+) {
   return new Promise((resolve) => {
     try {
       const synth = window.speechSynthesis;
@@ -311,14 +418,20 @@ function speakBrowser(text, { rate = 1, pitch = 1, volume = 1, lang = "en-US", v
       const voices = synth.getVoices?.() || [];
       const match = voices.find((v) => v.name === voiceName);
       if (match) u.voice = match;
-      u.onend = resolve; u.onerror = resolve;
+      u.onend = resolve;
+      u.onerror = resolve;
       synth.cancel();
       synth.speak(u);
-    } catch { resolve(); }
+    } catch {
+      resolve();
+    }
   });
 }
-function stopSpeaking() { try { window.speechSynthesis?.cancel(); } catch {} }
-
+function stopSpeaking() {
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {}
+}
 async function speakLMNT(text, { voiceId = "morgan", format = "mp3" } = {}) {
   try {
     const res = await fetch("/api/tts-lmnt", {
@@ -328,46 +441,96 @@ async function speakLMNT(text, { voiceId = "morgan", format = "mp3" } = {}) {
     });
     if (!res.ok) throw new Error(await res.text());
     const buf = await res.arrayBuffer();
-    const blob = new Blob([buf], { type: format === "webm" ? "audio/webm" : "audio/mpeg" });
+    const blob = new Blob([buf], {
+      type: format === "webm" ? "audio/webm" : "audio/mpeg",
+    });
     const url = URL.createObjectURL(blob);
     await new Promise((resolve) => {
       const audio = new Audio(url);
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve();
+      };
       audio.play().catch(() => resolve());
     });
   } catch (e) {
     console.warn("LMNT speak error:", e);
   }
 }
-
-function speakSmart(text, { engine = "browser", browserVoiceName, lmntVoiceId, rate = 1, pitch = 1 } = {}) {
-  if (engine === "lmnt") return speakLMNT(text, { voiceId: lmntVoiceId || "morgan" });
+function speakSmart(
+  text,
+  { engine = "browser", browserVoiceName, lmntVoiceId, rate = 1, pitch = 1 } = {}
+) {
+  if (engine === "lmnt")
+    return speakLMNT(text, { voiceId: lmntVoiceId || "morgan" });
   return speakBrowser(text, { voiceName: browserVoiceName, rate, pitch });
 }
 
-/* ----------------------------- user options helpers ----------------------------- */
+/* ==========================================================================
+   USER OPTIONS
+   ========================================================================== */
 function getUserSymptomOptions() {
   try {
-    return JSON.parse(localStorage.getItem("app.symptomOptions") || "null") || SYMPTOM_OPTIONS_DEFAULT;
+    return (
+      JSON.parse(localStorage.getItem("app.symptomOptions") || "null") ||
+      SYMPTOM_OPTIONS_DEFAULT
+    );
   } catch {
     return SYMPTOM_OPTIONS_DEFAULT;
   }
 }
 function getUserTriggerOptions() {
   try {
-    return JSON.parse(localStorage.getItem("app.triggerOptions") || "null") || TRIGGER_OPTIONS_DEFAULT;
+    return (
+      JSON.parse(localStorage.getItem("app.triggerOptions") || "null") ||
+      TRIGGER_OPTIONS_DEFAULT
+    );
   } catch {
     return TRIGGER_OPTIONS_DEFAULT;
   }
 }
 
-/* ----------------------------- main component ----------------------------- */
+/* ==========================================================================
+   MIGRAINE SAVE with SAFE FALLBACK (handles missing `medications` column)
+   ========================================================================== */
+async function saveMigraineEntry(payload) {
+  // First, try with medications (if present)
+  const withMeds = { ...payload };
+  let { error } = await supabase
+    .from("migraine_episodes")
+    .insert(withMeds);
+  if (!error) return { ok: true };
+
+  const msg = String(error.message || error?.hint || "").toLowerCase();
+  const details = String(error.details || "").toLowerCase();
+  const combined = `${msg} ${details}`;
+
+  // If the error mentions the medications column is missing, retry without it.
+  if (combined.includes("medications") && (combined.includes("column") || combined.includes("schema"))) {
+    const { medications, ...withoutMeds } = withMeds;
+    const retry = await supabase.from("migraine_episodes").insert(withoutMeds);
+    if (!retry.error) return { ok: true, downgraded: true };
+    return { ok: false, error: retry.error };
+  }
+
+  // Otherwise bubble the original error
+  return { ok: false, error };
+}
+
+/* ==========================================================================
+   MAIN DASHBOARD
+   ========================================================================== */
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showEducation, setShowEducation] = useState(false);
+
   const [episodes, setEpisodes] = useState([]);
   const [glucose, setGlucose] = useState([]);
   const [sleep, setSleep] = useState([]);
@@ -376,7 +539,6 @@ export default function Dashboard() {
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
-  const [showEducation, setShowEducation] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
@@ -390,7 +552,11 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [e, g, s] = await Promise.all([Migraines.list(500), Glucose.list(1000), Sleep.list(365)]);
+        const [e, g, s] = await Promise.all([
+          Migraines.list(500),
+          Glucose.list(1000),
+          Sleep.list(365),
+        ]);
         setEpisodes(e || []);
         setGlucose(g || []);
         setSleep(s || []);
@@ -407,18 +573,41 @@ export default function Dashboard() {
     const uid = user.id;
     const channel = supabase
       .channel("dashboard-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${uid}` },
-        (p) => setEpisodes((prev) => mergeChange(prev, p)))
-      .on("postgres_changes", { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${uid}` },
-        (p) => setGlucose((prev) => mergeChange(prev, p)))
-      .on("postgres_changes", { event: "*", schema: "public", table: "sleep_data", filter: `user_id=eq.${uid}` },
-        (p) => setSleep((prev) => mergeChange(prev, p)))
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "migraine_episodes",
+          filter: `user_id=eq.${uid}`,
+        },
+        (p) => setEpisodes((prev) => mergeChange(prev, p))
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "glucose_readings",
+          filter: `user_id=eq.${uid}`,
+        },
+        (p) => setGlucose((prev) => mergeChange(prev, p))
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "sleep_data",
+          filter: `user_id=eq.${uid}`,
+        },
+        (p) => setSleep((prev) => mergeChange(prev, p))
+      )
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
   useEffect(() => {
-    // apply theme color CSS var for live preview
     const color = localStorage.getItem("app.themeColor") || BRAND.primary;
     document.documentElement.style.setProperty("--brand", color);
   }, []);
@@ -451,8 +640,14 @@ export default function Dashboard() {
 
   const symptomCounts = useMemo(() => {
     const counts = {};
-    episodes.forEach((ep) => (ep.symptoms || []).forEach((s) => (counts[s] = (counts[s] || 0) + 1)));
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    episodes.forEach((ep) =>
+      (ep.symptoms || []).forEach(
+        (s) => (counts[s] = (counts[s] || 0) + 1)
+      )
+    );
+    const entries = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
     return { labels: entries.map((e) => e[0]), data: entries.map((e) => e[1]) };
   }, [episodes]);
 
@@ -472,13 +667,15 @@ export default function Dashboard() {
 
   // Chart color overrides & pie colors
   const colorMigraineLine = getChartLineColor("app.color.line.migraine", BRAND.bad);
-  const colorGlucoseLine  = getChartLineColor("app.color.line.glucose", BRAND.info);
-  const colorSleepLine    = getChartLineColor("app.color.line.sleep", BRAND.good);
+  const colorGlucoseLine = getChartLineColor("app.color.line.glucose", BRAND.info);
+  const colorSleepLine = getChartLineColor("app.color.line.sleep", BRAND.good);
   const pieSymptomColorsMap = getPieSymptomColorMap();
   const pieColors = useMemo(() => {
     return symptomCounts.labels.map((label, i) => {
       const c = pieSymptomColorsMap[label];
-      return c && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c) ? c : CHART_COLORS[i % CHART_COLORS.length];
+      return c && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)
+        ? c
+        : CHART_COLORS[i % CHART_COLORS.length];
     });
   }, [symptomCounts.labels, pieSymptomColorsMap]);
 
@@ -491,23 +688,26 @@ export default function Dashboard() {
     setShowDisclaimer(false);
   };
 
-  function onSignOut() {
-    navigate("/sign-in", { replace: true });
-  }
-
-  /* ----------------------------- UI ----------------------------- */
   const realtimeOn = localStorage.getItem("app.realtimeOn") !== "false";
 
   return (
     <ToastProvider>
       <div className="min-h-screen bg-[#ececec]">
-        {/* Top bar */}
+        {/* Header */}
         <header className="text-white" style={{ backgroundColor: "var(--brand, #042d4d)" }}>
           <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
             <div className="h-6 w-6 rounded bg-white/20" />
             <h1 className="text-base sm:text-lg font-semibold">
               Sentinel Health — Dashboard{headerIdentity ? ` — ${headerIdentity}` : ""}
             </h1>
+            <button
+              type="button"
+              className="ml-3 text-xs px-2 py-1 rounded border border-white/30 bg-white/10 hover:bg-white/20"
+              onClick={() => setShowEducation(true)}
+              title="Education content"
+            >
+              <EducationButton onOpen={() => setShowEducation(true)} />
+            </button>
             <span className="ml-auto text-xs px-2 py-1 rounded border border-white/30 bg-white/10">
               Realtime: <span className="font-semibold">{realtimeOn ? "ON" : "OFF"}</span>
             </span>
@@ -519,25 +719,22 @@ export default function Dashboard() {
             >
               ⚙︎ Settings
             </button>
-            <button
-              type="button"
-              className="ml-2 text-xs px-2 py-1 rounded border border-white/30 bg-white/10 hover:bg-white/20"
-              onClick={onSignOut}
-            >
-              Sign out
-            </button>
           </div>
         </header>
 
         {/* Disclaimer Modal */}
         {showDisclaimer && (
           <Modal onClose={() => {}} noClose>
-            <div className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border" style={{ borderColor: "var(--brand, #042d4d)22" }}>
-              <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--brand, #042d4d)" }}>Medical Disclaimer</h2>
+            <div
+              className="bg-white rounded-xl p-6 shadow-2xl max-w-lg mx-4 border"
+              style={{ borderColor: "var(--brand, #042d4d)22" }}
+            >
+              <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--brand, #042d4d)" }}>
+                Medical Disclaimer
+              </h2>
               <p className="text-sm text-gray-700">
                 Sentinel Health is a personal tracking tool and does not replace professional medical advice,
                 diagnosis, or treatment. Always consult your physician with any questions regarding a medical condition.
-                Do not make changes to your treatment without first consulting your physician.
               </p>
               <button
                 onClick={dismissDisclaimer}
@@ -550,18 +747,10 @@ export default function Dashboard() {
           </Modal>
         )}
 
-        {/* Main */}
+        {/* Body */}
         <main className="mx-auto max-w-7xl px-4 py-5 space-y-5">
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="text-white px-3 py-2 rounded shadow hover:opacity-90"
-              style={{ backgroundColor: "var(--brand, #042d4d)" }}
-              onClick={() => setShowEducation(true)}
-            >
-              📘 Education
-            </button>
             <button
               type="button"
               className="text-white px-3 py-2 rounded shadow hover:opacity-90"
@@ -588,31 +777,78 @@ export default function Dashboard() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard title="Total Migraine Episodes" value={totalEpisodes ?? 0} bg="bg-red-50" ring="ring-red-200" accent="text-red-700" />
-            <StatCard title="Avg Glucose (14d)" value={avgGlucose14 ?? "—"} suffix={avgGlucose14 ? "mg/dL" : ""} bg="bg-blue-50" ring="ring-blue-200" accent="text-blue-700" />
-            <StatCard title="Avg Sleep (14d)" value={avgSleep14 ?? "—"} suffix={avgSleep14 ? "hrs/night" : ""} bg="bg-emerald-50" ring="ring-emerald-200" accent="text-emerald-700" />
+            <StatCard
+              title="Total Migraine Episodes"
+              value={totalEpisodes ?? 0}
+              bg="bg-red-50"
+              ring="ring-red-200"
+              accent="text-red-700"
+            />
+            <StatCard
+              title="Avg Glucose (14d)"
+              value={avgGlucose14 ?? "—"}
+              suffix={avgGlucose14 ? "mg/dL" : ""}
+              bg="bg-blue-50"
+              ring="ring-blue-200"
+              accent="text-blue-700"
+            />
+            <StatCard
+              title="Avg Sleep (14d)"
+              value={avgSleep14 ?? "—"}
+              suffix={avgSleep14 ? "hrs/night" : ""}
+              bg="bg-emerald-50"
+              ring="ring-emerald-200"
+              accent="text-emerald-700"
+            />
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
               <Panel title="Migraine Frequency (30 days)" borderColor={colorMigraineLine}>
-                <LineChart title="" labels={last30.labels} data={last30.counts} color={colorMigraineLine} strokeWidth={2} className="h-[280px]" />
+                <LineChart
+                  title=""
+                  labels={last30.labels}
+                  data={last30.counts}
+                  color={colorMigraineLine}
+                  strokeWidth={2}
+                  className="h-[280px]"
+                />
               </Panel>
             </div>
             <div>
               <Panel title="Top Symptoms" borderColor={BRAND.violet}>
-                <PieChart title="" labels={symptomCounts.labels} data={symptomCounts.data} colors={pieColors} className="h-[280px]" />
+                <PieChart
+                  title=""
+                  labels={symptomCounts.labels}
+                  data={symptomCounts.data}
+                  colors={pieColors}
+                  className="h-[280px]"
+                />
               </Panel>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Panel title="Avg Glucose (14 days)" borderColor={colorGlucoseLine}>
-              <LineChart title="" labels={last14Glucose.labels} data={last14Glucose.values} color={colorGlucoseLine} strokeWidth={2} className="h-[280px]" />
+              <LineChart
+                title=""
+                labels={last14Glucose.labels}
+                data={last14Glucose.values}
+                color={colorGlucoseLine}
+                strokeWidth={2}
+                className="h-[280px]"
+              />
             </Panel>
             <Panel title="Sleep Hours (14 days)" borderColor={colorSleepLine}>
-              <LineChart title="" labels={last14Sleep.labels} data={last14Sleep.hours} color={colorSleepLine} strokeWidth={2} className="h-[280px]" />
+              <LineChart
+                title=""
+                labels={last14Sleep.labels}
+                data={last14Sleep.hours}
+                color={colorSleepLine}
+                strokeWidth={2}
+                className="h-[280px]"
+              />
             </Panel>
           </div>
 
@@ -626,27 +862,29 @@ export default function Dashboard() {
           {import.meta.env.MODE !== "production" && <DebugPanel />}
         </main>
 
-        {/* Education */}
-        <EducationModal open={showEducation} onClose={() => setShowEducation(false)} />
-
-        {/* ----- Quick Log Modals ----- */}
+        {/* Modals */}
         {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
         {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
         {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
         {openSettings && <SettingsModal onClose={() => setOpenSettings(false)} />}
+
+        {/* Education modal */}
+        <EducationModal open={showEducation} onClose={() => setShowEducation(false)} />
       </div>
     </ToastProvider>
   );
 }
 
-/* ----------------------------- subcomponents ----------------------------- */
-
+/* ==========================================================================
+   SUBCOMPONENTS
+   ========================================================================== */
 function StatCard({ title, value, suffix, bg, ring, accent }) {
   return (
     <div className={`rounded-xl ${bg} p-4 shadow-sm ring-1 ${ring}`}>
       <p className="text-xs uppercase tracking-wide text-gray-600">{title}</p>
       <p className={`text-2xl font-semibold ${accent}`}>
-        {value}{suffix ? ` ${suffix}` : ""}
+        {value}
+        {suffix ? ` ${suffix}` : ""}
       </p>
     </div>
   );
@@ -655,7 +893,10 @@ function StatCard({ title, value, suffix, bg, ring, accent }) {
 function Panel({ title, children, borderColor }) {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden ring-1 ring-gray-200">
-      <div className="px-4 py-2 font-semibold text-sm" style={{ color: "var(--brand, #042d4d)", borderBottom: "1px solid #00000011" }}>
+      <div
+        className="px-4 py-2 font-semibold text-sm"
+        style={{ color: "var(--brand, #042d4d)", borderBottom: "1px solid #00000011" }}
+      >
         {title}
       </div>
       <div className="p-3">{children}</div>
@@ -665,17 +906,21 @@ function Panel({ title, children, borderColor }) {
 }
 
 function RecentEpisodes({ episodes }) {
-  if (!episodes.length) {
+  if (!episodes?.length) {
     return (
       <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>Recent Episodes</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>
+          Recent Episodes
+        </h3>
         <p className="text-gray-500 text-sm">No entries yet.</p>
       </div>
     );
   }
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
-      <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>Recent Episodes</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>
+        Recent Episodes
+      </h3>
       <div className="divide-y">
         {episodes.map((ep) => {
           const medsText = medsSummaryFromEpisode(ep);
@@ -693,17 +938,24 @@ function RecentEpisodes({ episodes }) {
                     Pain {ep.pain}/10
                   </span>
                   {Array.isArray(ep.symptoms) && ep.symptoms.length > 0 && (
-                    <span className="ml-2 text-gray-700">· {ep.symptoms.slice(0, 3).join(", ")}</span>
+                    <span className="ml-2 text-gray-700">
+                      · {ep.symptoms.slice(0, 3).join(", ")}
+                    </span>
                   )}
                 </p>
                 {medsText && (
                   <p className="text-gray-800 mt-1">
-                    <span className="font-medium" style={{ color: "var(--brand, #042d4d)" }}>Meds:</span> {medsText}
+                    <span className="font-medium" style={{ color: "var(--brand, #042d4d)" }}>
+                      Meds:
+                    </span>{" "}
+                    {medsText}
                   </p>
                 )}
               </div>
               {ep.glucose_at_start && (
-                <span className="text-[#7c3aed] font-medium shrink-0">{ep.glucose_at_start} mg/dL</span>
+                <span className="text-[#7c3aed] font-medium shrink-0">
+                  {ep.glucose_at_start} mg/dL
+                </span>
               )}
             </div>
           );
@@ -716,8 +968,10 @@ function RecentEpisodes({ episodes }) {
 function RecentMedications({ meds }) {
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200">
-      <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>Recent Medications</h3>
-      {!meds.length ? (
+      <h3 className="text-sm font-semibold" style={{ color: "var(--brand, #042d4d)" }}>
+        Recent Medications
+      </h3>
+      {!meds?.length ? (
         <p className="text-gray-500 text-sm">No medications recorded.</p>
       ) : (
         <ul className="divide-y">
@@ -729,38 +983,64 @@ function RecentMedications({ meds }) {
                     {m.name} {m.dose ? <span className="text-gray-700">— {m.dose}</span> : ""}
                   </p>
                   {(m.route || m.notes) && (
-                    <p className="text-gray-600">{[m.route, m.notes].filter(Boolean).join(" · ")}</p>
+                    <p className="text-gray-600">
+                      {[m.route, m.notes].filter(Boolean).join(" · ")}
+                    </p>
                   )}
                 </div>
-                <div className="text-gray-600 shrink-0">{m.at ? new Date(m.at).toLocaleString() : ""}</div>
+                <div className="text-gray-600 shrink-0">
+                  {m.at ? new Date(m.at).toLocaleString() : ""}
+                </div>
               </div>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-xs text-gray-500">Pulled from episode entries. Add meds when logging a migraine.</p>
+      <p className="mt-2 text-xs text-gray-500">
+        Pulled from episode entries. Add meds when logging a migraine.
+      </p>
     </div>
   );
 }
 
 function DebugPanel() {
-  const [info, setInfo] = React.useState({ url: "", uid: "", counts: null, error: "" });
+  const [info, setInfo] = React.useState({
+    url: "",
+    uid: "",
+    counts: null,
+    error: "",
+  });
 
   React.useEffect(() => {
     (async () => {
       try {
         const url = import.meta.env.VITE_SUPABASE_URL || "(missing)";
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         const uid = user?.id || "(no user)";
         let counts = null;
 
         if (user?.id) {
           const [mig, glu, slp] = await Promise.all([
-            supabase.from("migraine_episodes").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-            supabase.from("glucose_readings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-            supabase.from("sleep_data").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+            supabase
+              .from("migraine_episodes")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", user.id),
+            supabase
+              .from("glucose_readings")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", user.id),
+            supabase
+              .from("sleep_data")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", user.id),
           ]);
-          counts = { migraines: mig.count ?? 0, glucose: glu.count ?? 0, sleep: slp.count ?? 0 };
+          counts = {
+            migraines: mig.count ?? 0,
+            glucose: glu.count ?? 0,
+            sleep: slp.count ?? 0,
+          };
         }
 
         setInfo({ url, uid, counts, error: "" });
@@ -772,8 +1052,12 @@ function DebugPanel() {
 
   return (
     <div className="mt-6 text-xs p-3 border rounded bg-white ring-1 ring-gray-200">
-      <div>Supabase URL: <code>{info.url}</code></div>
-      <div>User ID: <code>{info.uid}</code></div>
+      <div>
+        Supabase URL: <code>{info.url}</code>
+      </div>
+      <div>
+        User ID: <code>{info.uid}</code>
+      </div>
       {info.counts && (
         <div>
           Counts: <span className="text-red-600">🧠 {info.counts.migraines}</span>{" "}
@@ -786,7 +1070,9 @@ function DebugPanel() {
   );
 }
 
-/* ---------- Modal shell (scroll-safe) ---------- */
+/* ==========================================================================
+   MODALS
+   ========================================================================== */
 function Modal({ children, onClose, noClose = false }) {
   return (
     <div className="fixed inset-0 z-[1100] bg-black/50">
@@ -810,7 +1096,6 @@ function Modal({ children, onClose, noClose = false }) {
   );
 }
 
-/* ---------- Chip selector ---------- */
 function MultiSelectChips({ label, options, selected, setSelected, color = "#042d4d" }) {
   function toggle(item) {
     setSelected((prev) =>
@@ -828,8 +1113,13 @@ function MultiSelectChips({ label, options, selected, setSelected, color = "#042
               type="button"
               key={opt}
               onClick={() => toggle(opt)}
-              className={`px-3 py-1 rounded-full border text-sm ${active ? "text-white" : "text-gray-700"}`}
-              style={{ backgroundColor: active ? color : "white", borderColor: active ? color : "#e5e7eb" }}
+              className={`px-3 py-1 rounded-full border text-sm ${
+                active ? "text-white" : "text-gray-700"
+              }`}
+              style={{
+                backgroundColor: active ? color : "white",
+                borderColor: active ? color : "#e5e7eb",
+              }}
             >
               {opt}
             </button>
@@ -840,12 +1130,13 @@ function MultiSelectChips({ label, options, selected, setSelected, color = "#042
   );
 }
 
-/* ---------- Quick-log Modals ---------- */
 function MigraineModal({ onClose, user }) {
   const toast = useToast();
 
   const [saving, setSaving] = useState(false);
-  const [dateTime, setDateTime] = useState(() => new Date().toISOString().slice(0, 16)); // yyyy-mm-ddTHH:MM
+  const [dateTime, setDateTime] = useState(() =>
+    new Date().toISOString().slice(0, 16)
+  );
   const [pain, setPain] = useState(5);
 
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
@@ -857,11 +1148,11 @@ function MigraineModal({ onClose, user }) {
   const [meds, setMeds] = useState(""); // "name dose; name dose"
   const [notes, setNotes] = useState("");
 
-  // options resolved from settings
+  // options
   const userSymptomOptions = useMemo(getUserSymptomOptions, []);
   const userTriggerOptions = useMemo(getUserTriggerOptions, []);
 
-  // --- Voice engine + voices
+  // TTS / voice coach controls (optional; preserved from your build)
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [engine, setEngine] = useState(localStorage.getItem("ttsEngine") || "browser");
   const [browserVoices, setBrowserVoices] = useState([]);
@@ -884,7 +1175,7 @@ function MigraineModal({ onClose, user }) {
     }
   }, []);
 
-  // load LMNT voices when chosen
+  // load LMNT voices when engine chosen
   useEffect(() => {
     if (engine !== "lmnt") return;
     let cancelled = false;
@@ -902,26 +1193,40 @@ function MigraineModal({ onClose, user }) {
         toast.error("Could not load LMNT voices.");
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [engine]);
 
-  // persist settings
-  useEffect(() => { localStorage.setItem("ttsEngine", engine); }, [engine]);
-  useEffect(() => { localStorage.setItem("ttsBrowserVoice", browserVoiceName || ""); }, [browserVoiceName]);
-  useEffect(() => { localStorage.setItem("ttsLmntVoice", lmntVoiceId || ""); }, [lmntVoiceId]);
-  useEffect(() => { localStorage.setItem("ttsRate", String(ttsRate || 1)); }, [ttsRate]);
-  useEffect(() => { localStorage.setItem("ttsPitch", String(ttsPitch || 1)); }, [ttsPitch]);
+  useEffect(() => {
+    localStorage.setItem("ttsEngine", engine);
+  }, [engine]);
+  useEffect(() => {
+    localStorage.setItem("ttsBrowserVoice", browserVoiceName || "");
+  }, [browserVoiceName]);
+  useEffect(() => {
+    localStorage.setItem("ttsLmntVoice", lmntVoiceId || "");
+  }, [lmntVoiceId]);
+  useEffect(() => {
+    localStorage.setItem("ttsRate", String(ttsRate || 1));
+  }, [ttsRate]);
+  useEffect(() => {
+    localStorage.setItem("ttsPitch", String(ttsPitch || 1));
+  }, [ttsPitch]);
 
-  // --- Speech to text ---
   const { supported, listening, interim, start, stop } = useSpeechInput({
     onResult: (finalChunk) => {
       if (!coach.active) {
         const parsed = parseMigraineTranscript(finalChunk);
         if (parsed.pain != null) setPain(parsed.pain);
         if (parsed.symptoms.length)
-          setSelectedSymptoms((prev) => Array.from(new Set([...prev, ...parsed.symptoms])));
+          setSelectedSymptoms((prev) =>
+            Array.from(new Set([...prev, ...parsed.symptoms]))
+          );
         if (parsed.triggers.length)
-          setSelectedTriggers((prev) => Array.from(new Set([...prev, ...parsed.triggers])));
+          setSelectedTriggers((prev) =>
+            Array.from(new Set([...prev, ...parsed.triggers]))
+          );
         if (parsed.medsString)
           setMeds((prev) => (prev ? `${prev}; ${parsed.medsString}` : parsed.medsString));
         setNotes((prev) => (prev ? `${prev}\n${finalChunk}` : finalChunk));
@@ -931,26 +1236,19 @@ function MigraineModal({ onClose, user }) {
     },
   });
 
-  // --- Voice Coach (guided Q&A) ---
-  const [coach, setCoach] = useState({
-    active: false,
-    step: 0,
-    waiting: false,
-  });
-
+  const [coach, setCoach] = useState({ active: false, step: 0, waiting: false });
   const COACH_STEPS = [
-    { key: "pain",     q: "On a scale of zero to ten, what is your pain level right now?" },
+    { key: "pain", q: "On a scale of zero to ten, what is your pain level right now?" },
     { key: "symptoms", q: "Tell me your symptoms, like nausea or photophobia. You can say multiple." },
     { key: "triggers", q: "Do you notice any possible triggers, such as stress, bright lights, or lack of sleep?" },
-    { key: "meds",     q: "What medications and doses did you take? For example, sumatriptan fifty milligrams." },
-    { key: "notes",    q: "Any additional notes you want to add?" },
-    { key: "confirm",  q: "Ready to save this entry? Say yes to save, or no to cancel." },
+    { key: "meds", q: "What medications and doses did you take? For example, sumatriptan fifty milligrams." },
+    { key: "notes", q: "Any additional notes you want to add?" },
+    { key: "confirm", q: "Ready to save this entry? Say yes to save, or no to cancel." },
   ];
 
   async function ask(text) {
     await speakSmart(text, { engine, browserVoiceName, lmntVoiceId, rate: ttsRate, pitch: ttsPitch });
   }
-
   async function startCoach() {
     if (!supported && engine === "browser") {
       toast.info("Voice capture works best in Chrome or Edge.");
@@ -960,23 +1258,22 @@ function MigraineModal({ onClose, user }) {
     await ask("Okay. Let's log your migraine together.");
     runStep(0);
   }
-
   function stopCoach() {
     stopSpeaking();
     if (listening) stop();
     setCoach({ active: false, step: 0, waiting: false });
     toast.info("Voice Coach stopped. You can continue manually.");
   }
-
   async function runStep(i) {
     const step = COACH_STEPS[i];
     if (!step) return;
     stopSpeaking();
     await ask(step.q);
     setCoach((c) => ({ ...c, step: i, waiting: true }));
-    try { start(); } catch {}
+    try {
+      start();
+    } catch {}
   }
-
   function nextStep() {
     setCoach((c) => {
       const ni = c.step + 1;
@@ -985,9 +1282,12 @@ function MigraineModal({ onClose, user }) {
       return { ...c, step: ni, waiting: false };
     });
   }
-
   function handleCoachAnswer(text) {
-    if (listening) { try { stop(); } catch {} }
+    if (listening) {
+      try {
+        stop();
+      } catch {}
+    }
     setCoach((c) => ({ ...c, waiting: false }));
     const step = COACH_STEPS[coach.step]?.key;
     const t = text?.trim() || "";
@@ -1056,7 +1356,7 @@ function MigraineModal({ onClose, user }) {
 
     if (step === "confirm") {
       const yes = /\b(yes|save|yeah|yep|sure|confirm)\b/i.test(t);
-      const no  = /\b(no|cancel|wait|stop)\b/i.test(t);
+      const no = /\b(no|cancel|wait|stop)\b/i.test(t);
       if (yes) {
         ask("Saving now.");
         save();
@@ -1092,28 +1392,35 @@ function MigraineModal({ onClose, user }) {
               return { name, dose };
             });
 
-      const extraSymptoms = symptomsExtra.split(",").map((s) => s.trim()).filter(Boolean);
+      const extraSymptoms = symptomsExtra
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const symptoms = Array.from(new Set([...selectedSymptoms, ...extraSymptoms]));
 
-      const extraTriggers = triggersExtra.split(",").map((s) => s.trim()).filter(Boolean);
+      const extraTriggers = triggersExtra
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const triggers = Array.from(new Set([...selectedTriggers, ...extraTriggers]));
 
+      // Compose payload with medications; fallback helper will retry without it if needed
       const payload = {
         user_id: user.id,
         date: new Date(dateTime).toISOString(),
         pain: Number(pain),
         symptoms,
         triggers,
-        medications,
-        medication_notes: notes || null,
+        medications,            // <-- may be missing in schema; handled in saveMigraineEntry()
+        medication_notes: notes || null, // present in some schemas
         timezone_offset_min: localTzOffsetMinutes(),
         created_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("migraine_episodes").insert(payload);
-      if (error) throw error;
+      const result = await saveMigraineEntry(payload);
+      if (!result.ok) throw result.error;
 
-      toast.success("Migraine log saved.");
+      toast.success(result.downgraded ? "Saved (without medications column)." : "Migraine log saved.");
       stopSpeaking();
       onClose();
     } catch (e) {
@@ -1125,10 +1432,21 @@ function MigraineModal({ onClose, user }) {
   }
 
   return (
-    <Modal onClose={() => { if (listening) stop(); stopCoach(); onClose(); }}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border" style={{ borderColor: "var(--brand, #042d4d)22", maxHeight: "85vh", overflowY: "auto" }}>
+    <Modal
+      onClose={() => {
+        if (listening) stop();
+        stopCoach();
+        onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-xl p-6 shadow-2xl border"
+        style={{ borderColor: "var(--brand, #042d4d)22", maxHeight: "85vh", overflowY: "auto" }}
+      >
         <div className="flex items-center justify-between mb-3 gap-2">
-          <h3 className="text-lg font-semibold" style={{ color: "var(--brand, #042d4d)" }}>Log Migraine</h3>
+          <h3 className="text-lg font-semibold" style={{ color: "var(--brand, #042d4d)" }}>
+            Log Migraine
+          </h3>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -1161,7 +1479,7 @@ function MigraineModal({ onClose, user }) {
             )}
             <button
               type="button"
-              onClick={() => setShowVoiceSettings(v => !v)}
+              onClick={() => setShowVoiceSettings((v) => !v)}
               className="px-3 py-1 rounded-md text-white text-sm bg-indigo-600"
               title="Choose TTS engine and voice"
             >
@@ -1170,45 +1488,81 @@ function MigraineModal({ onClose, user }) {
           </div>
         </div>
 
-        {/* Collapsible Voice settings */}
+        {/* Voice settings */}
         {showVoiceSettings && (
           <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-lg p-2 bg-gray-50">
             <label className="text-sm text-gray-700">
               Engine
-              <select className="mt-1 w-full border rounded px-2 py-1" value={engine} onChange={(e)=>setEngine(e.target.value)}>
+              <select
+                className="mt-1 w-full border rounded px-2 py-1"
+                value={engine}
+                onChange={(e) => setEngine(e.target.value)}
+              >
                 <option value="browser">Browser (SpeechSynthesis)</option>
                 <option value="lmnt">LMNT (cloud)</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">Browser = instant; LMNT = more natural voices.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Browser = instant; LMNT = more natural voices.
+              </p>
             </label>
             {engine === "browser" ? (
               <label className="text-sm text-gray-700">
                 Voice
-                <select className="mt-1 w-full border rounded px-2 py-1" value={browserVoiceName} onChange={(e)=>setBrowserVoiceName(e.target.value)}>
+                <select
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={browserVoiceName}
+                  onChange={(e) => setBrowserVoiceName(e.target.value)}
+                >
                   {browserVoices.map((v) => (
-                    <option key={v.name} value={v.name}>{v.name} {v.lang ? `(${v.lang})` : ""}</option>
+                    <option key={v.name} value={v.name}>
+                      {v.name} {v.lang ? `(${v.lang})` : ""}
+                    </option>
                   ))}
                 </select>
                 <div className="flex gap-2 mt-2">
                   <label className="text-xs text-gray-700 flex-1">
                     Rate ({ttsRate})
-                    <input type="range" min="0.5" max="1.5" step="0.05" value={ttsRate} onChange={(e)=>setTtsRate(Number(e.target.value))} className="w-full" />
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.5"
+                      step="0.05"
+                      value={ttsRate}
+                      onChange={(e) => setTtsRate(Number(e.target.value))}
+                      className="w-full"
+                    />
                   </label>
                   <label className="text-xs text-gray-700 flex-1">
                     Pitch ({ttsPitch})
-                    <input type="range" min="0.5" max="1.5" step="0.05" value={ttsPitch} onChange={(e)=>setTtsPitch(Number(e.target.value))} className="w-full" />
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.5"
+                      step="0.05"
+                      value={ttsPitch}
+                      onChange={(e) => setTtsPitch(Number(e.target.value))}
+                      className="w-full"
+                    />
                   </label>
                 </div>
               </label>
             ) : (
               <label className="text-sm text-gray-700">
                 LMNT Voice
-                <select className="mt-1 w-full border rounded px-2 py-1" value={lmntVoiceId} onChange={(e)=>setLmntVoiceId(e.target.value)}>
+                <select
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={lmntVoiceId}
+                  onChange={(e) => setLmntVoiceId(e.target.value)}
+                >
                   {lmntVoices.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name || v.id}</option>
+                    <option key={v.id} value={v.id}>
+                      {v.name || v.id}
+                    </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Requires Supabase Edge Functions: <code>lmnt-voices</code> & <code>tts-lmnt</code>.</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Requires Supabase Edge Functions: <code>lmnt-voices</code> & <code>tts-lmnt</code>.
+                </p>
               </label>
             )}
           </div>
@@ -1303,7 +1657,16 @@ function MigraineModal({ onClose, user }) {
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          <button onClick={() => { if (listening) stop(); stopCoach(); onClose(); }} className="px-4 py-2 rounded border">Cancel</button>
+          <button
+            onClick={() => {
+              if (listening) stop();
+              stopCoach();
+              onClose();
+            }}
+            className="px-4 py-2 rounded border"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </Modal>
@@ -1314,7 +1677,9 @@ function GlucoseModal({ onClose, user }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [value, setValue] = useState("");
-  const [when, setWhen] = useState(() => new Date().toISOString().slice(0, 16));
+  const [when, setWhen] = useState(() =>
+    new Date().toISOString().slice(0, 16)
+  );
 
   async function save() {
     if (!user?.id) return;
@@ -1338,7 +1703,10 @@ function GlucoseModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border" style={{ borderColor: "#7c3aed33", maxHeight: "85vh", overflowY: "auto" }}>
+      <div
+        className="bg-white rounded-xl p-6 shadow-2xl border"
+        style={{ borderColor: "#7c3aed33", maxHeight: "85vh", overflowY: "auto" }}
+      >
         <h3 className="text-lg font-semibold text-[#7c3aed] mb-3">Log Glucose</h3>
 
         <label className="block text-sm font-medium text-gray-700">
@@ -1370,7 +1738,9 @@ function GlucoseModal({ onClose, user }) {
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">
+            Cancel
+          </button>
         </div>
       </div>
     </Modal>
@@ -1391,13 +1761,16 @@ function SleepModal({ onClose, user }) {
     try {
       const startIso = new Date(start).toISOString();
       const endIso = new Date(end).toISOString();
-      const durationMinutes = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+      const durationMinutes = Math.max(
+        0,
+        Math.round((new Date(endIso) - new Date(startIso)) / 60000)
+      );
 
       const { error } = await supabase.from("sleep_data").insert({
         user_id: user.id,
         start_time: startIso,
         end_time: endIso,
-        duration_minutes: durationMinutes, // ensure your table has this column
+        duration_minutes: durationMinutes,
         notes: notes || null,
         created_at: new Date().toISOString(),
       });
@@ -1405,7 +1778,10 @@ function SleepModal({ onClose, user }) {
       toast.success("Sleep entry saved.");
       onClose();
     } catch (e) {
-      toast.error(e.message || "Failed to save sleep entry. Check your table has duration_minutes (integer).");
+      toast.error(
+        e.message ||
+          "Failed to save sleep entry. Check your table has duration_minutes (integer)."
+      );
     } finally {
       setSaving(false);
     }
@@ -1413,7 +1789,10 @@ function SleepModal({ onClose, user }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border" style={{ borderColor: "#2563eb33", maxHeight: "85vh", overflowY: "auto" }}>
+      <div
+        className="bg-white rounded-xl p-6 shadow-2xl border"
+        style={{ borderColor: "#2563eb33", maxHeight: "85vh", overflowY: "auto" }}
+      >
         <h3 className="text-lg font-semibold text-[#2563eb] mb-3">Log Sleep</h3>
 
         <label className="block text-sm font-medium text-gray-700">
@@ -1454,14 +1833,18 @@ function SleepModal({ onClose, user }) {
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">
+            Cancel
+          </button>
         </div>
       </div>
     </Modal>
   );
 }
 
-/* ---------- Settings Modal ---------- */
+/* ==========================================================================
+   SETTINGS MODAL
+   ========================================================================== */
 function SettingsModal({ onClose }) {
   const [engine, setEngine] = useState(localStorage.getItem("ttsEngine") || "browser");
   const [browserVoiceName, setBrowserVoiceName] = useState(localStorage.getItem("ttsBrowserVoice") || "");
@@ -1475,23 +1858,31 @@ function SettingsModal({ onClose }) {
   const [realtimeOn, setRealtimeOn] = useState(localStorage.getItem("app.realtimeOn") !== "false");
 
   const [symptomOptions, setSymptomOptions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("app.symptomOptions") || "null") || SYMPTOM_OPTIONS_DEFAULT; } catch { return SYMPTOM_OPTIONS_DEFAULT; }
+    try {
+      return JSON.parse(localStorage.getItem("app.symptomOptions") || "null") || SYMPTOM_OPTIONS_DEFAULT;
+    } catch {
+      return SYMPTOM_OPTIONS_DEFAULT;
+    }
   });
   const [triggerOptions, setTriggerOptions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("app.triggerOptions") || "null") || TRIGGER_OPTIONS_DEFAULT; } catch { return TRIGGER_OPTIONS_DEFAULT; }
+    try {
+      return JSON.parse(localStorage.getItem("app.triggerOptions") || "null") || TRIGGER_OPTIONS_DEFAULT;
+    } catch {
+      return TRIGGER_OPTIONS_DEFAULT;
+    }
   });
 
-  // Chart color overrides
   const [colorMigraineLine, setColorMigraineLine] = useState(localStorage.getItem("app.color.line.migraine") || BRAND.bad);
   const [colorGlucoseLine, setColorGlucoseLine] = useState(localStorage.getItem("app.color.line.glucose") || BRAND.info);
   const [colorSleepLine, setColorSleepLine] = useState(localStorage.getItem("app.color.line.sleep") || BRAND.good);
 
-  // Symptom color mapping text (one per line: Symptom=#HEX)
   const [symptomColorText, setSymptomColorText] = useState(() => {
     try {
       const obj = JSON.parse(localStorage.getItem("app.pieSymptomColors") || "{}");
-      return Object.entries(obj).map(([k,v]) => `${k}=${v}`).join("\n");
-    } catch { return ""; }
+      return Object.entries(obj).map(([k, v]) => `${k}=${v}`).join("\n");
+    } catch {
+      return "";
+    }
   });
 
   const [browserVoices, setBrowserVoices] = useState([]);
@@ -1522,7 +1913,9 @@ function SettingsModal({ onClose }) {
         }
       } catch {}
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [engine]);
 
   function saveAndClose() {
@@ -1540,24 +1933,24 @@ function SettingsModal({ onClose }) {
     localStorage.setItem("app.symptomOptions", JSON.stringify(symptomOptions));
     localStorage.setItem("app.triggerOptions", JSON.stringify(triggerOptions));
 
-    // Save chart line colors
     localStorage.setItem("app.color.line.migraine", colorMigraineLine);
     localStorage.setItem("app.color.line.glucose", colorGlucoseLine);
     localStorage.setItem("app.color.line.sleep", colorSleepLine);
 
-    // Parse and save symptom color mapping
     try {
       const map = {};
-      symptomColorText.split(/\n+/).map(s=>s.trim()).filter(Boolean).forEach(line => {
-        const [k, v] = line.split("=");
-        if (k && v && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim())) map[k.trim()] = v.trim();
-      });
+      symptomColorText
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((line) => {
+          const [k, v] = line.split("=");
+          if (k && v && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim())) map[k.trim()] = v.trim();
+        });
       localStorage.setItem("app.pieSymptomColors", JSON.stringify(map));
     } catch {}
 
-    // apply theme live
     document.documentElement.style.setProperty("--brand", themeColor);
-
     onClose();
   }
 
@@ -1582,12 +1975,20 @@ function SettingsModal({ onClose }) {
       colorMigraineLine,
       colorGlucoseLine,
       colorSleepLine,
-      pieSymptomColors: getPieSymptomColorMap(),
+      pieSymptomColors: (() => {
+        try {
+          return JSON.parse(localStorage.getItem("app.pieSymptomColors") || "{}");
+        } catch {
+          return {};
+        }
+      })(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "sentinel-settings.json"; a.click();
+    a.href = url;
+    a.download = "sentinel-settings.json";
+    a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -1613,7 +2014,11 @@ function SettingsModal({ onClose }) {
         if (obj.colorGlucoseLine) setColorGlucoseLine(obj.colorGlucoseLine);
         if (obj.colorSleepLine) setColorSleepLine(obj.colorSleepLine);
         if (obj.pieSymptomColors && typeof obj.pieSymptomColors === "object") {
-          setSymptomColorText(Object.entries(obj.pieSymptomColors).map(([k,v])=>`${k}=${v}`).join("\n"));
+          setSymptomColorText(
+            Object.entries(obj.pieSymptomColors)
+              .map(([k, v]) => `${k}=${v}`)
+              .join("\n")
+          );
         }
         alert("Imported preferences. Click Save.");
       } catch {
@@ -1625,8 +2030,13 @@ function SettingsModal({ onClose }) {
 
   return (
     <Modal onClose={onClose}>
-      <div className="bg-white rounded-xl p-6 shadow-2xl border border-gray-200" style={{ maxHeight: "85vh", overflowY: "auto" }}>
-        <h3 className="text-lg font-semibold" style={{ color: "var(--brand, #042d4d)" }}>Settings</h3>
+      <div
+        className="bg-white rounded-xl p-6 shadow-2xl border border-gray-200"
+        style={{ maxHeight: "85vh", overflowY: "auto" }}
+      >
+        <h3 className="text-lg font-semibold" style={{ color: "var(--brand, #042d4d)" }}>
+          Settings
+        </h3>
 
         {/* Voice & Dictation */}
         <section className="mb-4">
@@ -1634,7 +2044,11 @@ function SettingsModal({ onClose }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-sm text-gray-700">
               Engine
-              <select className="mt-1 w-full border rounded px-2 py-1" value={engine} onChange={(e)=>setEngine(e.target.value)}>
+              <select
+                className="mt-1 w-full border rounded px-2 py-1"
+                value={engine}
+                onChange={(e) => setEngine(e.target.value)}
+              >
                 <option value="browser">Browser (SpeechSynthesis)</option>
                 <option value="lmnt">LMNT (cloud)</option>
               </select>
@@ -1642,28 +2056,62 @@ function SettingsModal({ onClose }) {
             {engine === "browser" ? (
               <label className="text-sm text-gray-700">
                 Voice
-                <select className="mt-1 w-full border rounded px-2 py-1" value={browserVoiceName} onChange={(e)=>setBrowserVoiceName(e.target.value)}>
-                  {browserVoices.map((v) => <option key={v.name} value={v.name}>{v.name} {v.lang ? `(${v.lang})` : ""}</option>)}
+                <select
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={browserVoiceName}
+                  onChange={(e) => setBrowserVoiceName(e.target.value)}
+                >
+                  {browserVoices.map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.name} {v.lang ? `(${v.lang})` : ""}
+                    </option>
+                  ))}
                 </select>
               </label>
             ) : (
               <label className="text-sm text-gray-700">
                 LMNT Voice
-                <select className="mt-1 w-full border rounded px-2 py-1" value={lmntVoiceId} onChange={(e)=>setLmntVoiceId(e.target.value)}>
-                  {lmntVoices.map((v) => <option key={v.id} value={v.id}>{v.name || v.id}</option>)}
+                <select
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={lmntVoiceId}
+                  onChange={(e) => setLmntVoiceId(e.target.value)}
+                >
+                  {lmntVoices.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name || v.id}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}
             <label className="text-sm text-gray-700">
               Rate ({ttsRate})
-              <input type="range" min="0.5" max="1.5" step="0.05" value={ttsRate} onChange={(e)=>setTtsRate(Number(e.target.value))} className="w-full" />
+              <input
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.05"
+                value={ttsRate}
+                onChange={(e) => setTtsRate(Number(e.target.value))}
+                className="w-full"
+              />
             </label>
             <label className="text-sm text-gray-700">
               Pitch ({ttsPitch})
-              <input type="range" min="0.5" max="1.5" step="0.05" value={ttsPitch} onChange={(e)=>setTtsPitch(Number(e.target.value))} className="w-full" />
+              <input
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.05"
+                value={ttsPitch}
+                onChange={(e) => setTtsPitch(Number(e.target.value))}
+                className="w-full"
+              />
             </label>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Voice Coach and Dictate buttons will use these settings.</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Voice Coach and Dictate buttons will use these settings.
+          </p>
         </section>
 
         {/* UI & Theme */}
@@ -1672,11 +2120,20 @@ function SettingsModal({ onClose }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="text-sm text-gray-700">
               Brand color
-              <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} />
+              <input
+                type="color"
+                className="mt-1 w-full h-9 p-0 border rounded"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+              />
             </label>
             <label className="text-sm text-gray-700">
               Chart palette
-              <select className="mt-1 w-full border rounded px-2 py-1" value={chartPalette} onChange={(e)=>setChartPalette(e.target.value)}>
+              <select
+                className="mt-1 w-full border rounded px-2 py-1"
+                value={chartPalette}
+                onChange={(e) => setChartPalette(e.target.value)}
+              >
                 <option value="default">Default</option>
                 <option value="pastel">Pastel</option>
                 <option value="bold">Bold</option>
@@ -1684,7 +2141,11 @@ function SettingsModal({ onClose }) {
             </label>
             <label className="text-sm text-gray-700">
               Font size
-              <select className="mt-1 w-full border rounded px-2 py-1" value={fontScale} onChange={(e)=>setFontScale(e.target.value)}>
+              <select
+                className="mt-1 w-full border rounded px-2 py-1"
+                value={fontScale}
+                onChange={(e) => setFontScale(e.target.value)}
+              >
                 <option value="normal">Normal</option>
                 <option value="large">Large</option>
               </select>
@@ -1696,23 +2157,45 @@ function SettingsModal({ onClose }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className="text-sm text-gray-700">
                 Migraine line
-                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorMigraineLine} onChange={(e)=>setColorMigraineLine(e.target.value)} />
+                <input
+                  type="color"
+                  className="mt-1 w-full h-9 p-0 border rounded"
+                  value={colorMigraineLine}
+                  onChange={(e) => setColorMigraineLine(e.target.value)}
+                />
               </label>
               <label className="text-sm text-gray-700">
                 Glucose line
-                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorGlucoseLine} onChange={(e)=>setColorGlucoseLine(e.target.value)} />
+                <input
+                  type="color"
+                  className="mt-1 w-full h-9 p-0 border rounded"
+                  value={colorGlucoseLine}
+                  onChange={(e) => setColorGlucoseLine(e.target.value)}
+                />
               </label>
               <label className="text-sm text-gray-700">
                 Sleep line
-                <input type="color" className="mt-1 w-full h-9 p-0 border rounded" value={colorSleepLine} onChange={(e)=>setColorSleepLine(e.target.value)} />
+                <input
+                  type="color"
+                  className="mt-1 w-full h-9 p-0 border rounded"
+                  value={colorSleepLine}
+                  onChange={(e) => setColorSleepLine(e.target.value)}
+                />
               </label>
             </div>
             <div className="mt-3">
               <label className="text-sm text-gray-700 block">
                 Pie symptom colors (one per line, e.g. <code>Nausea=#ff0000</code>)
               </label>
-              <textarea rows={4} className="mt-1 w-full border rounded px-2 py-1" value={symptomColorText} onChange={(e)=>setSymptomColorText(e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">Colors will be matched by symptom label; unmapped labels fall back to the palette.</p>
+              <textarea
+                rows={4}
+                className="mt-1 w-full border rounded px-2 py-1"
+                value={symptomColorText}
+                onChange={(e) => setSymptomColorText(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Colors will be matched by symptom label; unmapped labels fall back to the palette.
+              </p>
             </div>
           </div>
         </section>
@@ -1723,20 +2206,40 @@ function SettingsModal({ onClose }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-sm text-gray-700">
               Symptom options (comma separated)
-              <textarea rows={2} className="mt-1 w-full border rounded px-2 py-1"
+              <textarea
+                rows={2}
+                className="mt-1 w-full border rounded px-2 py-1"
                 value={symptomOptions.join(", ")}
-                onChange={(e)=>setSymptomOptions(e.target.value.split(",").map(s=>s.trim()).filter(Boolean))}
+                onChange={(e) =>
+                  setSymptomOptions(
+                    e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                  )
+                }
               />
             </label>
             <label className="text-sm text-gray-700">
               Trigger options (comma separated)
-              <textarea rows={2} className="mt-1 w-full border rounded px-2 py-1"
+              <textarea
+                rows={2}
+                className="mt-1 w-full border rounded px-2 py-1"
                 value={triggerOptions.join(", ")}
-                onChange={(e)=>setTriggerOptions(e.target.value.split(",").map(s=>s.trim()).filter(Boolean))}
+                onChange={(e) =>
+                  setTriggerOptions(
+                    e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                  )
+                }
               />
             </label>
           </div>
-          <p className="text-xs text-gray-500">These populate the chips in “Log Migraine”.</p>
+          <p className="text-xs text-gray-500">
+            These populate the chips in “Log Migraine”.
+          </p>
         </section>
 
         {/* Data & Privacy */}
@@ -1744,21 +2247,50 @@ function SettingsModal({ onClose }) {
           <h4 className="text-sm font-semibold text-gray-800 mb-2">Data & Privacy</h4>
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm text-gray-700 inline-flex items-center gap-2">
-              <input type="checkbox" checked={realtimeOn} onChange={(e)=>setRealtimeOn(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={realtimeOn}
+                onChange={(e) => setRealtimeOn(e.target.checked)}
+              />
               Realtime updates
             </label>
-            <button type="button" onClick={resetDisclaimer} className="px-2 py-1 text-sm rounded border">Reset disclaimer</button>
-            <button type="button" onClick={exportPrefs} className="px-2 py-1 text-sm rounded border">Export</button>
+            <button
+              type="button"
+              onClick={resetDisclaimer}
+              className="px-2 py-1 text-sm rounded border"
+            >
+              Reset disclaimer
+            </button>
+            <button
+              type="button"
+              onClick={exportPrefs}
+              className="px-2 py-1 text-sm rounded border"
+            >
+              Export
+            </button>
             <label className="px-2 py-1 text-sm rounded border cursor-pointer">
               Import
-              <input type="file" accept="application/json" className="hidden" onChange={importPrefs} />
+              <input
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={importPrefs}
+              />
             </label>
           </div>
         </section>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={saveAndClose} className="text-white px-4 py-2 rounded hover:opacity-90" style={{ backgroundColor: "var(--brand, #042d4d)" }}>Save</button>
-          <button onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+          <button
+            onClick={saveAndClose}
+            className="text-white px-4 py-2 rounded hover:opacity-90"
+            style={{ backgroundColor: "var(--brand, #042d4d)" }}
+          >
+            Save
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded border">
+            Cancel
+          </button>
         </div>
       </div>
     </Modal>
