@@ -122,3 +122,5 @@ export const MIGRAINE_TYPES = [
     ]
   }
 ];
+export const REFERENCES = [ /* ... */ ];
+export const FALLBACK_TOPICS = [ /* ... */ ];
