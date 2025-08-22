@@ -2,7 +2,7 @@
 // Requires: src/services/supabaseClient.js (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
 
 import React, { useEffect, useMemo, useState } from "react";
-import "./src/styles/dashboard.css";
+import "../styles/dashboard.css";
 
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
