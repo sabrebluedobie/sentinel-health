@@ -1,8 +1,9 @@
 // Sentinel Dashboard.jsx — version stamp: 2025-08-22
-// Requires: src/services/supabaseClient.js (creates client from VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
+// Requires: src/services/supabaseClient.js (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
+import "./../styles/legacy-look.css"; // optional: restores simpler visuals
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
 import { Panel, StatCard } from "../components/common/Cards.jsx";
@@ -13,6 +14,7 @@ import MigraineModal from "../components/modals/MigraineModal.jsx";
 import GlucoseModal from "../components/modals/GlucoseModal.jsx";
 import SleepModal from "../components/modals/SleepModal.jsx";
 import SettingsModal from "../components/modals/SettingsModal.jsx";
+import EducationModal from "../components/modals/EducationModal.jsx";
 
 import supabase from "../services/supabaseClient.js";
 import { listMigraines } from "../services/migraines.js";
@@ -29,13 +31,11 @@ export default function Dashboard() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // initial check
     supabase.auth.getUser().then(({ data }) => {
       setUser(data?.user || null);
       setAuthChecked(true);
       console.log("[Dashboard] user:", data?.user?.id, data?.user?.email);
     });
-    // listen for auth changes
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user || null);
     });
@@ -52,6 +52,7 @@ export default function Dashboard() {
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
+  const [openEducation, setOpenEducation] = useState(false);
 
   // ---- disclaimer via user_consents ----
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -89,32 +90,32 @@ export default function Dashboard() {
   const migraine30 = useMemo(() => {
     const map = countByDate(episodes, "date");
     const labels = daysBack(30).map(fmt);
-    return { labels, values: labels.map(l => map[l] || 0) };
+    return { labels, values: labels.map((l) => map[l] || 0) };
   }, [episodes]);
 
   const glucose14 = useMemo(() => {
     const avg = avgByDate(glucose, "device_time", "value_mgdl");
     const labels = daysBack(14).map(fmt);
-    return { labels, values: labels.map(l => avg[l] ?? null) };
+    return { labels, values: labels.map((l) => avg[l] ?? null) };
   }, [glucose]);
 
   const sleep14 = useMemo(() => {
     const sum = sumSleepHoursByDate(sleep);
     const labels = daysBack(14).map(fmt);
-    return { labels, values: labels.map(l => sum[l] || 0) };
+    return { labels, values: labels.map((l) => sum[l] || 0) };
   }, [sleep]);
 
   const symptomPie = useMemo(() => {
     const counts = {};
-    episodes.forEach(ep => (ep.symptoms || []).forEach(s => (counts[s] = (counts[s] || 0) + 1)));
+    episodes.forEach((ep) => (ep.symptoms || []).forEach((s) => (counts[s] = (counts[s] || 0) + 1)));
     const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    return { labels: entries.map(e => e[0]), values: entries.map(e => e[1]) };
+    return { labels: entries.map((e) => e[0]), values: entries.map((e) => e[1]) };
   }, [episodes]);
 
-  // ---- colors from settings ----
+  // ---- settings -> colors for charts ----
   const [settingsTick, setSettingsTick] = useState(0);
   useEffect(() => {
-    const fn = () => setSettingsTick(t => t + 1);
+    const fn = () => setSettingsTick((t) => t + 1);
     window.addEventListener("settings-updated", fn);
     return () => window.removeEventListener("settings-updated", fn);
   }, []);
@@ -128,16 +129,8 @@ export default function Dashboard() {
   }, [symptomPie.labels, palette, settingsTick]);
 
   // ---- guards ----
-  if (!authChecked) {
-    return <div style={{ padding: 16 }}>Loading…</div>;
-  }
-  if (!user) {
-    return (
-      <div style={{ padding: 16 }}>
-        Please sign in to view your dashboard.
-      </div>
-    );
-  }
+  if (!authChecked) return <div style={{ padding: 16 }}>Loading…</div>;
+  if (!user) return <div style={{ padding: 16 }}>Please sign in to view your dashboard.</div>;
 
   // ---- render ----
   return (
@@ -147,17 +140,21 @@ export default function Dashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, background: "rgba(255,255,255,.2)", borderRadius: 6 }} />
             <div style={{ fontWeight: 600 }}>Sentinel — Dashboard</div>
-            <div style={{ marginLeft: "auto" }}>
-              <button
-                onClick={() => setOpenSettings(true)}
-                style={{ fontSize: 12, padding: "4px 8px", background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.3)", borderRadius: 6, color: "#fff" }}
-              >
+
+            {/* + buttons at TOP + Education + Settings */}
+            <div className="actions-compact" style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <button onClick={() => setOpenMigraine(true)} style={{ background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Migraine</button>
+              <button onClick={() => setOpenGlucose(true)} style={{ background: "#7c3aed", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Glucose</button>
+              <button onClick={() => setOpenSleep(true)} style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Sleep</button>
+              <button onClick={() => setOpenEducation(true)} style={{ background: "#f59e0b", color: "#111827", padding: "8px 12px", borderRadius: 8 }}>Education</button>
+              <button onClick={() => setOpenSettings(true)} style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}>
                 Settings
               </button>
             </div>
           </div>
         </header>
 
+        {/* Disclaimer */}
         {showDisclaimer && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1100 }}>
             <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 16 }}>
@@ -167,10 +164,7 @@ export default function Dashboard() {
                   Sentinel Health is a personal tracking tool and does not replace professional medical advice, diagnosis, or treatment.
                   Always consult your physician about your condition or treatment.
                 </p>
-                <button
-                  onClick={acceptDisclaimer}
-                  style={{ marginTop: 8, width: "100%", background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}
-                >
+                <button onClick={acceptDisclaimer} style={{ marginTop: 8, width: "100%", background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>
                   I Understand
                 </button>
               </div>
@@ -183,24 +177,20 @@ export default function Dashboard() {
             <StatCard title="Total Episodes" value={episodes.length || 0} />
             <StatCard
               title="Avg Glucose (14d)"
-              value={
-                (() => {
-                  const vals = glucose14.values.filter(v => v != null);
-                  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-                  return avg.toFixed(1);
-                })()
-              }
+              value={(() => {
+                const vals = glucose14.values.filter((v) => v != null);
+                const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                return avg.toFixed(1);
+              })()}
               suffix="mg/dL"
             />
             <StatCard
               title="Avg Sleep (14d)"
-              value={
-                (() => {
-                  const vals = sleep14.values;
-                  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-                  return avg.toFixed(1);
-                })()
-              }
+              value={(() => {
+                const vals = sleep14.values;
+                const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                return avg.toFixed(1);
+              })()}
               suffix="hrs"
             />
           </div>
@@ -224,24 +214,14 @@ export default function Dashboard() {
               </Panel>
             </div>
           </div>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button onClick={() => setOpenMigraine(true)} style={{ background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>
-              + Migraine
-            </button>
-            <button onClick={() => setOpenGlucose(true)} style={{ background: "#7c3aed", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>
-              + Glucose
-            </button>
-            <button onClick={() => setOpenSleep(true)} style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>
-              + Sleep
-            </button>
-          </div>
         </main>
 
+        {/* Modals */}
         {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
         {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
         {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
         {openSettings && <SettingsModal onClose={() => setOpenSettings(false)} />}
+        {openEducation && <EducationModal onClose={() => setOpenEducation(false)} />}
       </div>
     </ToastProvider>
   );
