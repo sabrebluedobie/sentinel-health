@@ -1,9 +1,11 @@
-// Sentinel Dashboard.jsx — version stamp: 2025-08-22
-// Requires: src/services/supabaseClient.js (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
+// src/pages/Dashboard.jsx
+// Sentinel Dashboard — version: 2025-08-22-restore-settings-logout
 
 import React, { useEffect, useMemo, useState } from "react";
-import "../styles/dashboard.css";
-
+import "./../styles/dashboard.css";
+// If you have these, keep them; otherwise you can comment them out.
+// import "./../styles/theme.css";
+// import "./../styles/legacy-look.css";
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
 import { Panel, StatCard } from "../components/common/Cards.jsx";
@@ -34,13 +36,21 @@ export default function Dashboard() {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data?.user || null);
       setAuthChecked(true);
-      console.log("[Dashboard] user:", data?.user?.id, data?.user?.email);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user || null);
     });
     return () => sub.subscription?.unsubscribe?.();
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      // redirect to your login route; change if your login path differs
+      window.location.href = "/login";
+    }
+  };
 
   // ---- data ----
   const [episodes, setEpisodes] = useState([]);
@@ -56,7 +66,6 @@ export default function Dashboard() {
 
   // ---- disclaimer via user_consents ----
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
@@ -137,18 +146,39 @@ export default function Dashboard() {
     <ToastProvider>
       <div className="main">
         <header className="header safe-pad" style={{ padding: "8px 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
             <div style={{ width: 24, height: 24, background: "rgba(255,255,255,.2)", borderRadius: 6 }} />
             <div style={{ fontWeight: 600 }}>Sentinel — Dashboard</div>
 
-            {/* + buttons at TOP + Education + Settings */}
-            <div className="actions-compact" style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            {/* Actions at TOP */}
+            <div className="actions-compact" style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
               <button onClick={() => setOpenMigraine(true)} style={{ background: "#042d4d", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Migraine</button>
               <button onClick={() => setOpenGlucose(true)} style={{ background: "#7c3aed", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Glucose</button>
               <button onClick={() => setOpenSleep(true)} style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: 8 }}>+ Sleep</button>
-              <button onClick={() => setOpenEducation(true)} style={{ background: "#f59e0b", color: "#111827", padding: "8px 12px", borderRadius: 8 }}>Education</button>
-              <button onClick={() => setOpenSettings(true)} style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}>
+
+              {/* Education (optional) */}
+              <button onClick={() => setOpenEducation(true)} style={{ background: "#f59e0b", color: "#111827", padding: "8px 12px", borderRadius: 8 }}>
+                Education
+              </button>
+
+              {/* Settings (restored) */}
+              <button
+                onClick={() => setOpenSettings(true)}
+                style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}
+                aria-label="Open settings"
+                title="Settings"
+              >
                 Settings
+              </button>
+
+              {/* Logout (new) */}
+              <button
+                onClick={handleLogout}
+                style={{ fontSize: 12, padding: "8px 12px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff" }}
+                aria-label="Log out"
+                title="Log out"
+              >
+                Logout
               </button>
             </div>
           </div>
