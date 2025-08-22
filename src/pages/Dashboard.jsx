@@ -10,6 +10,7 @@ import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
 import { daysBack, countByDate, avgByDate, sumByDateMinutes, fmt } from "../lib/metrics";
+import { EducationButton, EducationModal } from "@/components/Education";
 
 /* ----------------------------- colors ----------------------------- */
 const BRAND = {
