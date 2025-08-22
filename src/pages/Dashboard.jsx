@@ -1,40 +1,4 @@
 // src/pages/Dashboard.jsx
-// --- at top of Dashboard file ---
-import React, { useEffect, useState } from "react";
-
-// If you have a path alias "@", keep this:
-import { EducationButton, EducationModal } from "@/components/Education";
-
-// If you DON'T have a path alias, comment the line above and use relative path:
-// import { EducationButton, EducationModal } from "../components/Education"; // adjust depth
-
-export default function Dashboard() {
-  const [showEducation, setShowEducation] = useState(false);
-
-  // TEMP: auto-open once after mount so you can confirm it's rendering
-  useEffect(() => {
-    setShowEducation(true);
-  }, []);
-
-  return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Sentinel Health Dashboard</h1>
-
-        <div className="flex items-center gap-2">
-          <EducationButton onOpen={() => setShowEducation(true)} />
-        </div>
-      </div>
-
-      {/* ...the rest of your dashboard... */}
-
-      <EducationModal
-        open={showEducation}
-        onClose={() => setShowEducation(false)}
-      />
-    </div>
-  );
-}
 import React, { useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
@@ -412,6 +376,7 @@ export default function Dashboard() {
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
+  const [showEducation, setShowEducation] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/sign-in", { replace: true });
@@ -593,6 +558,14 @@ export default function Dashboard() {
               type="button"
               className="text-white px-3 py-2 rounded shadow hover:opacity-90"
               style={{ backgroundColor: "var(--brand, #042d4d)" }}
+              onClick={() => setShowEducation(true)}
+            >
+              📘 Education
+            </button>
+            <button
+              type="button"
+              className="text-white px-3 py-2 rounded shadow hover:opacity-90"
+              style={{ backgroundColor: "var(--brand, #042d4d)" }}
               onClick={() => setOpenMigraine(true)}
             >
               + Migraine
@@ -652,6 +625,9 @@ export default function Dashboard() {
           {/* Dev debug */}
           {import.meta.env.MODE !== "production" && <DebugPanel />}
         </main>
+
+        {/* Education */}
+        <EducationModal open={showEducation} onClose={() => setShowEducation(false)} />
 
         {/* ----- Quick Log Modals ----- */}
         {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
