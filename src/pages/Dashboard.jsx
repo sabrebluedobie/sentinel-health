@@ -1,4 +1,40 @@
 // src/pages/Dashboard.jsx
+// --- at top of Dashboard file ---
+import React, { useEffect, useState } from "react";
+
+// If you have a path alias "@", keep this:
+import { EducationButton, EducationModal } from "@/components/Education";
+
+// If you DON'T have a path alias, comment the line above and use relative path:
+// import { EducationButton, EducationModal } from "../components/Education"; // adjust depth
+
+export default function Dashboard() {
+  const [showEducation, setShowEducation] = useState(false);
+
+  // TEMP: auto-open once after mount so you can confirm it's rendering
+  useEffect(() => {
+    setShowEducation(true);
+  }, []);
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Sentinel Health Dashboard</h1>
+
+        <div className="flex items-center gap-2">
+          <EducationButton onOpen={() => setShowEducation(true)} />
+        </div>
+      </div>
+
+      {/* ...the rest of your dashboard... */}
+
+      <EducationModal
+        open={showEducation}
+        onClose={() => setShowEducation(false)}
+      />
+    </div>
+  );
+}
 import React, { useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider.jsx";
