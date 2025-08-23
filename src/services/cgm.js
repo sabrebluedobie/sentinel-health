@@ -28,10 +28,17 @@ export async function upsertNightscout(userId, url, token) {
 
 // Trigger serverless pull (ingests to glucose_readings)
 export async function pullNightscoutNow(userId, url, token) {
-  const qs = new URLSearchParams({ uid: userId, url, token: token || "" });
+  const qs = new URLSearchParams({
+    uid: userId,
+    url,                     // server will normalize protocol/trailing slash
+    token: token || ""
+  });
   const res = await fetch(`/api/cgm/nightscout/pull?${qs.toString()}`);
-  if (!res.ok) throw new Error(`Nightscout pull failed: ${res.status}`);
-  return await res.json(); // { inserted }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Nightscout pull failed (${res.status}): ${body?.error || "Unknown"}${body?.details ? " — " + String(body.details).slice(0,200) : ""}`);
+  }
+  return body; // { inserted, ... }
 }
 
 // Dexcom OAuth start (redirect)
