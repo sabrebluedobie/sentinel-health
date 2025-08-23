@@ -1,6 +1,10 @@
 // src/pages/LogMigraine.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 // <-- add this file (see below)
+const { error } = await supabase.from("glucose_readings").upsert(rows, {
+    onConflict: "user_id,device_time",
+    ignoreDuplicates: true}
+);
 
 const DEFAULT_SYMPTOMS = [
   { id: 'nausea', label: 'Nausea' },
