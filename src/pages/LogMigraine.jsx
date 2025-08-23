@@ -1,11 +1,10 @@
 // src/pages/LogMigraine.jsx
 import React, { useMemo, useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
 
 /**
  * LogMigraine (Web React, Vite-ready)
  * - No external packages
- * - Inline styles (so it's truly drop-in)
+ * - Inline styles for true drop-in
  * - Accessible labels/roles
  */
 
@@ -37,7 +36,7 @@ const DEFAULT_SYMPTOMS = [
   { id: 'neck', label: 'Neck Pain' },
 ];
 
-function LogMigraine({
+export default function LogMigraine({
   initialPain = 0,
   initialSymptoms = [],
   initialNotes = '',
@@ -59,15 +58,7 @@ function LogMigraine({
     onSave && onSave({ pain: Number(pain), symptoms: selected, notes });
   };
 
-  // Basic key handling for tag buttons (enter/space)
-  const onTagKeyDown = (e, id) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleSymptom(id);
-    }
-  };
-
-  // Inject a tiny focus-outline helper style once (optional, improves keyboard nav)
+  // keyboard focus outline helper
   useEffect(() => {
     const id = 'log-migraine-focus-style';
     if (!document.getElementById(id)) {
@@ -82,6 +73,13 @@ function LogMigraine({
       document.head.appendChild(style);
     }
   }, []);
+
+  const onTagKeyDown = (e, id) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleSymptom(id);
+    }
+  };
 
   return (
     <div style={styles.page(theme)}>
@@ -155,9 +153,9 @@ function LogMigraine({
             type="submit"
             className="lm-focusable"
             style={styles.primaryButton(theme)}
-            onMouseDown={(e) => e.currentTarget.style.backgroundColor = theme.colors.primaryPressed}
-            onMouseUp={(e) => e.currentTarget.style.backgroundColor = theme.colors.primary}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.primary}
+            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = theme.colors.primaryPressed)}
+            onMouseUp={(e) => (e.currentTarget.style.backgroundColor = theme.colors.primary)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = theme.colors.primary)}
           >
             <span style={styles.primaryButtonText(theme)}>Save Entry</span>
           </button>
@@ -166,16 +164,6 @@ function LogMigraine({
     </div>
   );
 }
-
-LogMigraine.propTypes = {
-  initialPain: PropTypes.number,
-  initialSymptoms: PropTypes.arrayOf(PropTypes.string),
-  initialNotes: PropTypes.string,
-  symptomOptions: PropTypes.arrayOf(
-    PropTypes.shape({ id: PropTypes.string.isRequired, label: PropTypes.string.isRequired })
-  ),
-  onSave: PropTypes.func,
-};
 
 const styles = {
   page: (t) => ({
@@ -227,7 +215,7 @@ const styles = {
   range: (t) => ({
     width: '100%',
     marginTop: t.space.xs,
-    accentColor: t.colors.primary, // modern browsers use this for range and checkbox
+    accentColor: t.colors.primary,
     cursor: 'pointer',
   }),
   tagsWrap: (t) => ({
@@ -292,5 +280,3 @@ const styles = {
     fontWeight: 700,
   }),
 };
-
-export default LogMigraine;
