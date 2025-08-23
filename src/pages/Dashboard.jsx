@@ -27,6 +27,9 @@ import { getDisclaimerConsent, upsertDisclaimerConsent } from "../services/conse
 import { getCurrentPalette, getChartLineColor, getPieSymptomColorMap } from "../lib/brand.js";
 import { daysBack, fmt, countByDate, avgByDate, sumSleepHoursByDate } from "../lib/helpers.js";
 
+// NEW: your logo for the website button
+import logo from "../assets/logo.png";
+
 // Small helper for greeting
 function getFirstName(user) {
   if (!user) return "";
@@ -172,20 +175,38 @@ export default function Dashboard() {
               gap: 8,
             }}
           >
-            {/* Left: title + welcome */}
+            {/* Left: website link button + welcome */}
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <a
                 href="https://sentinel-health.webflow.io"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Visit Sentinel Health website"
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: "inherit",
+                  textDecoration: "none",
+                  background: "rgba(255,255,255,.12)",
+                  border: "1px solid rgba(255,255,255,.25)",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                }}
               >
-                <img src="/icon-32.png" alt="Sentinel" width={22} height={22} style={{ borderRadius: 6 }} />
-                <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>Sentinel – Dashboard</div>
+                <img
+                  src={logo}
+                  alt="Sentinel Health"
+                  width={20}
+                  height={20}
+                  style={{ borderRadius: 6 }}
+                />
+                <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>Website</span>
               </a>
               <div style={{ opacity: 0.85 }}>|</div>
-              <div style={{ whiteSpace: "nowrap" }}>Welcome{firstName ? `, ${firstName}` : ""}</div>
+              <div style={{ whiteSpace: "nowrap" }}>
+                Welcome{firstName ? `, ${firstName}` : ""}
+              </div>
             </div>
 
             {/* Right: Settings + Logout */}
@@ -221,6 +242,7 @@ export default function Dashboard() {
 
           {/* ===== Header: Row 2 (action buttons) ===== */}
           <div
+            className="action-row" // added so the media query in <style> applies
             style={{
               marginTop: 10,
               display: "grid",
