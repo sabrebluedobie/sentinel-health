@@ -1,6 +1,6 @@
 // src/pages/LogMigraine.jsx
 import React, { useMemo, useState, useEffect } from 'react';
-import './log-migraine.css'; // <-- add this file (see below)
+// <-- add this file (see below)
 
 const DEFAULT_SYMPTOMS = [
   { id: 'nausea', label: 'Nausea' },
