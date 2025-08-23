@@ -120,7 +120,23 @@ export default function SettingsModal({ onClose }) {
       )}
 
       {tab==="about" && (<div><p style={{ color:"#334155", lineHeight:1.5 }}>Data is siloed by user via Supabase RLS. CGM sync uses your Nightscout URL + token stored per-user (encrypted).</p></div>)}
-
+      <button
+  onClick={() => {
+    try {
+      // Remove any previous keys (old default keys, just in case)
+      localStorage.removeItem("supabase.auth.token");
+      localStorage.removeItem("sb-sentinel-auth");      // older key if we had one
+      localStorage.removeItem("sb-sentinel-auth-v1");   // current key (forces re-login)
+    } catch {}
+    // Optional: also clear session cookies via logout
+    import("../../services/supabaseClient.js").then(({ default: supabase }) =>
+      supabase.auth.signOut().finally(() => location.reload())
+    );
+  }}
+  style={{ marginTop: 10, padding: "8px 12px", borderRadius: 8, background: "#ef4444", color: "#fff", border: "1px solid #dc2626" }}
+>
+  Reset Auth Cache & Reload
+</button>
       <div style={{ marginTop:14, display:"flex", gap:8, justifyContent:"flex-end" }}>
         <button onClick={handleClose} style={{ padding:"8px 12px" }}>Close</button>
       </div>

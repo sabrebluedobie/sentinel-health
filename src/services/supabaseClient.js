@@ -4,31 +4,36 @@ import { createClient } from "@supabase/supabase-js";
 const url  = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// One storage key for your app. Changing this avoids clashes with any other clients.
-const storageKey = "sb-sentinel-auth";
+// NEW: use a custom storage key so it never collides with any other client
+const STORAGE_KEY = "sb-sentinel-auth-v1";
 
-const browserOpts = {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey,
-    storage: typeof window !== "undefined" ? window.localStorage : undefined,
-  },
-  global: {
-    headers: { "x-app-name": "sentinel-health" },
-  },
-};
-
-// Ensure exactly ONE client instance in the browser.
-// (Avoids “Multiple GoTrueClient instances detected…”)
-let client;
-
-if (typeof window !== "undefined") {
-  // Reuse a memoized instance attached to window
-  client = window.__supabase ?? (window.__supabase = createClient(url, anon, browserOpts));
-} else {
-  // Server-side (e.g., SSR, tests) — no persisted session needed
-  client = createClient(url, anon, { auth: { persistSession: false } });
+// Create exactly ONE browser client and reuse it across imports.
+// We memoize on globalThis so code-splitting or multiple bundles won’t create duplicates.
+function makeClient() {
+  return createClient(url, anon, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: STORAGE_KEY,
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    },
+    global: {
+      headers: { "x-app-name": "sentinel-health" },
+    },
+  });
 }
 
-export default client;
+let supabase;
+
+if (typeof window === "undefined") {
+  // Server environment (SSR/tests): no persistent storage, no duplication
+  supabase = createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+} else {
+  // Browser: reuse the memoized instance
+  const g = globalThis;
+  supabase = g.__SB_SENTINEL__ || (g.__SB_SENTINEL__ = makeClient());
+}
+
+export default supabase;
