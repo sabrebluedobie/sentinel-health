@@ -12,7 +12,11 @@ import { Panel, StatCard } from "../components/common/Cards.jsx";
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
-import MigraineModal from "../components/modals/MigraineModal.jsx";
+// ⬇⬇ NEW: Tailwind-based migraine modal
+import MigraineLogModal from "../components/MigraineLogModal.jsx";
+
+// (Old) Modal imports — keep others
+// import MigraineModal from "../components/modals/MigraineModal.jsx";
 import GlucoseModal from "../components/modals/GlucoseModal.jsx";
 import SleepModal from "../components/modals/SleepModal.jsx";
 import SettingsModal from "../components/modals/SettingsModal.jsx";
@@ -148,6 +152,48 @@ export default function Dashboard() {
     const map = getPieSymptomColorMap();
     return symptomPie.labels.map((lbl, i) => map[lbl] || palette[i % palette.length]);
   }, [symptomPie.labels, palette, settingsTick]);
+
+  // ---- save from new modal ----
+  const handleSaveMigraine = async (payload) => {
+    // payload shape from MigraineLogModal:
+    // { dateTime, pain, duration, location, symptoms, triggers, medication, effective, weather, barometricPressure, place, notes }
+    try {
+      if (!user?.id) return;
+
+      const insertPayload = {
+        user_id: user.id,
+        // normalize date to YYYY-MM-DD for charts that use 'date'
+        date: payload?.dateTime ? new Date(payload.dateTime).toISOString().slice(0, 10) : null,
+        date_time: payload?.dateTime ?? null,
+        pain: payload?.pain ?? null,
+        duration_hours: payload?.duration ?? null,
+        location: payload?.location ?? null,
+        symptoms: payload?.symptoms ?? [],
+        triggers: payload?.triggers ?? [],
+        medication: payload?.medication ?? null,
+        effective: payload?.effective ?? null,
+        weather: payload?.weather ?? null,
+        barometric_pressure: payload?.barometricPressure ?? null,
+        place: payload?.place ?? null,
+        notes: payload?.notes ?? null,
+        created_at: new Date().toISOString(),
+      };
+
+      // Try direct insert; if your project uses RPC or a REST route, swap this call
+      const { error } = await supabase.from("migraines").insert(insertPayload);
+      if (error) {
+        console.warn("Supabase insert error:", error.message);
+      }
+
+      // Refresh list so charts/cards update
+      const refreshed = await listMigraines(user.id);
+      setEpisodes(refreshed || []);
+    } catch (e) {
+      console.error("Save migraine failed:", e);
+    } finally {
+      setOpenMigraine(false);
+    }
+  };
 
   // ---- guards ----
   if (!authChecked) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -362,7 +408,13 @@ export default function Dashboard() {
         </main>
 
         {/* Modals */}
-        {openMigraine && <MigraineModal onClose={() => setOpenMigraine(false)} user={user} />}
+        {/* NEW: Tailwind migraine modal */}
+        <MigraineLogModal
+          open={openMigraine}
+          onClose={() => setOpenMigraine(false)}
+          onSave={handleSaveMigraine}
+        />
+
         {openGlucose && <GlucoseModal onClose={() => setOpenGlucose(false)} user={user} />}
         {openSleep && <SleepModal onClose={() => setOpenSleep(false)} user={user} />}
         {openSettings && <SettingsModal onClose={() => setOpenSettings(false)} />}
