@@ -13,7 +13,7 @@ import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
 // ⬇⬇ NEW: Tailwind-based migraine modal
-import MigraineLogModal from "../components/MigraineLogModal.jsx";
+import MigraineLogModal from "../components/modals/MigraineLogModal.jsx";
 
 // (Old) Modal imports — keep others
 // import MigraineModal from "../components/modals/MigraineModal.jsx";
