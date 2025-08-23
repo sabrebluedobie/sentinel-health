@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import logo from "../assets/logo.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import "../styles/log-migraine.css"; // reuse container/card/btn/etc. tokens
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -37,44 +38,60 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center p-6 bg-gray-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm">
-        <div className="flex flex-col items-center gap-3">
-          {/* Use the imported asset (or put the file in /public and switch to src="/logo.png") */}
-          <img src={logo} alt="Sentinel Health" width={100} height={100} />
-          <h1 className="text-xl font-semibold text-gray-900">
+    <div className="page container">
+      <form
+        onSubmit={onSubmit}
+        className="card card--elevated"
+        aria-labelledby="signin-title"
+      >
+        <h2 id="signin-title" className="h2">Sign in</h2>
+
+        <div className="row row--center" style={{ justifyContent: "center", gap: "12px", marginBottom: "8px" }}>
+          <img src={logo} alt="Sentinel Health" width={64} height={64} />
+          <div className="muted" style={{ fontSize: "14px" }}>
             Sentinel Health&nbsp;|&nbsp;Migraine Tracker
-          </h1>
+          </div>
         </div>
 
-        {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
+        {errorMsg ? (
+          <div className="alert alert--error" role="alert" style={{ marginBottom: "8px" }}>
+            {errorMsg}
+          </div>
+        ) : null}
 
-        <div className="space-y-3">
-          <input
-            className="w-full border rounded p-2"
-            placeholder="you@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-          />
-          <input
-            className="w-full border rounded p-2"
-            placeholder="Password"
-            value={pwd}
-            onChange={(e) => setPwd(e.target.value)}
-            type="password"
-            required
-          />
+        <label htmlFor="email" className="label">Email</label>
+        <input
+          id="email"
+          type="email"
+          className="input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+          autoComplete="email"
+        />
+
+        <label htmlFor="password" className="label">Password</label>
+        <input
+          id="password"
+          type="password"
+          className="input"
+          value={pwd}
+          onChange={(e) => setPwd(e.target.value)}
+          placeholder="••••••••"
+          required
+          autoComplete="current-password"
+        />
+
+        <div className="actions">
+          <button type="submit" className="btn btn--primary" disabled={busy}>
+            <span className="btn__text">{busy ? "Signing in…" : "Sign in"}</span>
+          </button>
         </div>
 
-        <button type="submit" disabled={busy} className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60">
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-
-        <p className="text-sm text-center">
+        <p className="small" style={{ textAlign: "center", marginTop: "10px" }}>
           No account?{" "}
-          <Link to="/sign-up" className="text-blue-600 underline">
+          <Link to="/sign-up" className="link" style={{ color: "var(--primary)" }}>
             Create one
           </Link>
         </p>
