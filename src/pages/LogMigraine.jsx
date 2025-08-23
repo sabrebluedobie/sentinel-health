@@ -1,4 +1,4 @@
-// MigraineLog.jsx
+// LogMigraine.jsx
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -42,7 +42,7 @@ const DEFAULT_SYMPTOMS = [
   { id: 'neck', label: 'Neck Pain' },
 ];
 
-function MigraineLog({
+function LogMigraine({
   initialPain = 0,
   initialSymptoms = [],
   initialNotes = '',
@@ -149,7 +149,7 @@ function MigraineLog({
               accessibilityRole="button"
               style={({ pressed, focused }) => [
                 styles.primaryButton,
-                (pressed || focused) => styles.primaryButtonPressed,
+                (pressed || focused) && styles.primaryButtonPressed, // ✅ fixed conditional
               ]}
             >
               <Text style={styles.primaryButtonText}>Save Entry</Text>
@@ -161,7 +161,7 @@ function MigraineLog({
   );
 }
 
-MigraineLog.propTypes = {
+LogMigraine.propTypes = {
   initialPain: PropTypes.number,
   initialSymptoms: PropTypes.arrayOf(PropTypes.string),
   initialNotes: PropTypes.string,
@@ -284,4 +284,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MigraineLog;
+export default LogMigraine;
