@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 
-/** Drop-in Tailwind modal for logging migraines.
- *  Labels align LEFT on desktop and stack ABOVE on mobile.
- *  Buttons are sleek with gradient + ring focus.
- */
+/** Tailwind migraine log modal — compact, scrollable, responsive */
 export default function MigraineLogModal({ open, onClose, onSave }) {
   const defaultSymptoms = [
     { id: "nausea", label: "Nausea" },
@@ -41,7 +38,7 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
   const [pain, setPain] = useState("");
   const [duration, setDuration] = useState("");
   const [location, setLocation] = useState("");
-  const [symptoms, setSymptoms] = useState([]); // stores ids and custom strings
+  const [symptoms, setSymptoms] = useState([]); // ids + customs
   const [triggers, setTriggers] = useState([]);
   const [symptomAdd, setSymptomAdd] = useState("");
   const [triggerAdd, setTriggerAdd] = useState("");
@@ -54,22 +51,17 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
 
   if (!open) return null;
 
-  const toggle = (list, setList, id) => {
+  const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
-  };
 
   const addCommaSeparated = (raw, list, setList, clear) => {
-    const parts = raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length) setList([...list, ...parts]);
     clear("");
   };
 
   const defaultSymIds = new Set(defaultSymptoms.map((s) => s.id));
   const customSymptoms = symptoms.filter((s) => !defaultSymIds.has(s));
-
   const defaultTrigIds = new Set(defaultTriggers.map((t) => t.id));
   const customTriggers = triggers.filter((t) => !defaultTrigIds.has(t));
 
@@ -89,6 +81,30 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
       notes,
     });
 
+  const Input = (props) => (
+    <input
+      {...props}
+      className={[
+        "w-full rounded-lg border border-slate-700/70 bg-slate-800/80",
+        "px-3 py-2 text-slate-100 placeholder:text-slate-400",
+        "focus:outline-none focus:ring-4 focus:ring-sky-300/40",
+        props.className || "",
+      ].join(" ")}
+    />
+  );
+
+  const Textarea = (props) => (
+    <textarea
+      {...props}
+      className={[
+        "min-h-[88px] w-full resize-y rounded-lg border border-slate-700/70 bg-slate-800/80",
+        "px-3 py-2 text-slate-100 placeholder:text-slate-400",
+        "focus:outline-none focus:ring-4 focus:ring-sky-300/40",
+        props.className || "",
+      ].join(" ")}
+    />
+  );
+
   const Pill = ({ label, active, onClick }) => (
     <button
       type="button"
@@ -107,70 +123,73 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center bg-black/60 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-700/70 p-5">
-          <h3 className="text-lg font-semibold tracking-wide text-slate-100">
+      {/* Modal shell: full-bleed on mobile, card on sm+; scrollable body */}
+      <div
+        className={[
+          "flex w-full max-w-[min(100vw,44rem)] sm:max-w-3xl flex-col",
+          "rounded-none sm:rounded-2xl border border-slate-700/70 bg-slate-900 shadow-2xl",
+          "max-h-[90vh]",
+        ].join(" ")}
+      >
+        {/* Header (sticky) */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-700/70 bg-slate-900/95 p-4 backdrop-blur">
+          <h3 className="text-base sm:text-lg font-semibold tracking-wide text-slate-100">
             Log Migraine
           </h3>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-xl border border-slate-600/60 px-3 py-1.5 text-slate-200 hover:bg-slate-800/60 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
+            className="rounded-lg border border-slate-600/60 px-3 py-1.5 text-slate-200 hover:bg-slate-800/60 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
           >
             ✕
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5">
+        {/* Body (scrollable) */}
+        <div className="overflow-y-auto p-4 sm:p-5">
           {/* Labels left on md+, stacked on sm */}
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-[220px_1fr]">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-[180px_1fr]">
             {/* Date & Time */}
-            <label htmlFor="dt" className="text-slate-300 md:pt-2">
+            <label htmlFor="dt" className="text-slate-300 md:pt-1.5">
               Date &amp; Time
             </label>
-            <input
+            <Input
               id="dt"
               type="datetime-local"
               value={dateTime}
               onChange={(e) => setDateTime(e.target.value)}
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
             />
 
             {/* Pain / Duration / Location */}
-            <span className="text-slate-300 md:pt-2">
+            <span className="text-slate-300 md:pt-1.5">
               Pain (1–10) / Duration (h)
             </span>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <input
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Input
                 inputMode="numeric"
                 placeholder="Pain"
                 value={pain}
                 onChange={(e) => setPain(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
-              <input
+              <Input
                 inputMode="numeric"
                 placeholder="Duration"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
-              <input
+              <Input
                 placeholder="Location (optional)"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
             </div>
 
             {/* Symptoms */}
-            <span className="text-slate-300 md:pt-2">Symptoms</span>
+            <span className="text-slate-300 md:pt-1.5">Symptoms</span>
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
                 {defaultSymptoms.map((opt) => (
@@ -181,7 +200,6 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
                     onClick={() => toggle(symptoms, setSymptoms, opt.id)}
                   />
                 ))}
-                {/* Custom-added symptom pills */}
                 {customSymptoms.map((c) => (
                   <Pill
                     key={`c-${c}`}
@@ -192,11 +210,10 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
                 ))}
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
-                <input
+                <Input
                   value={symptomAdd}
                   onChange={(e) => setSymptomAdd(e.target.value)}
                   placeholder="Add more, comma-separated"
-                  className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
                 />
                 <button
                   type="button"
@@ -208,7 +225,7 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
                       setSymptomAdd
                     )
                   }
-                  className="rounded-xl border border-slate-600/60 px-3 py-2.5 text-slate-100 hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
+                  className="rounded-lg border border-slate-600/60 px-3 py-2 text-slate-100 hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
                 >
                   Add
                 </button>
@@ -216,7 +233,7 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
             </div>
 
             {/* Triggers */}
-            <span className="text-slate-300 md:pt-2">Triggers</span>
+            <span className="text-slate-300 md:pt-1.5">Triggers</span>
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
                 {defaultTriggers.map((opt) => (
@@ -237,11 +254,10 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
                 ))}
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
-                <input
+                <Input
                   value={triggerAdd}
                   onChange={(e) => setTriggerAdd(e.target.value)}
                   placeholder="Add more, comma-separated"
-                  className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
                 />
                 <button
                   type="button"
@@ -253,7 +269,7 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
                       setTriggerAdd
                     )
                   }
-                  className="rounded-xl border border-slate-600/60 px-3 py-2.5 text-slate-100 hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
+                  className="rounded-lg border border-slate-600/60 px-3 py-2 text-slate-100 hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40"
                 >
                   Add
                 </button>
@@ -261,13 +277,13 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
             </div>
 
             {/* Medication */}
-            <span className="text-slate-300 md:pt-2">Medication taken</span>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
+            <span className="text-slate-300 md:pt-1.5">Medication taken</span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
                 placeholder="Name / dose"
                 value={medication}
                 onChange={(e) => setMedication(e.target.value)}
-                className="w-full max-w-md rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
+                className="max-w-md"
               />
               <label className="inline-flex items-center gap-2 text-slate-300">
                 <input
@@ -281,53 +297,49 @@ export default function MigraineLogModal({ open, onClose, onSave }) {
             </div>
 
             {/* Weather / Pressure / Place */}
-            <span className="text-slate-300 md:pt-2">Weather</span>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <input
+            <span className="text-slate-300 md:pt-1.5">Weather</span>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Input
                 placeholder="Condition"
                 value={weather}
                 onChange={(e) => setWeather(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
-              <input
+              <Input
                 placeholder="Barometric pressure"
                 value={pressure}
                 onChange={(e) => setPressure(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
-              <input
+              <Input
                 placeholder="Location"
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
-                className="rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
               />
             </div>
 
             {/* Notes */}
-            <label htmlFor="notes" className="text-slate-300 md:pt-2">
+            <label htmlFor="notes" className="text-slate-300 md:pt-1.5">
               Notes
             </label>
-            <textarea
+            <Textarea
               id="notes"
               placeholder="Anything else…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[92px] w-full resize-y rounded-xl border border-slate-700/70 bg-slate-800/80 px-3 py-2.5 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
             />
           </div>
         </div>
 
-        {/* Footer buttons */}
-        <div className="flex items-center gap-3 border-t border-slate-700/70 p-5">
+        {/* Footer (sticky) */}
+        <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-slate-700/70 bg-slate-900/95 p-4 backdrop-blur">
           <button
             onClick={handleSave}
-            className="rounded-xl bg-gradient-to-b from-indigo-400 to-indigo-600 px-5 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
+            className="rounded-lg bg-gradient-to-b from-indigo-400 to-indigo-600 px-4 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
           >
             Save
           </button>
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-600/60 px-5 py-2.5 font-semibold text-slate-100 transition hover:bg-slate-800/40 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
+            className="rounded-lg border border-slate-600/60 px-4 py-2.5 font-semibold text-slate-100 transition hover:bg-slate-800/40 focus:outline-none focus:ring-4 focus:ring-sky-300/40"
           >
             Cancel
           </button>
