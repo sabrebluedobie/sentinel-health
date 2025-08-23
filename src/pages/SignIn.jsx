@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import logo from "../assets/logo.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import "../styles/log-migraine.css"; // reuse container/card/btn/etc. tokens
+
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
