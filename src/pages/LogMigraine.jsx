@@ -1,170 +1,287 @@
-// src/pages/LogMigraine.jsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Migraines } from "@/data/supabaseStore";
+// MigraineLog.jsx
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  FlatList,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
+import Slider from '@react-native-community/slider';
+import PropTypes from 'prop-types';
 
-// Adjust/extend these as you like
-const SYMPTOMS = [
-  "nausea", "vomiting", "light_sensitivity", "sound_sensitivity",
-  "visual_aura", "dizziness", "fatigue"
+// ---- Replace with your app's theme or import your tokens ----
+const theme = {
+  colors: {
+    background: '#FFFFFF',
+    surface: '#F7F8FA',
+    border: '#E6E8EE',
+    textPrimary: '#101828',
+    textSecondary: '#475467',
+    primary: '#3B82F6',
+    primaryPressed: '#2563EB',
+    focus: '#93C5FD',
+    shadow: 'rgba(16, 24, 40, 0.04)',
+  },
+  radius: { sm: 8, md: 12, lg: 16, pill: 999 },
+  space: { xs: 6, sm: 10, md: 16, lg: 20, xl: 24, xxl: 32 },
+  text: { h2: 22, label: 14, body: 16, small: 13, button: 16 },
+};
+// --------------------------------------------------------------
+
+const DEFAULT_SYMPTOMS = [
+  { id: 'nausea', label: 'Nausea' },
+  { id: 'aura', label: 'Aura' },
+  { id: 'photophobia', label: 'Light Sensitivity' },
+  { id: 'phonophobia', label: 'Sound Sensitivity' },
+  { id: 'vomiting', label: 'Vomiting' },
+  { id: 'neck', label: 'Neck Pain' },
 ];
-const TRIGGERS = [
-  "stress", "lack_of_sleep", "weather_change", "hormonal", "food",
-  "dehydration", "screen_time"
-];
 
-export default function LogMigraine() {
-  const navigate = useNavigate();
+function MigraineLog({
+  initialPain = 0,
+  initialSymptoms = [],
+  initialNotes = '',
+  symptomOptions = DEFAULT_SYMPTOMS,
+  onSave,
+}) {
+  const [pain, setPain] = useState(initialPain);
+  const [selected, setSelected] = useState(initialSymptoms);
+  const [notes, setNotes] = useState(initialNotes);
 
-  const [form, setForm] = useState({
-    date: "",           // datetime-local
-    pain: "",           // 1–10
-    glucose_at_start: "",
-    note: "",
-  });
-  const [symptoms, setSymptoms] = useState([]);
-  const [triggers, setTriggers] = useState([]);
+  useMemo(
+    () => new Map(symptomOptions.map((s) => [s.id, s.label])),
+    [symptomOptions]
+  );
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const toggleSymptom = (id) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
 
-  function toggle(list, setList, item) {
-    setList((prev) => prev.includes(item) ? prev.filter(i => i !== item) : prev.concat(item));
-  }
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    setError("");
-
-    if (!form.date) return setError("Please choose the migraine date/time.");
-    const painNum = Number(form.pain);
-    if (!isFinite(painNum) || painNum < 1 || painNum > 10) {
-      return setError("Pain level must be between 1 and 10.");
-    }
-    const glucoseNum =
-      form.glucose_at_start !== "" ? Number(form.glucose_at_start) : null;
-    if (glucoseNum !== null && (!isFinite(glucoseNum) || glucoseNum < 10 || glucoseNum > 800)) {
-      return setError("Glucose must be between 10 and 800 mg/dL (or leave blank).");
-    }
-
-    try {
-      setSaving(true);
-      await Migraines.create({
-        date: form.date,
-        pain: painNum,
-        symptoms,
-        triggers,
-        glucose_at_start: glucoseNum,
-        note: form.note || "",
-      });
-      navigate("/"); // back to Dashboard
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Could not save migraine entry.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const handleSave = () => {
+    onSave && onSave({ pain, symptoms: selected, notes });
+  };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">Log Migraine</h1>
+    <KeyboardAvoidingView
+      behavior={Platform.select({ ios: 'padding', android: undefined })}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.card} accessible accessibilityRole="summary">
+          <Text style={styles.heading} accessibilityRole="header">
+            Log Migraine
+          </Text>
 
-      <form onSubmit={onSubmit} className="max-w-xl space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">
-            {error}
-          </div>
-        )}
-
-        <label className="block">
-          <span className="text-sm font-medium">Date & time</span>
-          <input
-            type="datetime-local"
-            className="w-full border rounded p-2"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            required
+          {/* Pain Level */}
+          <Text style={styles.label}>Pain Level</Text>
+          <View style={styles.sliderRow}>
+            <Text style={styles.scaleText} accessibilityLabel={`Pain level ${pain}`}>
+              {pain}
+            </Text>
+            <Text style={styles.scaleHint}>0 (none) – 10 (worst)</Text>
+          </View>
+          <Slider
+            accessibilityLabel="Pain level slider"
+            style={styles.slider}
+            minimumValue={0}
+            maximumValue={10}
+            step={1}
+            value={pain}
+            onValueChange={setPain}
+            minimumTrackTintColor={theme.colors.primary}
+            maximumTrackTintColor={theme.colors.border}
+            thumbTintColor={theme.colors.primary}
           />
-        </label>
 
-        <label className="block">
-          <span className="text-sm font-medium">Pain level (1–10)</span>
-          <input
-            type="number"
-            min="1"
-            max="10"
-            className="w-full border rounded p-2"
-            value={form.pain}
-            onChange={(e) => setForm({ ...form, pain: e.target.value })}
-            required
+          {/* Symptoms */}
+          <Text style={styles.label}>Symptoms</Text>
+          <FlatList
+            data={symptomOptions}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.tagsWrap}
+            numColumns={3}
+            renderItem={({ item }) => {
+              const isActive = selected.includes(item.id);
+              return (
+                <Pressable
+                  onPress={() => toggleSymptom(item.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={item.label}
+                  style={({ pressed, focused }) => [
+                    styles.tag,
+                    isActive && styles.tagActive,
+                    (pressed || focused) && styles.tagPressed,
+                  ]}
+                >
+                  <Text style={[styles.tagText, isActive && styles.tagTextActive]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            }}
           />
-        </label>
 
-        <fieldset className="border rounded p-3">
-          <legend className="text-sm font-medium px-1">Symptoms</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {SYMPTOMS.map((s) => (
-              <label key={s} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={symptoms.includes(s)}
-                  onChange={() => toggle(symptoms, setSymptoms, s)}
-                />
-                <span className="text-sm capitalize">{s.replaceAll("_", " ")}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="border rounded p-3">
-          <legend className="text-sm font-medium px-1">Possible triggers</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {TRIGGERS.map((t) => (
-              <label key={t} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={triggers.includes(t)}
-                  onChange={() => toggle(triggers, setTriggers, t)}
-                />
-                <span className="text-sm capitalize">{t.replaceAll("_", " ")}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <label className="block">
-          <span className="text-sm font-medium">Glucose at start (mg/dL) — optional</span>
-          <input
-            type="number"
-            min="10"
-            max="800"
-            className="w-full border rounded p-2"
-            value={form.glucose_at_start}
-            onChange={(e) => setForm({ ...form, glucose_at_start: e.target.value })}
-            placeholder="e.g., 110"
+          {/* Notes */}
+          <Text style={styles.label}>Notes</Text>
+          <TextInput
+            accessibilityLabel="Notes input"
+            style={styles.input}
+            placeholder="Add details (duration, triggers, meds, etc.)"
+            placeholderTextColor={theme.colors.textSecondary}
+            multiline
+            value={notes}
+            onChangeText={setNotes}
+            returnKeyType="done"
           />
-        </label>
 
-        <label className="block">
-          <span className="text-sm font-medium">Notes (optional)</span>
-          <textarea
-            className="w-full border rounded p-2"
-            value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })}
-            placeholder="Anything else you'd like to remember…"
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          <button disabled={saving} className="bg-blue-600 text-white rounded px-4 py-2">
-            {saving ? "Saving…" : "Save"}
-          </button>
-          <button type="button" onClick={() => navigate("/")} className="border rounded px-4 py-2">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+          {/* Actions */}
+          <View style={styles.actions}>
+            <Pressable
+              onPress={handleSave}
+              accessibilityRole="button"
+              style={({ pressed, focused }) => [
+                styles.primaryButton,
+                (pressed || focused) => styles.primaryButtonPressed,
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>Save Entry</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+MigraineLog.propTypes = {
+  initialPain: PropTypes.number,
+  initialSymptoms: PropTypes.arrayOf(PropTypes.string),
+  initialNotes: PropTypes.string,
+  symptomOptions: PropTypes.arrayOf(
+    PropTypes.shape({ id: PropTypes.string.isRequired, label: PropTypes.string.isRequired })
+  ),
+  onSave: PropTypes.func,
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: theme.space.lg,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    shadowColor: theme.colors.shadow,
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  heading: {
+    fontSize: theme.text.h2,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.space.md,
+  },
+  label: {
+    fontSize: theme.text.label,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginTop: theme.space.lg,
+    marginBottom: theme.space.xs,
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.sm,
+  },
+  scaleText: {
+    fontSize: theme.text.body,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  scaleHint: {
+    fontSize: theme.text.small,
+    color: theme.colors.textSecondary,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+    marginTop: theme.space.xs,
+  },
+  tagsWrap: {
+    gap: theme.space.sm,
+    paddingVertical: theme.space.xs,
+  },
+  tag: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: theme.space.xs + 2,
+    paddingHorizontal: theme.space.md,
+    borderRadius: theme.radius.pill,
+    marginRight: theme.space.sm,
+    marginBottom: theme.space.sm,
+    backgroundColor: '#FFF',
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: '#EFF6FF',
+  },
+  tagPressed: {
+    borderColor: theme.colors.primaryPressed,
+  },
+  tagText: {
+    fontSize: theme.text.body,
+    color: theme.colors.textPrimary,
+    fontWeight: '500',
+  },
+  tagTextActive: {
+    color: theme.colors.primaryPressed,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: theme.space.md,
+    fontSize: theme.text.body,
+    color: theme.colors.textPrimary,
+    backgroundColor: '#FFF',
+    minHeight: 110,
+    textAlignVertical: 'top',
+  },
+  actions: {
+    marginTop: theme.space.xl,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.space.sm + 2,
+    paddingHorizontal: theme.space.xl,
+    borderRadius: theme.radius.md,
+  },
+  primaryButtonPressed: {
+    backgroundColor: theme.colors.primaryPressed,
+  },
+  primaryButtonText: {
+    color: '#FFF',
+    fontSize: theme.text.button,
+    fontWeight: '700',
+  },
+});
+
+export default MigraineLog;
