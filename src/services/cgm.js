@@ -1,7 +1,7 @@
 // src/services/cgm.js
 // Client helpers for CGM connections
 
-import supabase from "./supabaseClient.js";
+import supabase from "@/lib/supabase.js";
 
 // Map connections to { provider: true/false }
 export async function getConnections(userId) {
