@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Modal from "../common/Modal.jsx";
 import ConnectCGM from "../settings/ConnectCGM.jsx";
-import supabase from "../../services/supabaseClient.js";
+import supabase from '@/lib/supabase';
 import { syncNightscoutNow, checkNightscoutConnection } from "../../services/syncNow.js";
 import { listGlucose } from "../../services/glucose.js";
 

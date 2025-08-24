@@ -22,7 +22,7 @@ import SleepModal from "../components/modals/SleepModal.jsx";
 import SettingsModal from "../components/modals/SettingsModal.jsx";
 import EducationModal from "../components/modals/EducationModal.jsx";
 
-import supabase from "../services/supabaseClient.js";
+import supabase from '@/lib/supabase';
 import { listMigraines } from "../services/migraines.js";
 import { listGlucose } from "../services/glucose.js";
 import { listSleep } from "../services/sleep.js";

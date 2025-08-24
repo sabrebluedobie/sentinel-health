@@ -1,4 +1,4 @@
-import supabase from "./supabaseClient";
+import supabase from '@/lib/supabase';
 
 async function getJWT(){
   const { data } = await supabase.auth.getSession();
