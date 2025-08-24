@@ -1,167 +1,124 @@
 // src/pages/LogMigraine.jsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Migraines } from "@/data/supabaseStore";
+import React, { useMemo, useState, useEffect } from 'react';
+// <-- add this file (see below)
+const { error } = await supabase.from("glucose_readings").upsert(rows, {
+    onConflict: "user_id,device_time",
+    ignoreDuplicates: true}
+);
 
-// Adjust/extend these as you like
-const SYMPTOMS = [
-  "nausea", "vomiting", "light_sensitivity", "sound_sensitivity",
-  "visual_aura", "dizziness", "fatigue"
+const DEFAULT_SYMPTOMS = [
+  { id: 'nausea', label: 'Nausea' },
+  { id: 'aura', label: 'Aura' },
+  { id: 'photophobia', label: 'Light Sensitivity' },
+  { id: 'phonophobia', label: 'Sound Sensitivity' },
+  { id: 'vomiting', label: 'Vomiting' },
+  { id: 'neck', label: 'Neck Pain' },
 ];
-const TRIGGERS = [
-  "stress", "lack_of_sleep", "weather_change", "hormonal", "food",
-  "dehydration", "screen_time"
-];
 
-export default function LogMigraine() {
-  const navigate = useNavigate();
+export default function LogMigraine({
+  initialPain = 0,
+  initialSymptoms = [],
+  initialNotes = '',
+  symptomOptions = DEFAULT_SYMPTOMS,
+  onSave,
+}) {
+  const [pain, setPain] = useState(initialPain);
+  const [selected, setSelected] = useState(initialSymptoms);
+  const [notes, setNotes] = useState(initialNotes);
 
-  const [form, setForm] = useState({
-    date: "",           // datetime-local
-    pain: "",           // 1–10
-    glucose_at_start: "",
-    note: "",
-  });
-  const [symptoms, setSymptoms] = useState([]);
-  const [triggers, setTriggers] = useState([]);
+  useMemo(() => new Map(symptomOptions.map((s) => [s.id, s.label])), [symptomOptions]);
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const toggleSymptom = (id) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+  };
 
-  function toggle(list, setList, item) {
-    setList((prev) => prev.includes(item) ? prev.filter(i => i !== item) : prev.concat(item));
-  }
-
-  async function onSubmit(e) {
+  const handleSave = (e) => {
     e.preventDefault();
-    setError("");
+    onSave && onSave({ pain: Number(pain), symptoms: selected, notes });
+  };
 
-    if (!form.date) return setError("Please choose the migraine date/time.");
-    const painNum = Number(form.pain);
-    if (!isFinite(painNum) || painNum < 1 || painNum > 10) {
-      return setError("Pain level must be between 1 and 10.");
+  // keyboard focus outline helper (uses your --focus color var if set)
+  useEffect(() => {
+    const id = 'lm-focus-style';
+    if (!document.getElementById(id)) {
+      const style = document.createElement('style');
+      style.id = id;
+      style.textContent = `
+        .lm-focusable:focus {
+          outline: 3px solid var(--focus, #93C5FD);
+          outline-offset: 2px;
+        }
+      `;
+      document.head.appendChild(style);
     }
-    const glucoseNum =
-      form.glucose_at_start !== "" ? Number(form.glucose_at_start) : null;
-    if (glucoseNum !== null && (!isFinite(glucoseNum) || glucoseNum < 10 || glucoseNum > 800)) {
-      return setError("Glucose must be between 10 and 800 mg/dL (or leave blank).");
-    }
+  }, []);
 
-    try {
-      setSaving(true);
-      await Migraines.create({
-        date: form.date,
-        pain: painNum,
-        symptoms,
-        triggers,
-        glucose_at_start: glucoseNum,
-        note: form.note || "",
-      });
-      navigate("/"); // back to Dashboard
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Could not save migraine entry.");
-    } finally {
-      setSaving(false);
+  const onTagKeyDown = (e, id) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleSymptom(id);
     }
-  }
+  };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">Log Migraine</h1>
+    <div className="page container">
+      <form className="card card--elevated" onSubmit={handleSave} aria-labelledby="log-migraine-title">
+        <h2 id="log-migraine-title" className="h2">Log Migraine</h2>
 
-      <form onSubmit={onSubmit} className="max-w-xl space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">
-            {error}
-          </div>
-        )}
+        {/* Pain Level */}
+        <label htmlFor="pain-range" className="label">Pain Level</label>
+        <div className="row row--center gap-sm">
+          <div aria-live="polite" aria-atomic="true" className="scale-text">{pain}</div>
+          <div className="muted small">0 (none) – 10 (worst)</div>
+        </div>
+        <input
+          id="pain-range"
+          className="lm-focusable range"
+          type="range"
+          min={0}
+          max={10}
+          step={1}
+          value={pain}
+          onChange={(e) => setPain(e.target.value)}
+          aria-label="Pain level slider"
+        />
 
-        <label className="block">
-          <span className="text-sm font-medium">Date & time</span>
-          <input
-            type="datetime-local"
-            className="w-full border rounded p-2"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            required
-          />
-        </label>
+        {/* Symptoms */}
+        <div className="label">Symptoms</div>
+        <div className="tags" role="group" aria-label="Symptoms">
+          {symptomOptions.map((item) => {
+            const isActive = selected.includes(item.id);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`tag lm-focusable ${isActive ? 'tag--active' : ''}`}
+                aria-pressed={isActive}
+                onClick={() => toggleSymptom(item.id)}
+                onKeyDown={(e) => onTagKeyDown(e, item.id)}
+              >
+                <span className={`tag__text ${isActive ? 'tag__text--active' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Pain level (1–10)</span>
-          <input
-            type="number"
-            min="1"
-            max="10"
-            className="w-full border rounded p-2"
-            value={form.pain}
-            onChange={(e) => setForm({ ...form, pain: e.target.value })}
-            required
-          />
-        </label>
+        {/* Notes */}
+        <label htmlFor="notes" className="label">Notes</label>
+        <textarea
+          id="notes"
+          className="textarea lm-focusable"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add details (duration, triggers, medication, etc.)"
+        />
 
-        <fieldset className="border rounded p-3">
-          <legend className="text-sm font-medium px-1">Symptoms</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {SYMPTOMS.map((s) => (
-              <label key={s} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={symptoms.includes(s)}
-                  onChange={() => toggle(symptoms, setSymptoms, s)}
-                />
-                <span className="text-sm capitalize">{s.replaceAll("_", " ")}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="border rounded p-3">
-          <legend className="text-sm font-medium px-1">Possible triggers</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {TRIGGERS.map((t) => (
-              <label key={t} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={triggers.includes(t)}
-                  onChange={() => toggle(triggers, setTriggers, t)}
-                />
-                <span className="text-sm capitalize">{t.replaceAll("_", " ")}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <label className="block">
-          <span className="text-sm font-medium">Glucose at start (mg/dL) — optional</span>
-          <input
-            type="number"
-            min="10"
-            max="800"
-            className="w-full border rounded p-2"
-            value={form.glucose_at_start}
-            onChange={(e) => setForm({ ...form, glucose_at_start: e.target.value })}
-            placeholder="e.g., 110"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium">Notes (optional)</span>
-          <textarea
-            className="w-full border rounded p-2"
-            value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })}
-            placeholder="Anything else you'd like to remember…"
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          <button disabled={saving} className="bg-blue-600 text-white rounded px-4 py-2">
-            {saving ? "Saving…" : "Save"}
-          </button>
-          <button type="button" onClick={() => navigate("/")} className="border rounded px-4 py-2">
-            Cancel
+        {/* Actions */}
+        <div className="actions">
+          <button type="submit" className="btn btn--primary lm-focusable">
+            <span className="btn__text">Save Entry</span>
           </button>
         </div>
       </form>

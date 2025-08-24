@@ -38,25 +38,33 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-gray-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm"
+        aria-labelledby="signin-title"
+      >
         <div className="flex flex-col items-center gap-3">
-          {/* Use the imported asset (or put the file in /public and switch to src="/logo.png") */}
           <img src={logo} alt="Sentinel Health" width={100} height={100} />
-          <h1 className="text-xl font-semibold text-gray-900">
-            Sentinel Health&nbsp;|&nbsp;Migraine Tracker
+          <h1 id="signin-title" className="text-xl font-semibold text-gray-900 text-center">
+            Sentinel Health | Migraine Tracker
           </h1>
         </div>
 
-        {errorMsg && <p className="text-red-600 text-sm">{errorMsg}</p>}
+        {errorMsg && (
+          <p className="text-red-600 text-sm" role="alert">
+            {errorMsg}
+          </p>
+        )}
 
         <div className="space-y-3">
           <input
             className="w-full border rounded p-2"
-            placeholder="you@email.com"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
             required
+            autoComplete="email"
           />
           <input
             className="w-full border rounded p-2"
@@ -65,10 +73,15 @@ export default function SignIn() {
             onChange={(e) => setPwd(e.target.value)}
             type="password"
             required
+            autoComplete="current-password"
           />
         </div>
 
-        <button type="submit" disabled={busy} className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60">
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60"
+        >
           {busy ? "Signing in…" : "Sign in"}
         </button>
 

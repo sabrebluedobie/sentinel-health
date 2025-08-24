@@ -3,6 +3,18 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/layout";                   // OK (maps to src/layout/index.jsx)
 import { supabase } from "@/lib/supabase";       // ✅ use alias, not ../lib/supabase
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
+function App() {
+  return (
+    <>
+      {/* your existing layout */}
+      <Analytics />
+      <SpeedInsights />
+    </>
+  );
+}
 
 export default function App() {
   const navigate = useNavigate();

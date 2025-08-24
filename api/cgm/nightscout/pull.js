@@ -1,96 +1,81 @@
-// /api/cgm/nightscout/pull.js
-// Pulls recent entries from a Nightscout server and inserts into glucose_readings.
-
-import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // server-side only
-);
-
-function normalizeBaseUrl(raw) {
-  if (!raw) return null;
-  let url = raw.trim();
-  // add protocol if missing
-  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-  // remove trailing slash
-  url = url.replace(/\/+$/, "");
-  return url;
+function normalizeBaseUrl(raw){
+  if(!raw) return null;
+  let url = String(raw).trim();
+  if(!/^https?:\/\//i.test(url)) url = "https://" + url;
+  return url.replace(/\/+$/, "");
 }
 
-export default async function handler(req, res) {
-  try {
-    const { uid, url: rawUrl, token = "" } = req.query || {};
-    if (!uid) return res.status(400).json({ error: "Missing uid" });
-    if (!rawUrl) return res.status(400).json({ error: "Missing url" });
+export default async function handler(req, res){
+  try{
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    const base = normalizeBaseUrl(rawUrl);
-    const entriesUrl = `${base}/api/v1/entries.json?count=100`;
-    const statusUrl  = `${base}/api/v1/status.json`;
+    const auth = req.headers.authorization || "";
+    if (!auth.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
-    // Some Nightscout setups require a SHA-1 hex of the API secret in the 'api-secret' header
-    const headers = { "Accept": "application/json" };
-    if (token) {
-      const sha1 = crypto.createHash("sha1").update(token).digest("hex");
-      headers["api-secret"] = sha1;
-    }
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    const NS_TOKEN_KEY = process.env.NS_TOKEN_KEY;
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return res.status(500).json({ error: "Supabase env not set" });
+    if (!NS_TOKEN_KEY) return res.status(500).json({ error: "NS_TOKEN_KEY not set" });
 
-    // Quick health check first
-    const statusResp = await fetch(statusUrl, { headers });
-    if (!statusResp.ok) {
-      const text = await statusResp.text();
-      return res.status(502).json({
-        error: "Nightscout status failed",
-        status: statusResp.status,
-        details: text?.slice(0, 500) || "No details"
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: auth } }});
+    const { data: me } = await supabase.auth.getUser();
+    const userId = me?.user?.id;
+    if (!userId) return res.status(401).json({ error: "Invalid user session" });
+
+    const { error: keyErr } = await supabase.rpc("set_app_key", { k: "app.ns_token_key", v: NS_TOKEN_KEY });
+    if (keyErr) return res.status(500).json({ error: `set_app_key: ${keyErr.message}` });
+
+    const { data: connRows, error: connErr } = await supabase.rpc("get_ns_conn");
+    if (connErr) return res.status(500).json({ error: `get_ns_conn: ${connErr.message}` });
+    const conn = connRows?.[0];
+    if (!conn?.ns_url) return res.status(200).json({ inserted: 0, reason: "no-connection" });
+
+    const base = normalizeBaseUrl(conn.ns_url);
+    if (!base) return res.status(400).json({ error: "Invalid Nightscout URL" });
+
+    const headers = { Accept: "application/json", "User-Agent": "sentinel-sync" };
+    const entriesUrl = new URL(`${base}/api/v1/entries/sgv.json`);
+    entriesUrl.searchParams.set("count", "1000");
+    if (conn.token_read) entriesUrl.searchParams.set("token", conn.token_read);
+    else if (conn.token_sha1) headers["api-secret"] = String(conn.token_sha1).toLowerCase();
+
+    // Optional status check
+    const statusResp = await fetch(`${base}/api/v1/status.json`, { headers });
+    if (!statusResp.ok) return res.status(502).json({ error: "Nightscout status failed", status: statusResp.status });
+
+    const r = await fetch(entriesUrl.toString(), { headers });
+    const raw = await r.text();
+    if (!r.ok) return res.status(502).json({ error: "Nightscout entries failed", status: r.status });
+
+    let entries=[]; try{ const p=JSON.parse(raw); entries = Array.isArray(p)?p:[]; } catch { return res.status(502).json({ error:"Invalid JSON from Nightscout" }); }
+
+    const rows = entries
+      .filter(e => Number.isFinite(e?.sgv) && (e?.date || e?.dateString))
+      .map(e => {
+        const iso = (typeof e.dateString==="string" && e.dateString.includes("T"))
+          ? new Date(e.dateString).toISOString()
+          : new Date(Number(e.date)).toISOString();
+        return {
+          user_id: userId, device_time: iso, value_mgdl: e.sgv,
+          trend: e.direction ?? null, source: "nightscout",
+          reading_type: null, note: null, timezone_offset_min: null,
+          created_at: new Date().toISOString()
+        };
       });
-    }
 
-    // Fetch recent entries
-    const r = await fetch(entriesUrl, { headers });
-    const text = await r.text();
-    if (!r.ok) {
-      return res.status(502).json({
-        error: "Nightscout entries failed",
-        status: r.status,
-        details: text?.slice(0, 800) || "No details"
-      });
-    }
+    if (!rows.length) return res.status(200).json({ inserted: 0, message: "No rows to insert." });
 
-    let entries;
-    try { entries = JSON.parse(text); } catch {
-      return res.status(502).json({ error: "Invalid JSON from Nightscout", sample: text?.slice(0, 200) });
-    }
-
-    const rows = (entries || []).map(e => ({
-      user_id: uid,
-      device_time: e.dateString || e.date, // prefer dateString; fallback to millis if provided
-      reading_type: null,
-      note: null,
-      created_at: new Date().toISOString(),
-      source: "nightscout",
-      value_mgdl: e.sgv ?? null,
-      trend: e.direction ?? null,
-      timezone_offset_min: null
-    })).filter(r => r.value_mgdl != null && r.device_time);
-
-    if (!rows.length) {
-      return res.status(200).json({ inserted: 0, message: "No rows to insert." });
-    }
-
-    // Upsert requires a unique index; see SQL below. If you don't add it yet,
-    // you can change this to plain insert.
     const { error: upErr } = await supabase
       .from("glucose_readings")
-      .upsert(rows, { onConflict: "user_id,device_time,source" });
+      .upsert(rows, { onConflict: "user_id,device_time,source", ignoreDuplicates: true });
 
-    if (upErr) {
-      return res.status(500).json({ error: "Supabase insert failed", details: upErr.message || upErr });
-    }
+    if (upErr) return res.status(500).json({ error: "Supabase upsert failed" });
 
     return res.status(200).json({ inserted: rows.length });
-  } catch (e) {
-    return res.status(500).json({ error: String(e?.message || e) });
+  } catch (e){
+    return res.status(500).json({ error: e?.message || "Internal error" });
   }
 }
