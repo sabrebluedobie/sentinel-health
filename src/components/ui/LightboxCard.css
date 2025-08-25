@@ -1,3 +1,4 @@
+/* ===== Lightbox card wrapper ===== */
 .lightbox {
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
@@ -9,7 +10,7 @@
 }
 .lightbox:hover { transform: translateY(-2px); box-shadow: var(--card-shadow-hover); }
 
-/* Palette classes map global tokens → local vars used by components */
-.lightbox.sleep   { --bg: var(--sleep-bg);    --border: var(--sleep-border);    --line: var(--sleep-line); }
-.lightbox.bg      { --bg: var(--bg-bg);       --border: var(--bg-border);       --line: var(--bg-line); }
-.lightbox.migraine{ --bg: var(--migraine-bg); --border: var(--migraine-border); --line: var(--migraine-line); }
+/* Map global tokens to local per-card vars the chart will read */
+.lightbox.sleep    { --bg: var(--sleep-bg);    --border: var(--sleep-border);    --line: var(--sleep-line); }
+.lightbox.bg       { --bg: var(--bg-bg);       --border: var(--bg-border);       --line: var(--bg-line); }
+.lightbox.migraine { --bg: var(--migraine-bg); --border: var(--migraine-border); --line: var(--migraine-line); }

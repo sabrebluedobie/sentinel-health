@@ -1,12 +1,35 @@
-@import "tailwindcss";
+/* ===== Global chart + card variables ===== */
+:root {
+  /* Sleep */
+  --sleep-bg:     #EFF6FF;
+  --sleep-border: #60A5FA;
+  --sleep-line:   #3B82F6;
 
-/* Brand colors with Tailwind v4 @theme */
-@theme {
-  --color-brand-900: #173B63;
-  --color-brand-700: #1F5085;
-  --color-brand-500: #2B6AA8;
-  --color-brand-400: #4C8FCC;
-  --color-brand-300: #77B1E6;
-  --color-brand-200: #A6CEF3;
-  --color-brand-100: #E6F2FD;
+  /* Blood Glucose */
+  --bg-bg:        #F0FDF4;
+  --bg-border:    #34D399;
+  --bg-line:      #10B981;
+
+  /* Migraine */
+  --migraine-bg:     #FEF2F2;
+  --migraine-border: #F87171;
+  --migraine-line:   #EF4444;
+
+  /* Shared */
+  --card-radius: 12px;
+  --card-shadow: 0 8px 30px rgba(0,0,0,.08);
+  --card-shadow-hover: 0 12px 40px rgba(0,0,0,.12);
+
+  --grid-stroke: rgba(0,0,0,.15);     /* recharts grid */
+  --axis-tick:   rgba(0,0,0,.65);     /* recharts axis text */
+}
+
+[data-theme="dark"] {
+  --grid-stroke: rgba(255,255,255,.2);
+  --axis-tick:   rgba(255,255,255,.85);
+
+  /* optionally deepen lines a bit in dark mode */
+  --sleep-line:    #2563EB;
+  --bg-line:       #059669;
+  --migraine-line: #DC2626;
 }
