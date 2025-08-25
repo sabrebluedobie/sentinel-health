@@ -26,7 +26,7 @@ import { getDisclaimerConsent, upsertDisclaimerConsent } from "../services/conse
 
 import { getCurrentPalette, getChartLineColor, getPieSymptomColorMap } from "../lib/brand.js";
 import { daysBack, fmt, countByDate, avgByDate, sumSleepHoursByDate } from "../lib/helpers.js";
-import { DashboardSection } from '@/components/dashboard/DashboardSection';
+import { DashboardSection } from '@/components/charts/DashboardSection';
 
 // Small helper for greeting
 function getFirstName(user) {
