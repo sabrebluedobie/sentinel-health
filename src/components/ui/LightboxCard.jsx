@@ -1,12 +1,11 @@
-import './LightboxCard.css';
+import React from 'react';
+import './lightbox.css';
 
-export default function LightboxCard({ kind = 'sleep', title, children, footer }) {
+export default function LightboxCard({ kind = 'default', title, children }) {
   return (
-    <section className={`lightbox ${kind}`} role="region" aria-label={title} style={{ padding: 16 }}>
-      {title && <h3 style={{ margin: 0 }}>{title}</h3>}
-      <div style={{ height: 8 }} />
-      {children}
-      {footer && <div style={{ marginTop: 12 }}>{footer}</div>}
+    <section className={`lightbox lightbox--${kind}`}>
+      {title ? <header className="lightbox__title">{title}</header> : null}
+      <div className="lightbox__body">{children}</div>
     </section>
   );
 }

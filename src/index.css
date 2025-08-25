@@ -33,3 +33,7 @@
   --bg-line:       #059669;
   --migraine-line: #DC2626;
 }
+/* example, if your Panel adds a kind class */
+.panel--migraine { --chart-line: var(--migraine-line); }
+.panel--bg { --chart-line: var(--bg-line); }
+.panel--sleep { --chart-line: var(--sleep-line); }
