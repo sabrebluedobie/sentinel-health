@@ -1,54 +1,23 @@
-// src/App.jsx
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Layout from "@/layout";                   // OK (maps to src/layout/index.jsx)
-import { supabase } from "@/lib/supabase";       // ✅ use alias, not ../lib/supabase
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
-
-function App() {
-  return (
-    <>
-      {/* your existing layout */}
-      <Analytics />
-      <SpeedInsights />
-    </>
-  );
-}
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Protected from '@/routes/Protected.jsx';
+import Dashboard from '@/pages/Dashboard.jsx';
+import SignIn from '@/pages/SignIn.jsx';
+import LogGlucose from '@/pages/LogGlucose.jsx';
+import LogSleep from '@/pages/LogSleep.jsx';
+import LogMigraine from '@/pages/LogMigraine.jsx';
 
 export default function App() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    let mounted = true;
-
-    // On initial load, check if the user is signed in
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (mounted && !session?.user) {
-        navigate("/sign-in", { replace: true });
-      }
-    })();
-
-    // Keep listening for auth changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        navigate("/sign-in", { replace: true });
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe?.();
-    };
-  }, [navigate]);
-
   return (
-    <Layout>
-      <div className="space-y-4 p-6">
-        <h2 className="text-2xl font-bold">Hello 👋</h2>
-        <p>If you see this, Vite + React + Tailwindcss is working!</p>
-      </div>
-    </Layout>
+    <Routes>
+      <Route path="/signin" element={<SignIn />} />
+      <Route path="/" element={<Protected><Dashboard /></Protected>} />
+      <Route path="/log-migraine" element={<Protected><LogMigraine /></Protected>} />
+      <Route path="/log/glucose" element={<Protected><LogGlucose /></Protected>} />
+      <Route path="/log-glucose" element={<Protected><LogGlucose /></Protected>} />
+      <Route path="/log/sleep" element={<Protected><LogSleep /></Protected>} />
+      <Route path="/log-sleep" element={<Protected><LogSleep /></Protected>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
