@@ -1,35 +1,84 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import LogMigraine from "./pages/LogMigraine.jsx"; // add at top
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
-// inside <Routes>
-<Route
-  path="/log-migraine"
-  element={
-    <ProtectedRoute>
-      <LogMigraine />
-    </ProtectedRoute>
-  }
-/>
+import Protected from '@/routes/Protected.jsx';
 
+import Dashboard from '@/pages/Dashboard.jsx';
+import SignIn from '@/pages/SignIn.jsx';
+import LogGlucose from '@/pages/LogGlucose.jsx';
+import LogSleep from '@/pages/LogSleep.jsx';
+import LogMigraine from '@/pages/LogMigraine.jsx';
+import DebugPanel from '@/components/debug/DebugPanel.jsx';
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/sign-in" element={<SignIn />} />
-      <Route path="/sign-up" element={<SignUp />} />
+      {/* Public */}
+      <Route path="/signin" element={<SignIn />} />
+      <Route path="/debug" element={<DebugPanel />} />
 
-      {/* Protected app routes */}
+      {/* Protected */}
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <Protected>
             <Dashboard />
-          </ProtectedRoute>
+          </Protected>
+        }
+      />
+
+      {/* Migraine (primary: /log-migraine) */}
+      <Route
+        path="/log-migraine"
+        element={
+          <Protected>
+            <LogMigraine />
+          </Protected>
+        }
+      />
+      {/* Back-compat alias */}
+      <Route
+        path="/log/migraine"
+        element={
+          <Protected>
+            <LogMigraine />
+          </Protected>
+        }
+      />
+
+      {/* Glucose — support both styles */}
+      <Route
+        path="/log-glucose"
+        element={
+          <Protected>
+            <LogGlucose />
+          </Protected>
+        }
+      />
+      <Route
+        path="/log/glucose"
+        element={
+          <Protected>
+            <LogGlucose />
+          </Protected>
+        }
+      />
+
+      {/* Sleep — support both styles */}
+      <Route
+        path="/log-sleep"
+        element={
+          <Protected>
+            <LogSleep />
+          </Protected>
+        }
+      />
+      <Route
+        path="/log/sleep"
+        element={
+          <Protected>
+            <LogSleep />
+          </Protected>
         }
       />
 

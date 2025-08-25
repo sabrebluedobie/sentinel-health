@@ -3,7 +3,27 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import ErrorBoundary from "./components/debug/ErrorBoundary.jsx";
 import "./index.css";
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 
+import { ErrorBoundary } from '@/components/debug/ErrorBoundary.jsx';
+import { AuthProvider } from '@/providers/AuthProvider.jsx';
+import App from '@/pages/App.jsx';
+
+import '@/index.css';
+
+const el = document.getElementById('root');
+createRoot(el).render(
+  <ErrorBoundary>
+    {/* Router MUST be above anything that uses navigation/hooks */}
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
+  </ErrorBoundary>
+);
 // Tiny on-screen logger (toggle with "~")
 (function(){
   const box = document.createElement("pre");
