@@ -27,7 +27,7 @@ export default function App() {
         }
       />
 
-      {/* Migraine (primary: /log-migraine) */}
+      {/* Migraine — primary path you use */}
       <Route
         path="/log-migraine"
         element={
@@ -36,7 +36,7 @@ export default function App() {
           </Protected>
         }
       />
-      {/* Back-compat alias */}
+      {/* Back-compat alias in case some links use slash */}
       <Route
         path="/log/migraine"
         element={
@@ -46,7 +46,7 @@ export default function App() {
         }
       />
 
-      {/* Glucose — support both styles */}
+      {/* Glucose (support both) */}
       <Route
         path="/log-glucose"
         element={
@@ -64,7 +64,7 @@ export default function App() {
         }
       />
 
-      {/* Sleep — support both styles */}
+      {/* Sleep (support both) */}
       <Route
         path="/log-sleep"
         element={
