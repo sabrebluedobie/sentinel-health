@@ -1,0 +1,88 @@
+/* src/components/forms/form.css */
+
+/* Container */
+.form-card {
+  --form-bg: #fff;
+  --form-border: rgba(0,0,0,.08);
+  --form-shadow: 0 8px 30px rgba(0,0,0,.06);
+  --form-radius: 12px;
+  --form-accent: var(--migraine-border, #F87171); /* overridden per form */
+  background: var(--form-bg);
+  border: 1px solid var(--form-border);
+  border-radius: var(--form-radius);
+  box-shadow: var(--form-shadow);
+  padding: 16px;
+}
+
+/* Heading */
+.form-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Field */
+.form-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* Label */
+.form-label {
+  font-size: .92rem;
+  color: rgba(0,0,0,.7);
+}
+
+/* Input / Select / Textarea */
+.form-input,
+.form-select,
+.form-textarea {
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: .98rem;
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  outline: none;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--form-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--form-accent) 20%, transparent);
+}
+
+/* Help / error */
+.form-hint { font-size: .85rem; color: rgba(0,0,0,.55); }
+.form-error { font-size: .85rem; color: #DC2626; }
+
+/* Actions */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.button-primary {
+  background: var(--form-accent);
+  border: 1px solid color-mix(in srgb, var(--form-accent) 80%, black 10%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.button-primary:hover {
+  filter: brightness(0.98);
+}
+.button-secondary {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.15);
+  color: rgba(0,0,0,.8);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}

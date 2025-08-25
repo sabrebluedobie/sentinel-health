@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Glucose } from "@/data/supabaseStore";
+import "@/components/forms/form.css";
 
 const SOURCES = ["manual","nightscout","libre","dexcom","apple_health","google_fit"];
 
@@ -50,51 +51,61 @@ export default function LogGlucose() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">Log Glucose</h1>
+    <div className="container" style={{ maxWidth: 720, margin: "0 auto", padding: 16 }}>
+      <form
+        onSubmit={onSubmit}
+        className="form-card"
+        style={{ "--form-accent": "var(--bg-border, #34D399)" }}
+        aria-labelledby="log-glucose-title"
+      >
+        <h1 id="log-glucose-title" className="form-title">Log Blood Glucose</h1>
 
-      <form onSubmit={onSubmit} className="max-w-xl space-y-4">
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">{error}</div>}
+        {error && <div className="form-error" role="alert">{error}</div>}
 
-        <label className="block">
-          <span className="text-sm font-medium">Reading time</span>
+        <div className="form-field">
+          <label className="form-label" htmlFor="glucose-time">Reading time</label>
           <input
+            id="glucose-time"
             type="datetime-local"
-            className="w-full border rounded p-2"
+            className="form-input"
             value={form.device_time}
             onChange={(e) => setForm({ ...form, device_time: e.target.value })}
             required
           />
-        </label>
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Value (mg/dL)</span>
+        <div className="form-field">
+          <label className="form-label" htmlFor="glucose-value">Value (mg/dL)</label>
           <input
+            id="glucose-value"
             type="number"
             min="10"
             max="800"
-            className="w-full border rounded p-2"
+            className="form-input"
             value={form.value_mgdl}
             onChange={(e) => setForm({ ...form, value_mgdl: e.target.value })}
             required
           />
-        </label>
+          <div className="form-hint">Typical range 70–180 mg/dL (context dependent)</div>
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Trend (optional)</span>
+        <div className="form-field">
+          <label className="form-label" htmlFor="glucose-trend">Trend (optional)</label>
           <input
+            id="glucose-trend"
             type="text"
             placeholder="↗, ↘, flat, or device code"
-            className="w-full border rounded p-2"
+            className="form-input"
             value={form.trend}
             onChange={(e) => setForm({ ...form, trend: e.target.value })}
           />
-        </label>
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Source</span>
+        <div className="form-field">
+          <label className="form-label" htmlFor="glucose-source">Source</label>
           <select
-            className="w-full border rounded p-2"
+            id="glucose-source"
+            className="form-select"
             value={form.source}
             onChange={(e) => setForm({ ...form, source: e.target.value })}
           >
@@ -102,22 +113,24 @@ export default function LogGlucose() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Notes (optional)</span>
+        <div className="form-field">
+          <label className="form-label" htmlFor="glucose-notes">Notes (optional)</label>
           <textarea
-            className="w-full border rounded p-2"
+            id="glucose-notes"
+            className="form-textarea"
+            rows={3}
             value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })}
           />
-        </label>
+        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button disabled={saving} className="bg-blue-600 text-white rounded px-4 py-2">
+        <div className="form-actions">
+          <button disabled={saving} className="button-primary" type="submit">
             {saving ? "Saving…" : "Save"}
           </button>
-          <button type="button" onClick={() => navigate("/")} className="border rounded px-4 py-2">
+          <button type="button" onClick={() => navigate("/")} className="button-secondary">
             Cancel
           </button>
         </div>

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SleepData } from "@/entities/client";
+import "@/components/forms/form.css";
 
 export default function LogSleep() {
   const nav = useNavigate();
@@ -14,82 +15,118 @@ export default function LogSleep() {
     source: "manual",
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   async function onSubmit(e) {
     e.preventDefault();
-    setSaving(true);
-    const payload = {
-      ...form,
-      start_time: new Date(form.start_time).toISOString(),
-      end_time: new Date(form.end_time).toISOString(),
-      efficiency: form.efficiency ? Number(form.efficiency) : null,
-      stages: {
-        light: Number(form.stages.light || 0),
-        deep: Number(form.stages.deep || 0),
-        rem: Number(form.stages.rem || 0),
-        awake: Number(form.stages.awake || 0),
-      },
-      date: form.start_time || new Date().toISOString(), // for simple sorting in dashboard helpers
-      created_at: new Date().toISOString(),
-    };
-    await SleepData.create(payload);
-    setSaving(false);
-    nav("/"); // back to Dashboard
+    setError("");
+
+    try {
+      setSaving(true);
+      const payload = {
+        ...form,
+        start_time: new Date(form.start_time).toISOString(),
+        end_time: new Date(form.end_time).toISOString(),
+        efficiency: form.efficiency ? Number(form.efficiency) : null,
+        stages: {
+          light: Number(form.stages.light || 0),
+          deep: Number(form.stages.deep || 0),
+          rem: Number(form.stages.rem || 0),
+          awake: Number(form.stages.awake || 0),
+        },
+        date: form.start_time || new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      };
+      await SleepData.create(payload);
+      nav("/");
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Could not save sleep entry.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Log Sleep</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium">Start time</span>
-          <input type="datetime-local" className="w-full border rounded p-2"
+    <div className="container" style={{ maxWidth: 720, margin: "0 auto", padding: 16 }}>
+      <form
+        onSubmit={onSubmit}
+        className="form-card"
+        style={{ "--form-accent": "var(--sleep-border, #60A5FA)" }}
+        aria-labelledby="log-sleep-title"
+      >
+        <h1 id="log-sleep-title" className="form-title">Log Sleep</h1>
+
+        {error && <div className="form-error" role="alert">{error}</div>}
+
+        <div className="form-field">
+          <label className="form-label" htmlFor="sleep-start">Start time</label>
+          <input
+            id="sleep-start"
+            type="datetime-local"
+            className="form-input"
             value={form.start_time}
             onChange={(e)=>setForm(f=>({...f, start_time: e.target.value}))}
-            required/>
-        </label>
+            required
+          />
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">End time</span>
-          <input type="datetime-local" className="w-full border rounded p-2"
+        <div className="form-field">
+          <label className="form-label" htmlFor="sleep-end">End time</label>
+          <input
+            id="sleep-end"
+            type="datetime-local"
+            className="form-input"
             value={form.end_time}
             onChange={(e)=>setForm(f=>({...f, end_time: e.target.value}))}
-            required/>
-        </label>
+            required
+          />
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Efficiency (0–100)</span>
-          <input type="number" min="0" max="100" className="w-full border rounded p-2"
+        <div className="form-field">
+          <label className="form-label" htmlFor="sleep-eff">Efficiency (0–100)</label>
+          <input
+            id="sleep-eff"
+            type="number" min="0" max="100"
+            className="form-input"
             value={form.efficiency}
-            onChange={(e)=>setForm(f=>({...f, efficiency: e.target.value}))}/>
-        </label>
+            onChange={(e)=>setForm(f=>({...f, efficiency: e.target.value}))}
+          />
+          <div className="form-hint">Optional; leave blank if unknown</div>
+        </div>
 
-        <fieldset className="border rounded p-3">
-          <legend className="text-sm font-medium px-1">Stages (minutes)</legend>
-          <div className="grid grid-cols-2 gap-3">
+        <fieldset className="form-field" style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: 10, padding: 12 }}>
+          <legend className="form-label" style={{ padding: "0 6px" }}>Stages (minutes)</legend>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {["light","deep","rem","awake"].map(k=>(
-              <label key={k} className="block">
-                <span className="text-xs uppercase">{k}</span>
-                <input type="number" min="0" className="w-full border rounded p-2"
+              <label key={k} className="form-field" style={{ margin: 0 }}>
+                <span className="form-label" style={{ textTransform: "uppercase", fontSize: 12 }}>{k}</span>
+                <input
+                  type="number" min="0" className="form-input"
                   value={form.stages[k]}
-                  onChange={(e)=>setForm(f=>({...f, stages:{...f.stages, [k]: e.target.value}}))}/>
+                  onChange={(e)=>setForm(f=>({...f, stages:{...f.stages, [k]: e.target.value}}))}
+                />
               </label>
             ))}
           </div>
         </fieldset>
 
-        <label className="block">
-          <span className="text-sm font-medium">Notes</span>
-          <textarea className="w-full border rounded p-2"
+        <div className="form-field">
+          <label className="form-label" htmlFor="sleep-notes">Notes</label>
+          <textarea
+            id="sleep-notes"
+            className="form-textarea"
+            rows={3}
             value={form.note}
-            onChange={(e)=>setForm(f=>({...f, note: e.target.value}))}/>
-        </label>
+            onChange={(e)=>setForm(f=>({...f, note: e.target.value}))}
+          />
+        </div>
 
-        <div className="flex gap-2">
-          <button disabled={saving} className="bg-blue-600 text-white rounded px-4 py-2">
+        <div className="form-actions">
+          <button disabled={saving} className="button-primary" type="submit">
             {saving ? "Saving…" : "Save"}
           </button>
-          <button type="button" onClick={()=>nav("/")} className="border rounded px-4 py-2">
+          <button type="button" onClick={()=>nav("/")} className="button-secondary">
             Cancel
           </button>
         </div>
