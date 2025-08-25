@@ -5,14 +5,11 @@ import react from '@vitejs/plugin-react';
 // If you use "@/..." imports, keep this:
 import path from 'node:path';
 
+// vite.config.js
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
   build: {
-    sourcemap: true,
+    sourcemap: true   // 👈 add this
   },
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } }
 });
