@@ -1,15 +1,15 @@
-// vite.config.js (ESM)
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
-// If you use "@/..." imports, keep this:
-import path from 'node:path';
-
-// vite.config.js
 export default defineConfig({
   plugins: [react()],
-  build: {
-    sourcemap: true   // 👈 add this
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } }
+  build: {
+    sourcemap: true, // so production stack traces map to your source
+  },
 });
