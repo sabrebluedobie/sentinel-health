@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
-import { ErrorBoundary } from '@/components/debug/ErrorBoundary.jsx';
+import ErrorBoundary from '@/components/debug/ErrorBoundary.jsx';
 import { AuthProvider } from '@/providers/AuthProvider.jsx';
 import App from '@/pages/App.jsx';
 
