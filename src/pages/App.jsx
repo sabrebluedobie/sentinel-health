@@ -1,23 +1,61 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Protected from '@/routes/Protected.jsx';
-import Dashboard from '@/pages/Dashboard.jsx';
-import SignIn from '@/pages/SignIn.jsx';
-import LogGlucose from '@/pages/LogGlucose.jsx';
-import LogSleep from '@/pages/LogSleep.jsx';
-import LogMigraine from '@/pages/LogMigraine.jsx';
+// src/pages/App.jsx
+import React, { useEffect, useRef } from "react";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import Layout from "@/layout";
+import { supabase } from "@/lib/supabase";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const redirectedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      // Only redirect once, and not if we're already on an auth page
+      const onAuthPage =
+        location.pathname === "/sign-in" ||
+        location.pathname === "/login" ||
+        location.pathname === "/sign-up";
+
+      if (!session?.user && !redirectedRef.current && !onAuthPage) {
+        redirectedRef.current = true;
+        navigate("/sign-in", { replace: true });
+      }
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const onAuthPage =
+        location.pathname === "/sign-in" ||
+        location.pathname === "/login" ||
+        location.pathname === "/sign-up";
+
+      if (!session?.user && !redirectedRef.current && !onAuthPage) {
+        redirectedRef.current = true;
+        navigate("/sign-in", { replace: true });
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe?.();
+    };
+  }, [navigate, location.pathname]);
+
   return (
-    <Routes>
-      <Route path="/signin" element={<SignIn />} />
-      <Route path="/" element={<Protected><Dashboard /></Protected>} />
-      <Route path="/log-migraine" element={<Protected><LogMigraine /></Protected>} />
-      <Route path="/log/glucose" element={<Protected><LogGlucose /></Protected>} />
-      <Route path="/log-glucose" element={<Protected><LogGlucose /></Protected>} />
-      <Route path="/log/sleep" element={<Protected><LogSleep /></Protected>} />
-      <Route path="/log-sleep" element={<Protected><LogSleep /></Protected>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Layout>
+        {/* If you use nested routes, Outlet renders the child page. Otherwise it’s harmless. */}
+        <Outlet />
+      </Layout>
+      <Analytics />
+      <SpeedInsights />
+    </>
   );
 }
