@@ -7,9 +7,12 @@
   --accent:#2563eb;
 }
 
-html,body,#root{
-  height:100%;
+html, body, #root {
+  min-height: 100%;
+  background: #ececec;
+  color: #111;
 }
+* { -webkit-text-fill-color: initial; }
 
 *{ box-sizing:border-box }
 

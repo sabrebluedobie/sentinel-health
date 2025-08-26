@@ -8,9 +8,13 @@ import { supabase } from "@/lib/supabase";
 import DebugOverlay from "@/components/debug/DebugOverlay.jsx";
 export default function App() {
   const loc = useLocation();
-<div style={{ background: "#fff", border: "1px solid #ddd", padding: 12, borderRadius: 8, margin: 12 }}>
-  Hello from App.jsx — if you can read this, the Router & render pipeline are fine.
-</div>
+ return (
+    <div style={{ padding: 24, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial", color: "#111" }}>
+      <h1>Sentinel Health</h1>
+      <p>If you see this, React is mounted and routing/auth haven’t run yet.</p>
+    </div>
+ );
+}
   useEffect(() => {
     document.title = "Sentinel Health";
   }, []);
