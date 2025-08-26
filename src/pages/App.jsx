@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/layout";
 import { supabase } from "@/lib/supabase";
+import Dashboard from "./Dashboard.jsx";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -13,6 +14,7 @@ export default function App() {
     document.title = "Sentinel Health";
   }, []);
 
+  // Gate by auth (keeps your previous behavior)
   useEffect(() => {
     let mounted = true;
 
@@ -31,13 +33,11 @@ export default function App() {
     };
   }, [navigate]);
 
+  // Render your real app
   return (
     <>
       <Layout>
-        <div className="space-y-4 p-6">
-          <h2 className="text-2xl font-bold">Hello 👋</h2>
-          <p>If you see this, Vite + React is working!</p>
-        </div>
+        <Dashboard />
       </Layout>
       <Analytics />
       <SpeedInsights />
