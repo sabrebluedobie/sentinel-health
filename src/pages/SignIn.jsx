@@ -27,7 +27,7 @@ export default function SignIn() {
       <form className="signin-card" onSubmit={onSubmit}>
         {/* Logo at the top */}
         <img
-          src="./public/logo.png"
+          src="./src/assets/logo.png"
           alt="Sentinel Health Logo"
           className="signin-logo"
         />
