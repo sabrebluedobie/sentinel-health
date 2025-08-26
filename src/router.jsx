@@ -1,80 +1,56 @@
 // src/router.jsx
 import React from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
-import Layout from "./layout/Layout.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import LogMigraine from "./pages/LogMigraine.jsx";
-import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
-import { useAuth } from "./providers/AuthProvider.jsx";
-import LogSleep from "./pages/LogSleep.jsx";
-import LogGlucose from "./pages/LogGlucose.jsx";
+import { Routes, Route } from "react-router-dom";
+import App from "@/pages/App.jsx";
+import Dashboard from "@/pages/Dashboard.jsx";
+import SignIn from "@/pages/SignIn.jsx";
+import LogMigraine from "@/pages/LogMigraine.jsx";
+import LogGlucose from "@/pages/LogGlucose.jsx";
+import LogSleep from "@/pages/LogSleep.jsx";
+import Protected from "@/routes/Protected.jsx";
 
-
-// Small guard to protect private routes
-function RequireAuth({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (!user) return <Navigate to="/sign-in" replace />;
-  return children;
+export default function Router() {
+  return (
+    <Routes>
+      <Route element={<App />}>
+        {/* public */}
+        <Route path="/sign-in" element={<SignIn />} />
+        {/* private */}
+        <Route
+          path="/"
+          element={
+            <Protected>
+              <Dashboard />
+            </Protected>
+          }
+        />
+        <Route
+          path="/log-migraine"
+          element={
+            <Protected>
+              <LogMigraine />
+            </Protected>
+          }
+        />
+        <Route
+          path="/log-glucose"
+          element={
+            <Protected>
+              <LogGlucose />
+            </Protected>
+          }
+        />
+        <Route
+          path="/log-sleep"
+          element={
+            <Protected>
+              <LogSleep />
+            </Protected>
+          }
+        />
+        {/* 404 */}
+        <Route path="*" element={<div style={{ padding: 24 }}>Not found</div>} />
+      </Route>
+    </Routes>
+  );
 }
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Layout />,
-    children: [
-      // public
-      { path: "sign-in", element: <SignIn /> },
-      { path: "sign-up", element: <SignUp /> },
-
-      // private
-      {
-        index: true,
-        element: (
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "dashboard",
-        element: (
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/log",
-        element: (
-          <RequireAuth>
-            <LogMigraine />
-          </RequireAuth>
-        ),
-      },
-      {
-  path: "/log-sleep",
-  element: (
-    <RequireAuth>
-      <LogSleep />
-    </RequireAuth>
-  ),
-},
-{
-  path: "/log-glucose",
-  element: (
-    <RequireAuth>
-      <LogGlucose />
-    </RequireAuth>
-  ),
-},
-
-
-      // fallback
-      { path: "*", element: <Navigate to="/" replace /> },
-    ],
-  },
-]);
-
-export default router;

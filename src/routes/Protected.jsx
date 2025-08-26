@@ -1,28 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+// src/routes/Protected.jsx
+import React, { useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 export default function Protected({ children }) {
-  const [ready, setReady] = useState(false);
-  const navigate = useNavigate();
+  const [checked, setChecked] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
-    const check = async () => {
+    let mounted = true;
+    (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) navigate('/login');
-      else setReady(true);
-    };
-    check();
+      if (!mounted) return;
+      setAuthed(!!session?.user);
+      setChecked(true);
+    })();
+    return () => { mounted = false; };
+  }, [location.pathname]);
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) navigate('/login');
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, [navigate]);
-
-  if (!ready) {
-    return <div className="h-[50vh] grid place-items-center">Loading…</div>;
+  if (!checked) {
+    return (
+      <div style={{ padding: 24 }}>
+        Loading…
+      </div>
+    );
   }
+
+  if (!authed) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
   return children;
 }
