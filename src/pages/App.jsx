@@ -15,40 +15,4 @@ export default function App() {
     </div>
  );
 }
-  useEffect(() => {
-    document.title = "Sentinel Health";
-  }, []);
-
-  // avoid replaceState loops: do NOT navigate inside render;
-  // we only gate routes declaratively below.
-  function Protected({ children }) {
-    const [ok, setOk] = React.useState(null);
-    useEffect(() => {
-      let alive = true;
-      (async () => {
-        const { data } = await supabase.auth.getSession();
-        if (!alive) return;
-        setOk(!!data?.session?.user);
-      })();
-      return () => { alive = false; };
-    }, [loc.key]);
-    if (ok === null) return <div style={{ padding:16 }}>Loading…</div>;
-    return ok ? children : <Navigate to="/sign-in" replace />;
-  }
-
-  return (
-    <Layout>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Protected>
-              <Dashboard />
-            </Protected>
-          }
-        />
-        <Route path="/sign-in" element={<SignIn />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Layout>
-  );
+  
