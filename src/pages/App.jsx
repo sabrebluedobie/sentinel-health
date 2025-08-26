@@ -5,6 +5,13 @@ import Dashboard from '@/pages/Dashboard.jsx';
 import SignIn from '@/pages/SignIn.jsx';
 import { supabase } from '@/lib/supabase';
 
+<<<<<<< HEAD
+useEffect (() => {
+  document.title ="Sentinel Health";
+}, []);
+
+export default function App() {
+=======
 export default function App(){
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
@@ -25,6 +32,7 @@ export default function App(){
 
   if(!ready) return <div style={{padding:16}}>Loading…</div>;
 
+>>>>>>> 5a105d947a1c23f13a2177f6982eb67a64e0a42b
   return (
     <Layout>
       <Routes>
