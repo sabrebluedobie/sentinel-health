@@ -1,45 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from '@/layout';
-import Dashboard from '@/pages/Dashboard.jsx';
-import SignIn from '@/pages/SignIn.jsx';
-import { supabase } from '@/lib/supabase';
-
-<<<<<<< HEAD
-useEffect (() => {
-  document.title ="Sentinel Health";
-}, []);
+// src/pages/App.jsx
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Layout from "@/layout";
+import { supabase } from "@/lib/supabase";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export default function App() {
-=======
-export default function App(){
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
-  const [user, setUser] = useState(null);
 
-  useEffect(()=>{
-    (async ()=>{
-      const { data:{ session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      setReady(true);
+  useEffect(() => {
+    document.title = "Sentinel Health";
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted && !session?.user) navigate("/sign-in", { replace: true });
     })();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session)=>{
-      setUser(session?.user || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (!session?.user) navigate("/sign-in", { replace: true });
     });
-    return () => subscription?.unsubscribe?.();
-  },[]);
 
-  if(!ready) return <div style={{padding:16}}>Loading…</div>;
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe?.();
+    };
+  }, [navigate]);
 
->>>>>>> 5a105d947a1c23f13a2177f6982eb67a64e0a42b
   return (
-    <Layout>
-      <Routes>
-        <Route path="/sign-in" element={user ? <Navigate to="/" replace /> : <SignIn />} />
-        <Route path="/" element={user ? <Dashboard /> : <Navigate to="/sign-in" replace />} />
-        <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
-      </Routes>
-    </Layout>
+    <>
+      <Layout>
+        <div className="space-y-4 p-6">
+          <h2 className="text-2xl font-bold">Hello 👋</h2>
+          <p>If you see this, Vite + React is working!</p>
+        </div>
+      </Layout>
+      <Analytics />
+      <SpeedInsights />
+    </>
   );
 }
