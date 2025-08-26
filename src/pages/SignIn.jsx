@@ -25,18 +25,16 @@ export default function SignIn() {
   return (
     <div className="signin-wrap">
       <form className="signin-card" onSubmit={onSubmit}>
+        {/* Logo at the top */}
         <img
-          src="/icon-32.png"
-          alt="Sentinel Health"
+          src="./public/logo.png"
+          alt="Sentinel Health Logo"
           className="signin-logo"
-          width="64"
-          height="64"
-          onError={(e) => { e.currentTarget.src = "/icon-32.png"; }}
         />
 
-        <h1 className="signin-title">Sign in to Sentinel</h1>
+        <h1 className="signin-title">Sign in to Sentinel Health</h1>
 
-        {error ? <div className="signin-error">{error}</div> : null}
+        {error && <div className="signin-error">{error}</div>}
 
         <div className="form-row">
           <label htmlFor="email" className="form-label">Email</label>

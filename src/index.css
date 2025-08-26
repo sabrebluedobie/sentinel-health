@@ -155,3 +155,9 @@ button{font:inherit;cursor:pointer}
   .form-label { justify-self: end; }
   .form-spacer { width: 2vw; }
 }
+.signin-logo {
+  display: block;
+  margin: 0 auto 8px auto;
+  width: 96px;
+  height: auto;
+}
