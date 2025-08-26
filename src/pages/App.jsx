@@ -1,10 +1,22 @@
-import React from "react";
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import SignIn from '@/pages/SignIn.jsx';
+import Dashboard from '@/pages/Dashboard.jsx';
 
-export default function App() {
+function RequireAuth({ children }){
+  const hasSession = !!window.__SB_SESSION__;
+  if (!hasSession) return <Navigate to="/sign-in" replace />;
+  return children;
+}
+
+export default function App(){
+  const loc = useLocation();
+  useEffect(()=>{ document.title = 'Sentinel Health'; console.log('[route]', loc.pathname); },[loc]);
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Sentinel Health</h1>
-      <p>If you see this, React is mounted.</p>
-    </div>
+    <Routes>
+      <Route path="/sign-in" element={<SignIn/>} />
+      <Route path="/" element={<RequireAuth><Dashboard/></RequireAuth>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

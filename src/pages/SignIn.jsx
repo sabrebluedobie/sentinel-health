@@ -1,73 +1,52 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
-export default function SignIn() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+export default function SignIn(){
+  const nav = useNavigate();
+  const [email,setEmail] = useState('');
+  const [password,setPassword] = useState('');
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
 
-  async function onSubmit(e) {
+  async function onSubmit(e){
     e.preventDefault();
-    setError("");
-    setSubmitting(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setSubmitting(false);
-    if (error) {
-      setError(error.message || "Unable to sign in.");
-      return;
+    setError('');
+    setLoading(true);
+    try{
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) throw err;
+      window.__SB_SESSION__ = data?.session || null;
+      nav('/', { replace:true });
+    }catch(e){
+      setError(e.message || 'Sign in failed');
+    }finally{
+      setLoading(false);
     }
-    navigate("/", { replace: true });
   }
 
   return (
-    <div className="signin-wrap">
-      <form className="signin-card" onSubmit={onSubmit}>
-        {/* Logo at the top */}
-        <img
-          src="./src/assets/logo.png"
-          alt="Sentinel Health Logo"
-          className="signin-logo"
-        />
+    <div className="center-wrap">
+      <div className="card">
+        <img className="logo" src="/icon-192.png" alt="Sentinel Health"/>
+        <h1 className="h1">Sign in to Sentinel Health</h1>
 
-        <h1 className="signin-title">Sign in to Sentinel Health</h1>
+        <form onSubmit={onSubmit} className="form-grid">
+          <label className="label label--left">Email</label>
+          <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
 
-        {error && <div className="signin-error">{error}</div>}
+          <label className="label label--left">Password</label>
+          <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
 
-        <div className="form-row">
-          <label htmlFor="email" className="form-label">Email</label>
-          <div className="form-spacer" aria-hidden="true" />
-          <input
-            id="email"
-            type="email"
-            className="form-input"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+          <div></div>
+          <div className="row">
+            <button className="btn primary" disabled={loading} type="submit">{loading?'Signing in…':'Sign In'}</button>
+            <button className="btn" type="button" onClick={()=>nav('/')} disabled={loading}>Cancel</button>
+          </div>
+        </form>
 
-        <div className="form-row">
-          <label htmlFor="password" className="form-label">Password</label>
-          <div className="form-spacer" aria-hidden="true" />
-          <input
-            id="password"
-            type="password"
-            className="form-input"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        <button className="signin-btn" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign In"}
-        </button>
-      </form>
+        {error && <div style={{marginTop:12,color:'#b91c1c'}}>{error}</div>}
+      </div>
     </div>
   );
 }
