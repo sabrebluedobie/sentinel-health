@@ -1,37 +1,49 @@
-// src/pages/App.jsx
 import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Layout from "@/layout";
+import Dashboard from "@/pages/Dashboard.jsx";
+import SignIn from "@/pages/SignIn.jsx";
+import NotFound from "@/pages/NotFound.jsx"; // if you don't have this, replace with Dashboard
 import { supabase } from "@/lib/supabase";
-import Dashboard from "./Dashboard.jsx";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export default function App() {
-  const navigate = useNavigate();
-
-  useEffect(() => { document.title = "Sentinel Health"; }, []);
+  const loc = useLocation();
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (mounted && !session?.user) navigate("/sign-in", { replace: true });
-    })();
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange((_evt, session) => {
-        if (!session?.user) navigate("/sign-in", { replace: true });
-      });
-    return () => { mounted = false; subscription?.unsubscribe?.(); };
-  }, [navigate]);
+    document.title = "Sentinel Health";
+  }, []);
+
+  // avoid replaceState loops: do NOT navigate inside render;
+  // we only gate routes declaratively below.
+  function Protected({ children }) {
+    const [ok, setOk] = React.useState(null);
+    useEffect(() => {
+      let alive = true;
+      (async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!alive) return;
+        setOk(!!data?.session?.user);
+      })();
+      return () => { alive = false; };
+    }, [loc.key]);
+    if (ok === null) return <div style={{ padding:16 }}>Loading…</div>;
+    return ok ? children : <Navigate to="/sign-in" replace />;
+  }
 
   return (
-    <>
-      <Layout>
-        <Dashboard />
-      </Layout>
-      <Analytics />
-      <SpeedInsights />
-    </>
+    <Layout>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Protected>
+              <Dashboard />
+            </Protected>
+          }
+        />
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Layout>
   );
 }
