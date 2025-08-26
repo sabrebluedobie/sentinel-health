@@ -10,30 +10,21 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 export default function App() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    document.title = "Sentinel Health";
-  }, []);
+  useEffect(() => { document.title = "Sentinel Health"; }, []);
 
-  // Gate by auth (keeps your previous behavior)
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (mounted && !session?.user) navigate("/sign-in", { replace: true });
     })();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evt, session) => {
-      if (!session?.user) navigate("/sign-in", { replace: true });
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe?.();
-    };
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_evt, session) => {
+        if (!session?.user) navigate("/sign-in", { replace: true });
+      });
+    return () => { mounted = false; subscription?.unsubscribe?.(); };
   }, [navigate]);
 
-  // Render your real app
   return (
     <>
       <Layout>
