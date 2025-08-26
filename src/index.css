@@ -1,163 +1,55 @@
-/* ===== Global chart + card variables ===== */
-:root {
-  /* Sleep */
-  --sleep-bg:     #EFF6FF;
-  --sleep-border: #60A5FA;
-  --sleep-line:   #3B82F6;
-
-  /* Blood Glucose */
-  --bg-bg:        #F0FDF4;
-  --bg-border:    #34D399;
-  --bg-line:      #10B981;
-
-  /* Migraine */
-  --migraine-bg:     #FEF2F2;
-  --migraine-border: #F87171;
-  --migraine-line:   #EF4444;
-
-  /* Shared */
-  --card-radius: 12px;
-  --card-shadow: 0 8px 30px rgba(0,0,0,.08);
-  --card-shadow-hover: 0 12px 40px rgba(0,0,0,.12);
-
-  --grid-stroke: rgba(0,0,0,.15);     /* recharts grid */
-  --axis-tick:   rgba(0,0,0,.65);     /* recharts axis text */
+:root{
+  --page-bg:#ececec;
+  --card-bg:#fff;
+  --text:#111;
+  --muted:#374151;
+  --brand:#042d4d;
+  --accent:#2563eb;
 }
 
-[data-theme="dark"] {
-  --grid-stroke: rgba(255,255,255,.2);
-  --axis-tick:   rgba(255,255,255,.85);
-
-  /* optionally deepen lines a bit in dark mode */
-  --sleep-line:    #2563EB;
-  --bg-line:       #059669;
-  --migraine-line: #DC2626;
+html,body,#root{
+  height:100%;
 }
-/* example, if your Panel adds a kind class */
-.panel--migraine { --chart-line: var(--migraine-line); }
-.panel--bg { --chart-line: var(--bg-line); }
-.panel--sleep { --chart-line: var(--sleep-line); }
 
-*{box-sizing:border-box}
-html,body,#root{height:100%}
-html,body{
+*{ box-sizing:border-box }
+
+body{
   margin:0;
-  background:linear-gradient(180deg,#0a2746 0%, #071c32 100%);
+  background:var(--page-bg);
   color:var(--text);
-  font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-}
-a{color:inherit;text-decoration:none}
-button{font:inherit;cursor:pointer}
-
-.container{max-width:1100px;margin:0 auto}
-.safe-pad{padding-inline:12px}
-.small{font-size:.85rem}
-.muted{color:var(--muted)}
-.h2{margin:0 0 .5rem;font-size:1.25rem;font-weight:700}
-
-.signin-wrap {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  background: var(--page-bg, #0b2d4a);
-  padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  color-scheme: light;
 }
 
-.signin-card {
-  width: min(92vw, 420px);
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 28px 24px;
-  display: grid;
-  gap: 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+a{ color:var(--accent); text-decoration:none }
+a:hover{ text-decoration:underline }
+
+button{
+  cursor:pointer;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:var(--text);
+  padding:.55rem .85rem;
+  border-radius:.5rem;
 }
 
-.signin-logo {
-  display: block;
-  margin: 0 auto 4px auto;
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+.header{
+  background:var(--brand);
+  color:#fff;
 }
 
-.signin-title {
-  margin: 0;
-  text-align: center;
-  font-size: 20px;
-  font-weight: 700;
-  color: #0f172a;
+.card{
+  background:var(--card-bg);
+  color:var(--text);
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:12px;
 }
 
-.signin-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-}
+.grid{ display:grid; gap:12px }
+.grid-2{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+.grid-3{ grid-template-columns: repeat(3, minmax(0,1fr)); }
 
-/* Mobile: labels centered above inputs */
-.form-row {
-  display: grid;
-  gap: 8px;
-  text-align: center;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  font-size: 16px;
-  outline: none;
-}
-
-.form-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
-}
-
-.signin-btn {
-  margin-top: 6px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: #063b63;
-  color: #fff;
-  font-weight: 700;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.signin-btn:disabled {
-  opacity: .7;
-  cursor: default;
-}
-
-/* ≥640px: label on the left, 2vw spacer, input on the right */
-@media (min-width: 640px) {
-  .form-row {
-    grid-template-columns: auto 2vw 1fr;
-    align-items: center;
-    text-align: left;
-  }
-  .form-label { justify-self: end; }
-  .form-spacer { width: 2vw; }
-}
-.signin-logo {
-  display: block;
-  margin: 0 auto 8px auto;
-  width: 96px;
-  height: auto;
+@media (max-width: 900px){
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }

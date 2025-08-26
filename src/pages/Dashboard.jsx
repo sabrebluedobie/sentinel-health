@@ -229,6 +229,9 @@ export default function Dashboard() {
 
   return (
     <ToastProvider>
+      <div style={{background:"#fff",border:"1px solid #ddd",padding:"8px",margin:"8px",borderRadius:8}}>
+  UI loaded: if you can read this, rendering is fine and CSS was the issue.
+</div>
       <div className="main">
         {/* ===== Header: Row 1 (title + welcome + settings/logout) ===== */}
         <header
