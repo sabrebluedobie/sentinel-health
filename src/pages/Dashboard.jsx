@@ -3,12 +3,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
-// If you added these earlier, keep them; they help the blue background + legibility.
-// import "./../styles/theme.css";
-// import "./../styles/legacy-look.css";
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
-import { Panel, StatCard } from "../components/common/Cards.jsx";
+import { Panel } from "../components/common/Cards.jsx";
 import LineChart from "../components/charts/LineChart.jsx";
 import PieChart from "../components/charts/PieChart.jsx";
 
@@ -26,7 +23,62 @@ import { getDisclaimerConsent, upsertDisclaimerConsent } from "../services/conse
 
 import { getCurrentPalette, getChartLineColor, getPieSymptomColorMap } from "../lib/brand.js";
 import { daysBack, fmt, countByDate, avgByDate, sumSleepHoursByDate } from "../lib/helpers.js";
-import { DashboardSection } from '@/components/charts/DashboardSection';
+
+// --- thresholds + helpers ---
+const STATUS = { LOW: "low", NORMAL: "normal", ELEVATED: "elevated" };
+const STATUS_COLOR = {
+  [STATUS.LOW]: "#2563eb",       // blue
+  [STATUS.NORMAL]: "#16a34a",    // green
+  [STATUS.ELEVATED]: "#dc2626",  // red
+};
+// tweak as needed
+const THRESHOLDS = {
+  migraine30(total) {
+    if (total >= 8) return STATUS.ELEVATED; // 8+ episodes in 30d
+    if (total <= 1) return STATUS.LOW;      // 0–1 = low
+    return STATUS.NORMAL;
+  },
+  glucoseAvg(avgMgdl) {
+    if (avgMgdl > 180) return STATUS.ELEVATED;
+    if (avgMgdl < 70)  return STATUS.LOW;
+    return STATUS.NORMAL;
+  },
+  sleepAvg(avgHours) {
+    if (avgHours > 9) return STATUS.ELEVATED; // oversleep flagged as elevated
+    if (avgHours < 7) return STATUS.LOW;      // <7h low
+    return STATUS.NORMAL;
+  },
+};
+function pillBg(status){ return STATUS_COLOR[status] || "#6b7280"; }
+function openChart(kind){
+  const el = document.getElementById(`chart-${kind}`);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.dispatchEvent(new CustomEvent("open-lightbox", { detail: { kind } }));
+}
+function StatPill({ title, value, suffix, status, onClick }){
+  const bg = pillBg(status);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${title} • ${status}`}
+      style={{
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        gap:12, padding:"12px 14px", borderRadius:12, border:"1px solid rgba(0,0,0,.06)",
+        background:bg, color:"#fff", boxShadow:"0 1px 2px rgba(0,0,0,.08)",
+        transition:"transform .08s ease, box-shadow .08s ease",
+        cursor:"pointer"
+      }}
+      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.18)"}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,.08)"}
+    >
+      <div style={{fontWeight:700}}>{title}</div>
+      <div style={{fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace"}}>
+        {value}{suffix ? ` ${suffix}` : ""}
+      </div>
+    </button>
+  );
+}
 
 // Small helper for greeting
 function getFirstName(user) {
@@ -146,6 +198,22 @@ export default function Dashboard() {
     const map = getPieSymptomColorMap();
     return symptomPie.labels.map((lbl, i) => map[lbl] || palette[i % palette.length]);
   }, [symptomPie.labels, palette, settingsTick]);
+
+  // Averages for pill display
+  const avgGlucose14 = useMemo(() => {
+    const vals = glucose14.values.filter(v => v != null);
+    return vals.length ? (vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+  }, [glucose14.values]);
+
+  const avgSleep14 = useMemo(() => {
+    const vals = sleep14.values;
+    return vals.length ? (vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+  }, [sleep14.values]);
+
+  // Statuses
+  const statusMigraine = THRESHOLDS.migraine30(episodes.length || 0);
+  const statusGlucose  = THRESHOLDS.glucoseAvg(avgGlucose14);
+  const statusSleep    = THRESHOLDS.sleepAvg(avgSleep14);
 
   // ---- guards ----
   if (!authChecked) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -297,45 +365,53 @@ export default function Dashboard() {
 
         {/* ===== Main content ===== */}
         <main style={{ padding: "16px 12px" }}>
+          {/* Colored, clickable stat pills */}
           <div className="grid grid-3">
-            <StatCard title="Total Episodes" value={episodes.length || 0} />
-            <StatCard
-              title="Avg Glucose (14d)"
-              value={(() => {
-                const vals = glucose14.values.filter((v) => v != null);
-                const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-                return avg.toFixed(1);
-              })()}
-              suffix="mg/dL"
+            <StatPill
+              title="Total Episodes"
+              value={episodes.length || 0}
+              status={statusMigraine}
+              onClick={()=>openChart("migraine")}
             />
-            <StatCard
+            <StatPill
+              title="Avg Glucose (14d)"
+              value={avgGlucose14.toFixed(1)}
+              suffix="mg/dL"
+              status={statusGlucose}
+              onClick={()=>openChart("glucose")}
+            />
+            <StatPill
               title="Avg Sleep (14d)"
-              value={(() => {
-                const vals = sleep14.values;
-                const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-                return avg.toFixed(1);
-              })()}
+              value={avgSleep14.toFixed(1)}
               suffix="hrs"
+              status={statusSleep}
+              onClick={()=>openChart("sleep")}
             />
           </div>
 
           <div className="grid" style={{ marginTop: 12 }}>
             <div className="grid" style={{ gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-              <Panel title="Migraine Frequency (30d)" accentColor="#dc2626">
-                <LineChart labels={migraine30.labels} data={migraine30.values} color={colorMigraine} className="h-[280px]" />
-              </Panel>
+              <div id="chart-migraine">
+                <Panel title="Migraine Frequency (30d)" accentColor="#dc2626">
+                  <LineChart labels={migraine30.labels} data={migraine30.values} color={colorMigraine} className="h-[280px]" />
+                </Panel>
+              </div>
               <Panel title="Top Symptoms" accentColor="#7c3aed">
                 <PieChart labels={symptomPie.labels} data={symptomPie.values} colors={pieColors} className="h-[280px]" />
               </Panel>
             </div>
 
             <div className="grid grid-2">
-              <Panel title="Avg Glucose (14d)" accentColor="#2563eb">
-                <LineChart labels={glucose14.labels} data={glucose14.values} color={colorGlucose} className="h-[280px]" />
-              </Panel>
-              <Panel title="Sleep Hours (14d)" accentColor="#16a34a">
-                <LineChart labels={sleep14.labels} data={sleep14.values} color={colorSleep} className="h-[280px]" />
-              </Panel>
+              <div id="chart-glucose">
+                <Panel title="Avg Glucose (14d)" accentColor="#2563eb">
+                  <LineChart labels={glucose14.labels} data={glucose14.values} color={colorGlucose} className="h-[280px]" />
+                </Panel>
+              </div>
+              <div id="chart-sleep">
+                <Panel title="Sleep Hours (14d)" accentColor="#16a34a">
+                  <LineChart labels={sleep14.labels} data={sleep14.values} color={colorSleep} className="h-[280px]" />
+                </Panel>
+              </div>
             </div>
           </div>
         </main>
