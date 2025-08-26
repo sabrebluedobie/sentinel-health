@@ -5,10 +5,12 @@ import Dashboard from "@/pages/Dashboard.jsx";
 import SignIn from "@/pages/SignIn.jsx";
 import NotFound from "@/pages/NotFound.jsx"; // if you don't have this, replace with Dashboard
 import { supabase } from "@/lib/supabase";
-
+import DebugOverlay from "@/components/debug/DebugOverlay.jsx";
 export default function App() {
   const loc = useLocation();
-
+<div style={{ background: "#fff", border: "1px solid #ddd", padding: 12, borderRadius: 8, margin: 12 }}>
+  Hello from App.jsx — if you can read this, the Router & render pipeline are fine.
+</div>
   useEffect(() => {
     document.title = "Sentinel Health";
   }, []);
