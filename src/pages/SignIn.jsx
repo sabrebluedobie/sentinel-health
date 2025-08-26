@@ -1,96 +1,72 @@
-// src/pages/SignIn.jsx
 import React, { useState } from "react";
-import { supabase } from "../lib/supabase";
-import logo from "../assets/logo.png";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [busy, setBusy] = useState(false);
-
   const navigate = useNavigate();
-  const from = useLocation().state?.from?.pathname || "/";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const onSubmit = async (e) => {
+  async function onSubmit(e) {
     e.preventDefault();
-    setErrorMsg("");
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: pwd,
-      });
-      if (error) {
-        console.error(error);
-        setErrorMsg(error.message);
-        return;
-      }
-      navigate(from, { replace: true });
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Unexpected error. Please try again.");
-    } finally {
-      setBusy(false);
+    setError("");
+    setSubmitting(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setSubmitting(false);
+    if (error) {
+      setError(error.message || "Unable to sign in.");
+      return;
     }
-  };
+    navigate("/", { replace: true });
+  }
 
   return (
-    <div className="min-h-screen grid place-items-center p-6 bg-gray-50">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 border rounded-lg p-6 bg-white shadow-sm"
-        aria-labelledby="signin-title"
-      >
-        <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="Sentinel Health" width={100} height={100} />
-          <h1 id="signin-title" className="text-xl font-semibold text-gray-900 text-center">
-            Sentinel Health | Migraine Tracker
-          </h1>
-        </div>
+    <div className="signin-wrap">
+      <form className="signin-card" onSubmit={onSubmit}>
+        {/* Logo at the top */}
+        <img
+          src="./src/assets/logo.png"
+          alt="Sentinel Health Logo"
+          className="signin-logo"
+        />
 
-        {errorMsg && (
-          <p className="text-red-600 text-sm" role="alert">
-            {errorMsg}
-          </p>
-        )}
+        <h1 className="signin-title">Sign in to Sentinel Health</h1>
 
-        <div className="space-y-3">
+        {error && <div className="signin-error">{error}</div>}
+
+        <div className="form-row">
+          <label htmlFor="email" className="form-label">Email</label>
+          <div className="form-spacer" aria-hidden="true" />
           <input
-            className="w-full border rounded p-2"
-            placeholder="you@example.com"
+            id="email"
+            type="email"
+            className="form-input"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            type="email"
             required
-            autoComplete="email"
-          />
-          <input
-            className="w-full border rounded p-2"
-            placeholder="Password"
-            value={pwd}
-            onChange={(e) => setPwd(e.target.value)}
-            type="password"
-            required
-            autoComplete="current-password"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full bg-blue-600 text-white rounded p-2 disabled:opacity-60"
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
+        <div className="form-row">
+          <label htmlFor="password" className="form-label">Password</label>
+          <div className="form-spacer" aria-hidden="true" />
+          <input
+            id="password"
+            type="password"
+            className="form-input"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
-        <p className="text-sm text-center">
-          No account?{" "}
-          <Link to="/sign-up" className="text-blue-600 underline">
-            Create one
-          </Link>
-        </p>
+        <button className="signin-btn" disabled={submitting}>
+          {submitting ? "Signing in…" : "Sign In"}
+        </button>
       </form>
     </div>
   );
