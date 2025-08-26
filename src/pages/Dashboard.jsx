@@ -6,8 +6,10 @@ import "./../styles/dashboard.css";
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
 import { Panel } from "../components/common/Cards.jsx";
-import LineChart from "../components/charts/LineChart.jsx";
-import PieChart from "../components/charts/PieChart.jsx";
+import LineChart from "@/components/charts/LineChart.jsx";
+import PieChart from "@/components/charts/PieChart.jsx";
+import PieColorsEditor from "@/components/charts/PieColorsEditor"
+
 
 import MigraineModal from "../components/modals/MigraineModal.jsx";
 import GlucoseModal from "../components/modals/GlucoseModal.jsx";
@@ -24,6 +26,10 @@ import { getDisclaimerConsent, upsertDisclaimerConsent } from "../services/conse
 import { getCurrentPalette, getChartLineColor, getPieSymptomColorMap } from "../lib/brand.js";
 import { daysBack, fmt, countByDate, avgByDate, sumSleepHoursByDate } from "../lib/helpers.js";
 
+const [pieColors, setPieColors] = useState([]);
+const MIGRAINE_RED = "#b91c1c";
+const SLEEP_BLUE = "#1e40af";
+const GLUCOSE_PURPLE = "#6c28d9";
 // --- thresholds + helpers ---
 const STATUS = { LOW: "low", NORMAL: "normal", ELEVATED: "elevated" };
 const STATUS_COLOR = {

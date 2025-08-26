@@ -1,37 +1,30 @@
-import React from 'react';
-import { ResponsiveContainer, PieChart as RCPieChart, Pie, Cell, Tooltip } from 'recharts';
+import React, { useMemo } from "react";
+import { ResponsiveContainer, PieChart as RPieChart, Pie, Cell, Tooltip } from "recharts";
 
-export default function PieChart({
-  labels = [],
-  data = [],
-  colors = [],
-  className,
-  innerRadius = 48,
-  outerRadius = 80,
-}) {
-  const series = labels.map((l, i) => ({ name: l, value: Number(data[i] ?? 0) }));
-  const fallbacks = ['#2563eb', '#16a34a', '#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4'];
-  const palette = (colors && colors.length ? colors : fallbacks);
+export default function PieChart({ labels = [], values = [], colors = [], className = "" }) {
+  const rows = useMemo(
+    () => labels.map((name, i) => ({ name, value: Number(values?.[i] ?? 0) })),
+    [labels, values]
+  );
+  const hasData = useMemo(() => rows.some(r => r.value > 0), [rows]);
+  const palette = colors.length ? colors : ["#6d28d9", "#1e40af", "#b91c1c", "#0ea5e9", "#16a34a", "#f59e0b"];
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%' }}>
-      <ResponsiveContainer>
-        <RCPieChart>
-          <Pie
-            data={series}
-            dataKey="value"
-            nameKey="name"
-            innerRadius={innerRadius}
-            outerRadius={outerRadius}
-            paddingAngle={2}
-          >
-            {series.map((_, i) => (
-              <Cell key={i} fill={palette[i % palette.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid rgba(0,0,0,.1)' }} />
-        </RCPieChart>
-      </ResponsiveContainer>
+    <div className={className} style={{ width: "100%", height: "100%", minHeight: 240, background: "#ececec", borderRadius: 12 }}>
+      {!hasData ? (
+        <div style={{ height: "100%", display: "grid", placeItems: "center", color: "#6b7280", fontSize: 14 }}>
+          No data yet
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <RPieChart>
+            <Pie data={rows} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%" isAnimationActive={false}>
+              {rows.map((_, i) => <Cell key={i} fill={palette[i % palette.length]} />)}
+            </Pie>
+            <Tooltip contentStyle={{ fontSize: 12 }} />
+          </RPieChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
