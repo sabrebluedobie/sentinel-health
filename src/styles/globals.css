@@ -41,6 +41,12 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   border-bottom: 1px solid var(--border, #eee);
 }
 
+.header .brand-logo {
+    height: 28px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+}
 /* Utilities */
 .hidden { display: none !important; }
 .sr-only {

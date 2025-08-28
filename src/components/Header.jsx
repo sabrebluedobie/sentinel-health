@@ -20,7 +20,7 @@ export default function Header() {
     <header className="header">
       <div className="container" style={{display:"flex",alignItems:"center",gap:12, padding:"10px 0"}}>
         <Link to="/" style={{display:"inline-flex",alignItems:"center",gap:8,textDecoration:"none",color:"inherit"}}>
-          <img src={LOGO_PATH} alt="Logo" height="28" />
+          <img src="/logo.png" alt="Logo" height="28" className='brand-logo' />
           <strong>{APP_NAME}</strong>
         </Link>
         <nav style={{marginLeft:"auto", display:"flex", gap:12}}>
