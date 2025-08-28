@@ -6,6 +6,12 @@ import ErrorBoundary from '@/components/debug/ErrorBoundary.jsx';
 import '@/styles/theme.css';
 import '@/styles/globals.css';
 import logo from '@/assets/logo.png';
+import { AuthProvider } from "./components/AuthContext";
+// ...
+<AuthProvider>
+  <App />
+</AuthProvider>
+
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
