@@ -1,12 +1,14 @@
-// Vite-compatible header (no next/link)
-import React from "react";
+import React, { useContext } from "react";
 import { supabase } from "../lib/supabase-browser";
+import { AuthContext } from "./AuthContext";
 
 export default function Header() {
+  const { user } = useContext(AuthContext);
+
   const onLogout = async () => {
     try {
       await supabase?.auth?.signOut?.();
-      window.location.hash = "#/"; // simple “home” route
+      window.location.hash = "#/signin";
       window.location.reload();
     } catch (e) {
       console.error(e);
@@ -21,8 +23,14 @@ export default function Header() {
         <a href="#/" style={styles.brand}>Your App</a>
       </div>
       <nav style={styles.right}>
-        <a href="#/settings" style={styles.link}>Settings</a>
-        <button onClick={onLogout} style={styles.button}>Log out</button>
+        {user ? (
+          <>
+            <a href="#/settings" style={styles.link}>Settings</a>
+            <button onClick={onLogout} style={styles.button}>Log out</button>
+          </>
+        ) : (
+          <a href="#/signin" style={styles.link}>Sign in</a>
+        )}
       </nav>
     </header>
   );

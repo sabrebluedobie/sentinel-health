@@ -3,7 +3,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import App from "@/pages/App.jsx";
 import Dashboard from "@/pages/Dashboard.jsx";
-import SignIn from "@/pages/SignIn.jsx";
+import SignIn from "@/src/components/SignIn.jsx";
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogGlucose from "@/pages/LogGlucose.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";
