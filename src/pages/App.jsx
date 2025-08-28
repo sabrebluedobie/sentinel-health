@@ -4,7 +4,7 @@ import { ThemeProvider } from "../components/ThemeContext";
 import { AuthProvider, AuthContext } from "../components/AuthContext.jsx"
 import Header from "../components/Header";
 import Settings from "../components/Settings";
-import SignIn from "../components/SignIn";
+import SignIn from "../components/SignIn.jsx";
 
 export default function App() {
   return (
