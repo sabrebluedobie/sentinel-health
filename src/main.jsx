@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from '@/pages/App.jsx';
 import ErrorBoundary from '@/components/debug/ErrorBoundary.jsx';
-import '@/index.css';
+import '@/styles/theme.css';
+import '@/styles/globals.css';
+import logo from '@/assets/logo.png';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
