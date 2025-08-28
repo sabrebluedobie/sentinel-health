@@ -1,13 +1,16 @@
-import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../providers/AuthProvider.jsx";
+// src/components/ProtectedRoute.jsx
+import React, { useContext } from "react";
+import { Navigate } from "react-router-dom";
+import { AuthContext } from "./AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-  const location = useLocation();
+  const { user, loading } = useContext(AuthContext);
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (!user) return <Navigate to="/sign-in" replace state={{ from: location }} />;
-
+  if (loading) {
+    return <div className="container" style={{ padding: 24 }}>Loading…</div>;
+  }
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
   return children;
 }
