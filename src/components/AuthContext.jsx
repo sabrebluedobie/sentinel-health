@@ -1,5 +1,5 @@
 // src/components/AuthContext.jsx
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState, useContext } from "react";
 import supabase from "@/lib/supabase";
 
 export const AuthContext = createContext({
@@ -7,30 +7,25 @@ export const AuthContext = createContext({
   user: null,
   loading: true,
 });
-export const useAuth = () => React.useContext(AuthContext);
-
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize + subscribe to auth changes
+  // On mount: get current session, then subscribe to changes
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
 
     (async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (!mounted) return;
-        setSession(data?.session ?? null);
-        setUser(data?.session?.user ?? null);
-      } catch (e) {
-        console.error("[Auth] getSession failed:", e);
-      } finally {
-        if (mounted) setLoading(false);
+      const { data, error } = await supabase.auth.getSession();
+      if (!alive) return;
+      if (error) {
+        console.error("[Auth] getSession error:", error);
       }
+      setSession(data?.session ?? null);
+      setUser(data?.session?.user ?? null);
+      setLoading(false);
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -40,7 +35,7 @@ export function AuthProvider({ children }) {
     });
 
     return () => {
-      mounted = false;
+      alive = false;
       sub?.subscription?.unsubscribe?.();
     };
   }, []);
@@ -52,6 +47,7 @@ export function AuthProvider({ children }) {
   );
 }
 
+// SINGLE hook export (remove any duplicates)
 export function useAuth() {
   return useContext(AuthContext);
 }
