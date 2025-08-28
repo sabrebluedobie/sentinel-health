@@ -51,7 +51,6 @@ export function useSleepData({ days = 14 } = {}) {
         })(),
       }));
 
-      // Sum stages across the window (for pie)
       const sum = { light: 0, deep: 0, rem: 0, awake: 0 };
       for (const s of out) {
         sum.light += Number(s.stages?.light || 0);
