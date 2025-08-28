@@ -90,30 +90,83 @@ export default function SignIn() {
 
         {mode === "signin" && (
           <form onSubmit={doSignIn} style={styles.form} autoComplete="on">
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus autoComplete="email" name="email" />
-            <Input type="password" placeholder="Password" value={pwd} onChange={setPwd} autoComplete="current-password" name="current-password" />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>{busy ? "Signing in…" : "Sign in"}</button>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoFocus
+              autoComplete="email"
+              name="email"
+            />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={pwd}
+              onChange={setPwd}
+              autoComplete="current-password"
+              name="current-password"
+            />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Signing in…" : "Sign in"}
+            </button>
           </form>
         )}
 
         {mode === "signup" && (
           <form onSubmit={doSignUp} style={styles.form} autoComplete="on">
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoComplete="email" name="email" />
-            <Input type="password" placeholder="Create password (min 8 chars)" value={pwd} onChange={setPwd} autoComplete="new-password" name="new-password" />
-            <Input type="password" placeholder="Confirm password" value={pwd2} onChange={setPwd2} autoComplete="new-password" name="new-password-confirm" />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>{busy ? "Creating…" : "Create account"}</button>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              name="email"
+            />
+            <Input
+              type="password"
+              placeholder="Create password (min 8 chars)"
+              value={pwd}
+              onChange={setPwd}
+              autoComplete="new-password"
+              name="new-password"
+            />
+            <Input
+              type="password"
+              placeholder="Confirm password"
+              value={pwd2}
+              onChange={setPwd2}
+              autoComplete="new-password"
+              name="new-password-confirm"
+            />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Creating…" : "Create account"}
+            </button>
           </form>
         )}
 
         {mode === "reset" && (
           <form onSubmit={doReset} style={styles.form} autoComplete="on">
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoComplete="email" name="email" />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>{busy ? "Sending…" : "Send reset link"}</button>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              name="email"
+            />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Sending…" : "Send reset link"}
+            </button>
           </form>
         )}
 
         <div style={styles.divider}><span>or</span></div>
-        <button onClick={doGoogle} disabled={busy} style={styles.googleBtn}>Continue with Google</button>
+
+        <button onClick={doGoogle} disabled={busy} style={styles.googleBtn}>
+          Continue with Google
+        </button>
+
         <div style={styles.msg}>{msg}</div>
       </div>
     </div>
@@ -121,11 +174,23 @@ export default function SignIn() {
 }
 
 function Tab({ label, active, onClick }) {
-  return <button onClick={onClick} style={{ ...styles.tab, ...(active ? styles.tabActive : {}) }}>{label}</button>;
+  return (
+    <button onClick={onClick} style={{ ...styles.tab, ...(active ? styles.tabActive : {}) }}>
+      {label}
+    </button>
+  );
 }
 
 function Input({ value, onChange, ...props }) {
-  return <input {...props} value={value} onChange={(e) => onChange(e.target.value)} style={styles.input} required />;
+  return (
+    <input
+      {...props}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={styles.input}
+      required
+    />
+  );
 }
 
 const styles = {
