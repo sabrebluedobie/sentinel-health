@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase-browser";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
-const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.png";
+const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.svg";
 
 export default function SignIn() {
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup' | 'reset'
@@ -12,22 +12,30 @@ export default function SignIn() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const redirectTo = `${window.location.origin}/#/`;
+  const redirectTo = () =>
+    typeof window !== "undefined" ? `${window.location.origin}/#/` : "/";
 
   async function doGoogle() {
     setMsg("");
     setBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo }
+      options: { redirectTo: redirectTo() }
     });
-    if (error) { setMsg(`Google sign-in error: ${error.message}`); setBusy(false); }
+    if (error) {
+      setMsg(`Google sign-in error: ${error.message}`);
+      setBusy(false);
+    }
   }
 
   async function doSignIn(e) {
     e.preventDefault();
-    setMsg(""); setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+    setMsg("");
+    setBusy(true);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: pwd
+    });
     if (error) setMsg(`Sign-in error: ${error.message}`);
     if (data?.session) window.location.hash = "#/";
     setBusy(false);
@@ -35,17 +43,17 @@ export default function SignIn() {
 
   async function doSignUp(e) {
     e.preventDefault();
-    setMsg(""); 
+    setMsg("");
     if (pwd.length < 8) return setMsg("Password must be at least 8 characters.");
     if (pwd !== pwd2) return setMsg("Passwords do not match.");
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email, password: pwd,
-      options: { emailRedirectTo: redirectTo }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: pwd,
+      options: { emailRedirectTo: redirectTo() }
     });
     if (error) setMsg(`Sign-up error: ${error.message}`);
     else {
-      // If email confirmations are ON, user must confirm first.
       setMsg("Account created. Check your email to confirm and sign in.");
       setMode("signin");
     }
@@ -57,7 +65,7 @@ export default function SignIn() {
     setMsg("");
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo // when the user clicks the email link, they'll come back here
+      redirectTo: redirectTo()
     });
     setBusy(false);
     setMsg(error ? `Reset error: ${error.message}` : "Password reset email sent. Check your inbox.");
@@ -72,4 +80,86 @@ export default function SignIn() {
         </div>
 
         <div style={styles.tabs}>
-          <Tab label="Sign in"
+          <Tab label="Sign in" active={mode === "signin"} onClick={() => setMode("signin")} />
+          <Tab label="Create account" active={mode === "signup"} onClick={() => setMode("signup")} />
+          <Tab label="Reset" active={mode === "reset"} onClick={() => setMode("reset")} />
+        </div>
+
+        {mode === "signin" && (
+          <form onSubmit={doSignIn} style={styles.form}>
+            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
+            <Input type="password" placeholder="Password" value={pwd} onChange={setPwd} />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        )}
+
+        {mode === "signup" && (
+          <form onSubmit={doSignUp} style={styles.form}>
+            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
+            <Input type="password" placeholder="Create password (min 8 chars)" value={pwd} onChange={setPwd} />
+            <Input type="password" placeholder="Confirm password" value={pwd2} onChange={setPwd2} />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Creating…" : "Create account"}
+            </button>
+          </form>
+        )}
+
+        {mode === "reset" && (
+          <form onSubmit={doReset} style={styles.form}>
+            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
+            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+              {busy ? "Sending…" : "Send reset link"}
+            </button>
+          </form>
+        )}
+
+        <div style={styles.divider}><span>or</span></div>
+
+        <button onClick={doGoogle} disabled={busy} style={styles.googleBtn}>
+          Continue with Google
+        </button>
+
+        <div style={styles.msg}>{msg}</div>
+      </div>
+    </div>
+  );
+}
+
+function Tab({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ ...styles.tab, ...(active ? styles.tabActive : {}) }}>
+      {label}
+    </button>
+  );
+}
+
+function Input({ value, onChange, ...props }) {
+  return (
+    <input
+      {...props}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={styles.input}
+      required
+    />
+  );
+}
+
+const styles = {
+  page: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f6f7fb", padding: 16 },
+  card: { width: "100%", maxWidth: 440, background: "#fff", border: "1px solid #eee", borderRadius: 16, boxShadow: "0 8px 30px rgba(0,0,0,0.06)", padding: 24 },
+  brandWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 12 },
+  logo: { height: 56, width: "auto" },
+  brandName: { fontSize: 20, fontWeight: 700 },
+  tabs: { display: "flex", gap: 8, margin: "8px 0 16px" },
+  tab: { flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 10, background: "#fafafa", cursor: "pointer" },
+  tabActive: { background: "#fff", borderColor: "var(--primary, #1a73e8)", fontWeight: 600 },
+  form: { display: "grid", gap: 10 },
+  input: { padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", outline: "none" },
+  primaryBtn: { padding: "10px 12px", borderRadius: 10, border: "1px solid var(--primary, #1a73e8)", background: "var(--primary, #1a73e8)", color: "#fff", cursor: "pointer" },
+  googleBtn: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", background: "#fff", cursor: "pointer" },
+  divider: { display: "flex", alignItems: "center", gap: 8, margin: "14px 0", color: "#999", fontSize: 12 },
+  msg: { marginTop: 10, color: "#666", minHeight: 18 }
+};
