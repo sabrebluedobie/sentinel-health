@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase } from "../../lib/supabase-browser";
+import { supabase } from "../../lib/supabase";
 import logo from "../assets/logo.png";
 
 export default function SignIn() {
