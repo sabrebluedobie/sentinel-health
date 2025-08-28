@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase-browser";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
-const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/assets/logo.png"; // put logo in /public/logo.png (or set VITE_APP_LOGO)
+// Put a logo at public/logo.png or set VITE_APP_LOGO to your asset path
+const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.png";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -14,11 +15,11 @@ export default function SignIn() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // With BrowserRouter, redirect to the ORIGIN (no hash)
+  // BrowserRouter: redirect to origin (no #)
   const redirectTo = () =>
     (typeof window !== "undefined" ? `${window.location.origin}/` : "/");
 
-  // If env vars are missing and client wasn't created, show a helpful message
+  // If envs are missing, the client will be null: show a helpful message.
   if (!supabase) {
     return (
       <div style={{ padding: 24, maxWidth: 520, margin: "80px auto", textAlign: "center" }}>
@@ -38,7 +39,10 @@ export default function SignIn() {
         provider: "google",
         options: { redirectTo: redirectTo() }
       });
-      if (error) setMsg(`Google sign-in error: ${error.message}`);
+      if (error) {
+        console.error("Google sign-in error:", error);
+        setMsg(`Google sign-in error: ${error.message}`);
+      }
     } finally {
       setBusy(false);
     }
@@ -53,8 +57,13 @@ export default function SignIn() {
         email,
         password: pwd
       });
-      if (error) setMsg(`Sign-in error: ${error.message}`);
-      if (data?.session) navigate("/", { replace: true });
+      if (error) {
+        console.error("Sign-in error:", error);
+        setMsg(`Sign-in error: ${error.message}`);
+      }
+      if (data?.session) {
+        navigate("/", { replace: true });
+      }
     } finally {
       setBusy(false);
     }
@@ -72,8 +81,10 @@ export default function SignIn() {
         password: pwd,
         options: { emailRedirectTo: redirectTo() }
       });
-      if (error) setMsg(`Sign-up error: ${error.message}`);
-      else {
+      if (error) {
+        console.error("Sign-up error:", error);
+        setMsg(`Sign-up error: ${error.message}`);
+      } else {
         setMsg("Account created. Check your email to confirm and sign in.");
         setMode("signin");
       }
@@ -90,6 +101,9 @@ export default function SignIn() {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo()
       });
+      if (error) {
+        console.error("Reset error:", error);
+      }
       setMsg(error ? `Reset error: ${error.message}` : "Password reset email sent. Check your inbox.");
     } finally {
       setBusy(false);
