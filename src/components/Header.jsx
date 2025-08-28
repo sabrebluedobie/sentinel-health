@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import supabase from "../lib/supabase";
 import { AuthContext } from "./AuthContext";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
