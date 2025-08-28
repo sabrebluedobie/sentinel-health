@@ -11,8 +11,6 @@ import "@/styles/theme.css";
 import "@/styles/dashboard.css"
 import logo from "../assets/logo.png";
 import LineTile from "@/components/charts/LineTile";
-import LineChart from "@/components/charts/LineChart";
-import PieChart from "@/components/charts/PieChart";
 import DashboardSection from "@/components/charts/DashboardSection";
 import PieColorsEditor from "@/components/charts/PieColorsEditor";
 
