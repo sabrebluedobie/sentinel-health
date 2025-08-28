@@ -7,7 +7,7 @@ import SignIn from "../components/SignIn.jsx";
 import Settings from "../components/Settings.jsx";
 
 // ROUTER
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // PAGES
 import Dashboard from "./Dashboard.jsx";
