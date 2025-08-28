@@ -1,46 +1,60 @@
-import React, { useMemo } from "react";
+// src/components/charts/LineChart.jsx
+import React from "react";
 import {
-  ResponsiveContainer,
   LineChart as RLineChart,
   Line,
-  CartesianGrid,
+  ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
 } from "recharts";
 
-export default function LineChart({ labels = [], values = [], color = "#2563eb", className = "" }) {
-  const data = useMemo(
-    () => (labels || []).map((label, i) => ({ label, value: values?.[i] ?? null })),
-    [labels, values]
-  );
-  const hasData = useMemo(() => data.some(d => d.value !== null && d.value !== undefined), [data]);
+/**
+ * Reusable line chart wrapper.
+ * NOTE: We alias Recharts' LineChart to RLineChart to avoid name clashes.
+ */
+export default function AppLineChart({
+  data = [],           // [{ t: number|category, v: number }, ...]
+  xKey = "t",
+  yKey = "v",
+  height = 220,
+  unit = "",           // e.g. "mg/dL"
+  strokeWidth = 2,
+  showGrid = true,
+  tickFormatter,       // optional custom tick formatter
+}) {
+  const isNumberAxis = data.length && typeof data[0]?.[xKey] === "number";
+
+  const formatTick =
+    tickFormatter ||
+    (isNumberAxis
+      ? (v) => new Date(v).toLocaleDateString()
+      : (v) => String(v));
+
+  const formatLabel = (v) =>
+    isNumberAxis ? new Date(v).toLocaleString() : String(v);
 
   return (
-    <div className={className} style={{ width: "100%", height: "100%", minHeight: 240, background: "#ececec", borderRadius: 12 }}>
-      {!hasData ? (
-        <div style={{ height: "100%", display: "grid", placeItems: "center", color: "#6b7280", fontSize: 14 }}>
-          No data yet
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <RLineChart data={data} margin={{ top: 12, right: 12, bottom: 8, left: 8 }}>
-            <CartesianGrid stroke="rgba(0,0,0,0.06)" />
-            <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6b7280" }} tickMargin={8} minTickGap={16} />
-            <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} width={40} />
-            <Tooltip contentStyle={{ fontSize: 12 }} labelStyle={{ fontWeight: 600 }} />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={color}
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-          </RLineChart>
-        </ResponsiveContainer>
-      )}
+    <div style={{ width: "100%", height }}>
+      <ResponsiveContainer>
+        <RLineChart data={data} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+          {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+          <XAxis
+            dataKey={xKey}
+            type={isNumberAxis ? "number" : "category"}
+            domain={isNumberAxis ? ["dataMin", "dataMax"] : undefined}
+            tickFormatter={formatTick}
+            minTickGap={24}
+          />
+          <YAxis domain={["auto", "auto"]} />
+          <Tooltip
+            labelFormatter={formatLabel}
+            formatter={(val) => [unit ? `${val} ${unit}` : val, yKey]}
+          />
+          <Line type="monotone" dataKey={yKey} dot={false} strokeWidth={strokeWidth} />
+        </RLineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

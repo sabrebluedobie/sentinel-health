@@ -14,6 +14,9 @@ import Dashboard from "./Dashboard.jsx";
 import LogGlucose from "./LogGlucose.jsx";
 import LogSleep from "./LogSleep.jsx";
 import LogMigraine from "./LogMigraine.jsx";
+import AppLineChart from "@/components/charts/LineChart";
+import { LineChart as RLineChart } from "recharts"; // alias prevents name clash
+
 
 export default function App() {
   return (
