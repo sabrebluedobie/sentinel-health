@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase-browser";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
-const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.svg";
+const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "./assets/logo.png";
 
 export default function SignIn() {
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup' | 'reset'

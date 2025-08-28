@@ -5,7 +5,7 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
 
-  const redirectTo = `${window.location.origin}/#/`; // comes back to Home/Dashboard
+  const redirectTo = `${window.location.origin}/`; // comes back to Home/Dashboard
 
   const magicLink = async (e) => {
     e.preventDefault();
