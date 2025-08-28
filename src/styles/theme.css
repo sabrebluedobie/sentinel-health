@@ -11,6 +11,45 @@
   --sleep-border: #60a5fa; /* sleep default */
   --focus: #93c5fd;
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #0f1115;
+    --bg: #0f1115;
+    --card: #151821;
+    --border: #242938;
+    --muted: #a9b0c0;
+    --focus: #7aa2ff;
+    /* feature accents used in forms */
+    --bg-border: #2dd4bf;   /* glucose default */
+    --sleep-border: #60a5fa; /* sleep default */
+    
+  }
+}
+
+/* Force themes when user picks one in Settings */
+:root[data-theme="light"] {
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --border: #eeeeee;
+  --muted: #666666;
+  --focus: #93c5fd;
+  --bg-border: #34d399;
+  --sleep-border: #60a5fa;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1115;
+  --card: #151821;
+  --border: #242938;
+  --muted: #a9b0c0;
+  --focus: #7aa2ff;
+  --bg-border: #2dd4bf;
+  --sleep-border: #60a5fa;
+}
+
+/* Make sure body uses the tokens */
+html, body, #root { height: 100%; }
+body { background: var(--bg); color: #111; }
 
 /* sensible base */
 html, body, #root { height: 100%; }

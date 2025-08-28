@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthContext";
 import Header from "@/components/Header";
 import SignIn from "@/components/SignIn";
 import Dashboard from "./Dashboard";
+import Settings from "./Settings";
 
 // Temporary placeholders so the buttons work even if form pages are still WIP.
 // Replace these later with real pages or your existing files.
@@ -79,6 +80,15 @@ export default function App() {
           }
         />
       </Route>
+      <Route
+  path="/settings"
+  element={
+    <ProtectedRoute>
+      <Settings />
+    </ProtectedRoute>
+  }
+/>
+
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
