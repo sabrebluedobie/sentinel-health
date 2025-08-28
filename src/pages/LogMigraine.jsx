@@ -1,5 +1,7 @@
 // src/pages/LogMigraine.jsx
 import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Migraine } from '@/data/supabaseStore';
 import '@/components/forms/form.css';
 
 
@@ -12,33 +14,20 @@ const DEFAULT_SYMPTOMS = [
   { id: 'neck', label: 'Neck Pain' },
 ];
 
-export default function LogMigraine({
-  initialPain = 0,
-  initialSymptoms = [],
-  initialNotes = '',
-  symptomOptions = DEFAULT_SYMPTOMS,
-  onSave,
-}) {
-  const [pain, setPain] = useState(initialPain);
-  const [selected, setSelected] = useState(initialSymptoms);
-  const [notes, setNotes] = useState(initialNotes);
+export default function LogMigraine() { 
+  const navigate = useNavigate();
+  const [pain, setPain] = useState(0);
+  const [selected, setSelected] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
 
-  useMemo(() => new Map(symptomOptions.map((s) => [s.id, s.label])), [symptomOptions]);
+  useMemo(() => new Map(DEFAULT_SYMPTOMS.map((s) => [s.id, s.label])), []);
 
-  const toggleSymptom = (id) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    onSave && onSave({ pain: Number(pain), symptoms: selected, notes });
-  };
-
-  // keyboard focus outline helper (uses your --focus color var if set)
   useEffect(() => {
-    const id = 'lm-focus-style';
+    const id = "lm-focus-style";
     if (!document.getElementById(id)) {
-      const style = document.createElement('style');
+      const style = document.createElement("style");
       style.id = id;
       style.textContent = `
         .lm-focusable:focus {
@@ -50,17 +39,34 @@ export default function LogMigraine({
     }
   }, []);
 
-  const onTagKeyDown = (e, id) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleSymptom(id);
+  const toggleSymptom = (id) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setMsg("");
+    try {
+      setSaving(true);
+      await Migraine.create({ pain, symptoms: selected, notes });
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error(err);
+      setMsg(err.message || "Could not save migraine entry.");
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
   return (
     <div className="page container">
-      <form className="card card--elevated" onSubmit={handleSave} aria-labelledby="log-migraine-title">
+      <form className="card card--elevated" onSubmit={onSubmit} aria-labelledby="log-migraine-title">
         <h2 id="log-migraine-title" className="h2">Log Migraine</h2>
+
+        {msg && (
+          <div className="form-error" role="alert" style={{ marginBottom: 12 }}>
+            {msg}
+          </div>
+        )}
 
         {/* Pain Level */}
         <label htmlFor="pain-range" className="label">Pain Level</label>
@@ -76,25 +82,30 @@ export default function LogMigraine({
           max={10}
           step={1}
           value={pain}
-          onChange={(e) => setPain(e.target.value)}
+          onChange={(e) => setPain(Number(e.target.value))}
           aria-label="Pain level slider"
         />
 
         {/* Symptoms */}
         <div className="label">Symptoms</div>
         <div className="tags" role="group" aria-label="Symptoms">
-          {symptomOptions.map((item) => {
+          {DEFAULT_SYMPTOMS.map((item) => {
             const isActive = selected.includes(item.id);
             return (
               <button
                 key={item.id}
                 type="button"
-                className={`tag lm-focusable ${isActive ? 'tag--active' : ''}`}
+                className={`tag lm-focusable ${isActive ? "tag--active" : ""}`}
                 aria-pressed={isActive}
                 onClick={() => toggleSymptom(item.id)}
-                onKeyDown={(e) => onTagKeyDown(e, item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleSymptom(item.id);
+                  }
+                }}
               >
-                <span className={`tag__text ${isActive ? 'tag__text--active' : ''}`}>
+                <span className={`tag__text ${isActive ? "tag__text--active" : ""}`}>
                   {item.label}
                 </span>
               </button>
@@ -114,8 +125,8 @@ export default function LogMigraine({
 
         {/* Actions */}
         <div className="actions">
-          <button type="submit" className="btn btn--primary lm-focusable">
-            <span className="btn__text">Save Entry</span>
+          <button type="submit" disabled={saving} className="btn btn--primary lm-focusable">
+            <span className="btn__text">{saving ? "Saving…" : "Save Entry"}</span>
           </button>
         </div>
       </form>
