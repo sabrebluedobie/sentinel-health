@@ -1,14 +1,13 @@
-"use client";
+// Vite-compatible header (no next/link)
 import React from "react";
-import Link from "next/link";
 import { supabase } from "../lib/supabase-browser";
 
 export default function Header() {
   const onLogout = async () => {
     try {
       await supabase?.auth?.signOut?.();
-      // Optionally hard-refresh to clear client state
-      window.location.href = "/";
+      window.location.hash = "#/"; // simple “home” route
+      window.location.reload();
     } catch (e) {
       console.error(e);
       alert("Logout failed");
@@ -19,10 +18,10 @@ export default function Header() {
     <header style={styles.bar}>
       <div style={styles.left}>
         <img src="/logo.svg" alt="Logo" style={styles.logo} />
-        <Link href="/" style={styles.brand}>Your App</Link>
+        <a href="#/" style={styles.brand}>Your App</a>
       </div>
       <nav style={styles.right}>
-        <Link href="/settings" style={styles.link}>Settings</Link>
+        <a href="#/settings" style={styles.link}>Settings</a>
         <button onClick={onLogout} style={styles.button}>Log out</button>
       </nav>
     </header>
