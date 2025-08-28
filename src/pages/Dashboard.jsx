@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import "./../styles/dashboard.css";
+import "./../assets/logo.png";
 
 import ToastProvider from "../components/common/ToastProvider.jsx";
 import { Panel } from "../components/common/Cards.jsx";
@@ -230,7 +231,7 @@ export default function Dashboard() {
   return (
     <ToastProvider>
       <div style={{background:"#fff",border:"1px solid #ddd",padding:"8px",margin:"8px",borderRadius:8}}>
-  UI loaded: if you can read this, rendering is fine and CSS was the issue.
+  
 </div>
       <div className="main">
         {/* ===== Header: Row 1 (title + welcome + settings/logout) ===== */}
@@ -259,7 +260,7 @@ export default function Dashboard() {
                 aria-label="Visit Sentinel Health website"
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}
               >
-                <img src="/icon-32.png" alt="Sentinel" width={22} height={22} style={{ borderRadius: 6 }} />
+                <img src="./src/assets/logo.png" alt="Sentinel" width={22} height={22} style={{ borderRadius: 6 }} />
                 <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>Sentinel – Dashboard</div>
               </a>
               <div style={{ opacity: 0.85 }}>|</div>
