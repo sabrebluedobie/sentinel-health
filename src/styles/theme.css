@@ -1,0 +1,30 @@
+/* App theme tokens */
+:root {
+  --primary: #1a73e8;
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --border: #eeeeee;
+  --muted: #666666;
+
+  /* feature accents used in forms */
+  --bg-border: #34d399;   /* glucose default */
+  --sleep-border: #60a5fa; /* sleep default */
+  --focus: #93c5fd;
+}
+
+/* sensible base */
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: #111;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* light card & buttons used across dashboard */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; }
+.btn { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+.btn-primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+
+/* tiny helper */
+.muted { color: var(--muted); }

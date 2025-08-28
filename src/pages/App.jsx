@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import "../styles/globals.css";
+import "../styles/theme.css";
 import { ThemeProvider } from "../components/ThemeContext.jsx";
 import { AuthProvider, AuthContext } from "../components/AuthContext.jsx";
 import Header from "../components/Header.jsx";
