@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../components/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import "@/styles/theme.css";
+import "@/styles/dashboard.css"
 import logo from "../assets/logo.png";
 
 // Tiny inline sparkline chart

@@ -6,7 +6,7 @@ import { AuthProvider, AuthContext } from "../components/AuthContext.jsx";
 import Header from "../components/Header.jsx";
 import SignIn from "../components/SignIn.jsx";
 import Settings from "../components/Settings.jsx";
-
+import logo from "../assets/logo.png";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // PAGES (match your filenames/casing)
