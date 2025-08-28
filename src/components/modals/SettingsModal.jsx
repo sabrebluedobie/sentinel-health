@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import Modal from "../common/Modal.jsx";
-import ConnectCGM from "../settings/ConnectCGM.jsx"; // NEW
+import ConnectCGM from "../../../.vercel/serverless-archive/settings/ConnectCGM.js"; // NEW
 import supabase from "@/lib/supabase";
 
 // (Optional) keep your chart/theme settings from earlier:

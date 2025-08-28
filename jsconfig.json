@@ -7,5 +7,5 @@
     "checkJs": false,
     "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src", ".vercel/serverless-archive/settings"]
 }
