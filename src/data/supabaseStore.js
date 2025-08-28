@@ -1,5 +1,5 @@
 // src/data/supabaseStore.js
-import { supabase } from "@/lib/supabase";
+import supabase from "@/lib/supabase";
 
 /** Get current auth user id (throws if not signed in) */
 async function getUid() {
