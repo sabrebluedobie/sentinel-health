@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase-browser";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
-const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "./assets/logo.png";
+const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/assets/logo.png"; // put logo in /public/logo.png (or set VITE_APP_LOGO)
 
 export default function SignIn() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup' | 'reset'
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -12,33 +14,50 @@ export default function SignIn() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // With BrowserRouter, redirect to the ORIGIN (no hash)
   const redirectTo = () =>
-    typeof window !== "undefined" ? `${window.location.origin}/#/` : "/";
+    (typeof window !== "undefined" ? `${window.location.origin}/` : "/");
+
+  // If env vars are missing and client wasn't created, show a helpful message
+  if (!supabase) {
+    return (
+      <div style={{ padding: 24, maxWidth: 520, margin: "80px auto", textAlign: "center" }}>
+        <h1>Sign in</h1>
+        <p style={{ color: "#666" }}>
+          App not configured: missing <code>VITE_SUPABASE_URL</code> and/or <code>VITE_SUPABASE_ANON_KEY</code>.
+        </p>
+      </div>
+    );
+  }
 
   async function doGoogle() {
-    setMsg("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: redirectTo() }
-    });
-    if (error) {
-      setMsg(`Google sign-in error: ${error.message}`);
+    try {
+      setMsg("");
+      setBusy(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: redirectTo() }
+      });
+      if (error) setMsg(`Google sign-in error: ${error.message}`);
+    } finally {
       setBusy(false);
     }
   }
 
   async function doSignIn(e) {
     e.preventDefault();
-    setMsg("");
-    setBusy(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pwd
-    });
-    if (error) setMsg(`Sign-in error: ${error.message}`);
-    if (data?.session) window.location.hash = "#/";
-    setBusy(false);
+    try {
+      setMsg("");
+      setBusy(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pwd
+      });
+      if (error) setMsg(`Sign-in error: ${error.message}`);
+      if (data?.session) navigate("/", { replace: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function doSignUp(e) {
@@ -46,29 +65,35 @@ export default function SignIn() {
     setMsg("");
     if (pwd.length < 8) return setMsg("Password must be at least 8 characters.");
     if (pwd !== pwd2) return setMsg("Passwords do not match.");
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: pwd,
-      options: { emailRedirectTo: redirectTo() }
-    });
-    if (error) setMsg(`Sign-up error: ${error.message}`);
-    else {
-      setMsg("Account created. Check your email to confirm and sign in.");
-      setMode("signin");
+    try {
+      setBusy(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: pwd,
+        options: { emailRedirectTo: redirectTo() }
+      });
+      if (error) setMsg(`Sign-up error: ${error.message}`);
+      else {
+        setMsg("Account created. Check your email to confirm and sign in.");
+        setMode("signin");
+      }
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function doReset(e) {
     e.preventDefault();
-    setMsg("");
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectTo()
-    });
-    setBusy(false);
-    setMsg(error ? `Reset error: ${error.message}` : "Password reset email sent. Check your inbox.");
+    try {
+      setMsg("");
+      setBusy(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo()
+      });
+      setMsg(error ? `Reset error: ${error.message}` : "Password reset email sent. Check your inbox.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -87,8 +112,21 @@ export default function SignIn() {
 
         {mode === "signin" && (
           <form onSubmit={doSignIn} style={styles.form}>
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
-            <Input type="password" placeholder="Password" value={pwd} onChange={setPwd} />
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              autoFocus
+            />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={pwd}
+              onChange={setPwd}
+              autoComplete="current-password"
+            />
             <button type="submit" disabled={busy} style={styles.primaryBtn}>
               {busy ? "Signing in…" : "Sign in"}
             </button>
@@ -97,9 +135,28 @@ export default function SignIn() {
 
         {mode === "signup" && (
           <form onSubmit={doSignUp} style={styles.form}>
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
-            <Input type="password" placeholder="Create password (min 8 chars)" value={pwd} onChange={setPwd} />
-            <Input type="password" placeholder="Confirm password" value={pwd2} onChange={setPwd2} />
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              autoFocus
+            />
+            <Input
+              type="password"
+              placeholder="Create password (min 8 chars)"
+              value={pwd}
+              onChange={setPwd}
+              autoComplete="new-password"
+            />
+            <Input
+              type="password"
+              placeholder="Confirm password"
+              value={pwd2}
+              onChange={setPwd2}
+              autoComplete="new-password"
+            />
             <button type="submit" disabled={busy} style={styles.primaryBtn}>
               {busy ? "Creating…" : "Create account"}
             </button>
@@ -108,7 +165,14 @@ export default function SignIn() {
 
         {mode === "reset" && (
           <form onSubmit={doReset} style={styles.form}>
-            <Input type="email" placeholder="you@example.com" value={email} onChange={setEmail} autoFocus />
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              autoFocus
+            />
             <button type="submit" disabled={busy} style={styles.primaryBtn}>
               {busy ? "Sending…" : "Send reset link"}
             </button>

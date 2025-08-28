@@ -3,8 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 const url  = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!url || !anon) {
-  console.error("[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY (browser)");
+const KEY = "__SB_CLIENT__"; // global singleton key
+
+if (!globalThis[KEY]) {
+  if (!url || !anon) {
+    console.error("[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY (browser)");
+    globalThis[KEY] = null;
+  } else {
+    globalThis[KEY] = createClient(url, anon, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // keep default storageKey so existing sessions continue to work
+      },
+    });
+    console.info("INFO[Supabase] Client created once", new Date().toISOString());
+  }
 }
 
-export const supabase = (url && anon) ? createClient(url, anon) : null;
+export const supabase = globalThis[KEY];
