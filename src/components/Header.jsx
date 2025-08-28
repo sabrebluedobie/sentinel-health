@@ -1,15 +1,19 @@
 import React, { useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase-browser";
 import { AuthContext } from "./AuthContext";
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
+const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.svg";
+
 export default function Header() {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const onLogout = async () => {
     try {
       await supabase?.auth?.signOut?.();
-      window.location.hash = "#/signin";
-      window.location.reload();
+      navigate("/signin", { replace: true });
     } catch (e) {
       console.error(e);
       alert("Logout failed");
@@ -19,17 +23,17 @@ export default function Header() {
   return (
     <header style={styles.bar}>
       <div style={styles.left}>
-        <img src="/logo.svg" alt="Logo" style={styles.logo} />
-        <a href="#/" style={styles.brand}>Your App</a>
+        <img src={LOGO_PATH} alt="Logo" style={styles.logo} />
+        <Link to="/" style={styles.brand}>{APP_NAME}</Link>
       </div>
       <nav style={styles.right}>
         {user ? (
           <>
-            <a href="#/settings" style={styles.link}>Settings</a>
+            <Link to="/settings" style={styles.link}>Settings</Link>
             <button onClick={onLogout} style={styles.button}>Log out</button>
           </>
         ) : (
-          <a href="#/signin" style={styles.link}>Sign in</a>
+          <Link to="/signin" style={styles.link}>Sign in</Link>
         )}
       </nav>
     </header>
