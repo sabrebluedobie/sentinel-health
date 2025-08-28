@@ -7,6 +7,8 @@ export const AuthContext = createContext({
   user: null,
   loading: true,
 });
+export const useAuth = () => React.useContext(AuthContext);
+
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);

@@ -21,7 +21,7 @@ export default function Settings() {
       <div className="card" style={{ padding: 16, borderRadius: 14 }}>
         <h2 style={{ marginTop: 0 }}>Appearance</h2>
         <p className="muted" style={{ marginTop: 6 }}>
-          Choose how Sentinel Health looks. “System” follows your device preference automatically.
+          Choose how Sentinel Health looks. “System” follows your device preference.
         </p>
 
         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
