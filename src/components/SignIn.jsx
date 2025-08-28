@@ -1,6 +1,7 @@
+// src/components/SignIn.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase-browser";
+import supabase from "../lib/supabase";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
 // Put a logo at public/logo.png or set VITE_APP_LOGO to your asset path
@@ -15,58 +16,33 @@ export default function SignIn() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // BrowserRouter: redirect to origin (no #)
   const redirectTo = () =>
-    (typeof window !== "undefined" ? `${window.location.origin}/` : "/");
-
-  // If envs are missing, the client will be null: show a helpful message.
-  if (!supabase) {
-    return (
-      <div style={{ padding: 24, maxWidth: 520, margin: "80px auto", textAlign: "center" }}>
-        <h1>Sign in</h1>
-        <p style={{ color: "#666" }}>
-          App not configured: missing <code>VITE_SUPABASE_URL</code> and/or <code>VITE_SUPABASE_ANON_KEY</code>.
-        </p>
-      </div>
-    );
-  }
+    typeof window !== "undefined" ? `${window.location.origin}/` : "/";
 
   async function doGoogle() {
-    try {
-      setMsg("");
-      setBusy(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: redirectTo() }
-      });
-      if (error) {
-        console.error("Google sign-in error:", error);
-        setMsg(`Google sign-in error: ${error.message}`);
-      }
-    } finally {
+    setMsg("");
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: redirectTo() },
+    });
+    if (error) {
+      setMsg(`Google sign-in error: ${error.message}`);
       setBusy(false);
     }
   }
 
   async function doSignIn(e) {
     e.preventDefault();
-    try {
-      setMsg("");
-      setBusy(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: pwd
-      });
-      if (error) {
-        console.error("Sign-in error:", error);
-        setMsg(`Sign-in error: ${error.message}`);
-      }
-      if (data?.session) {
-        navigate("/", { replace: true });
-      }
-    } finally {
-      setBusy(false);
-    }
+    setMsg("");
+    setBusy(true);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: pwd,
+    });
+    if (error) setMsg(`Sign-in error: ${error.message}`);
+    if (data?.session) navigate("/", { replace: true });
+    setBusy(false);
   }
 
   async function doSignUp(e) {
@@ -74,40 +50,33 @@ export default function SignIn() {
     setMsg("");
     if (pwd.length < 8) return setMsg("Password must be at least 8 characters.");
     if (pwd !== pwd2) return setMsg("Passwords do not match.");
-    try {
-      setBusy(true);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password: pwd,
-        options: { emailRedirectTo: redirectTo() }
-      });
-      if (error) {
-        console.error("Sign-up error:", error);
-        setMsg(`Sign-up error: ${error.message}`);
-      } else {
-        setMsg("Account created. Check your email to confirm and sign in.");
-        setMode("signin");
-      }
-    } finally {
-      setBusy(false);
+    setBusy(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: pwd,
+      options: { emailRedirectTo: redirectTo() },
+    });
+    if (error) setMsg(`Sign-up error: ${error.message}`);
+    else {
+      setMsg("Account created. Check your email to confirm, then sign in.");
+      setMode("signin");
     }
+    setBusy(false);
   }
 
   async function doReset(e) {
     e.preventDefault();
-    try {
-      setMsg("");
-      setBusy(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectTo()
-      });
-      if (error) {
-        console.error("Reset error:", error);
-      }
-      setMsg(error ? `Reset error: ${error.message}` : "Password reset email sent. Check your inbox.");
-    } finally {
-      setBusy(false);
-    }
+    setMsg("");
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo(),
+    });
+    setBusy(false);
+    setMsg(
+      error
+        ? `Reset error: ${error.message}`
+        : "Password reset email sent. Check your inbox."
+    );
   }
 
   return (
@@ -118,21 +87,22 @@ export default function SignIn() {
           <div style={styles.brandName}>{APP_NAME}</div>
         </div>
 
-        <div style={styles.tabs}>
+        <div style={styles.tabs} role="tablist" aria-label="Authentication">
           <Tab label="Sign in" active={mode === "signin"} onClick={() => setMode("signin")} />
           <Tab label="Create account" active={mode === "signup"} onClick={() => setMode("signup")} />
           <Tab label="Reset" active={mode === "reset"} onClick={() => setMode("reset")} />
         </div>
 
         {mode === "signin" && (
-          <form onSubmit={doSignIn} style={styles.form}>
+          <form onSubmit={doSignIn} style={styles.form} autoComplete="on">
             <Input
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={setEmail}
-              autoComplete="email"
               autoFocus
+              autoComplete="email"
+              name="email"
             />
             <Input
               type="password"
@@ -140,22 +110,23 @@ export default function SignIn() {
               value={pwd}
               onChange={setPwd}
               autoComplete="current-password"
+              name="current-password"
             />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+            <button type="submit" disabled={busy} style={{ ...styles.primaryBtn, ...(busy ? styles.btnBusy : {}) }}>
               {busy ? "Signing in…" : "Sign in"}
             </button>
           </form>
         )}
 
         {mode === "signup" && (
-          <form onSubmit={doSignUp} style={styles.form}>
+          <form onSubmit={doSignUp} style={styles.form} autoComplete="on">
             <Input
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={setEmail}
               autoComplete="email"
-              autoFocus
+              name="email"
             />
             <Input
               type="password"
@@ -163,6 +134,7 @@ export default function SignIn() {
               value={pwd}
               onChange={setPwd}
               autoComplete="new-password"
+              name="new-password"
             />
             <Input
               type="password"
@@ -170,24 +142,25 @@ export default function SignIn() {
               value={pwd2}
               onChange={setPwd2}
               autoComplete="new-password"
+              name="new-password-confirm"
             />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+            <button type="submit" disabled={busy} style={{ ...styles.primaryBtn, ...(busy ? styles.btnBusy : {}) }}>
               {busy ? "Creating…" : "Create account"}
             </button>
           </form>
         )}
 
         {mode === "reset" && (
-          <form onSubmit={doReset} style={styles.form}>
+          <form onSubmit={doReset} style={styles.form} autoComplete="on">
             <Input
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={setEmail}
               autoComplete="email"
-              autoFocus
+              name="email"
             />
-            <button type="submit" disabled={busy} style={styles.primaryBtn}>
+            <button type="submit" disabled={busy} style={{ ...styles.primaryBtn, ...(busy ? styles.btnBusy : {}) }}>
               {busy ? "Sending…" : "Send reset link"}
             </button>
           </form>
@@ -195,11 +168,11 @@ export default function SignIn() {
 
         <div style={styles.divider}><span>or</span></div>
 
-        <button onClick={doGoogle} disabled={busy} style={styles.googleBtn}>
+        <button onClick={doGoogle} disabled={busy} style={{ ...styles.googleBtn, ...(busy ? styles.btnBusy : {}) }}>
           Continue with Google
         </button>
 
-        <div style={styles.msg}>{msg}</div>
+        <div style={styles.msg} aria-live="polite">{msg}</div>
       </div>
     </div>
   );
@@ -207,7 +180,12 @@ export default function SignIn() {
 
 function Tab({ label, active, onClick }) {
   return (
-    <button onClick={onClick} style={{ ...styles.tab, ...(active ? styles.tabActive : {}) }}>
+    <button
+      onClick={onClick}
+      role="tab"
+      aria-selected={active}
+      style={{ ...styles.tab, ...(active ? styles.tabActive : {}) }}
+    >
       {label}
     </button>
   );
@@ -226,8 +204,23 @@ function Input({ value, onChange, ...props }) {
 }
 
 const styles = {
-  page: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f6f7fb", padding: 16 },
-  card: { width: "100%", maxWidth: 440, background: "#fff", border: "1px solid #eee", borderRadius: 16, boxShadow: "0 8px 30px rgba(0,0,0,0.06)", padding: 24 },
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f6f7fb",
+    padding: 16,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 440,
+    background: "#fff",
+    border: "1px solid #eee",
+    borderRadius: 16,
+    boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+    padding: 24,
+  },
   brandWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 12 },
   logo: { height: 56, width: "auto" },
   brandName: { fontSize: 20, fontWeight: 700 },
@@ -236,8 +229,24 @@ const styles = {
   tabActive: { background: "#fff", borderColor: "var(--primary, #1a73e8)", fontWeight: 600 },
   form: { display: "grid", gap: 10 },
   input: { padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", outline: "none" },
-  primaryBtn: { padding: "10px 12px", borderRadius: 10, border: "1px solid var(--primary, #1a73e8)", background: "var(--primary, #1a73e8)", color: "#fff", cursor: "pointer" },
-  googleBtn: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", background: "#fff", cursor: "pointer" },
+  primaryBtn: {
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid var(--primary, #1a73e8)",
+    background: "var(--primary, #1a73e8)",
+    color: "#fff",
+    cursor: "pointer",
+  },
+  btnBusy: { opacity: 0.7, cursor: "not-allowed" },
+  googleBtn: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    background: "#fff",
+    cursor: "pointer",
+  },
   divider: { display: "flex", alignItems: "center", gap: 8, margin: "14px 0", color: "#999", fontSize: 12 },
-  msg: { marginTop: 10, color: "#666", minHeight: 18 }
+  msg: { marginTop: 10, color: "#666", minHeight: 18 },
 };
+
