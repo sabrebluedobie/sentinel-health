@@ -6,10 +6,9 @@ import Header from "../components/Header.jsx";
 import SignIn from "../components/SignIn.jsx";
 import Settings from "../components/Settings.jsx";
 
-// ROUTER
 import { Routes, Route, Navigate } from "react-router-dom";
 
-// PAGES
+// PAGES (match your filenames/casing)
 import Dashboard from "./Dashboard.jsx";
 import LogGlucose from "./LogGlucose.jsx";
 import LogSleep from "./LogSleep.jsx";
@@ -19,53 +18,51 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <HashRouter>
-          <Header />
-          <Routes>
-            <Route path="/signin" element={<SignIn />} />
-            <Route
-              path="/"
-              element={
-                <RequireAuth>
-                  <Dashboard />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <RequireAuth>
-                  <Settings />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/log/glucose"
-              element={
-                <RequireAuth>
-                  <LogGlucose />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/log/sleep"
-              element={
-                <RequireAuth>
-                  <LogSleep />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/log/migraine"
-              element={
-                <RequireAuth>
-                  <LogMigraine onSave={(data)=>console.log("migraine saved", data)} />
-                </RequireAuth>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </HashRouter>
+        <Header />
+        <Routes>
+          <Route path="/signin" element={<SignIn />} />
+          <Route
+            path="/"
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <Settings />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/log/glucose"
+            element={
+              <RequireAuth>
+                <LogGlucose />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/log/sleep"
+            element={
+              <RequireAuth>
+                <LogSleep />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/log/migraine"
+            element={
+              <RequireAuth>
+                <LogMigraine onSave={(data) => console.log("migraine saved", data)} />
+              </RequireAuth>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </AuthProvider>
     </ThemeProvider>
   );
