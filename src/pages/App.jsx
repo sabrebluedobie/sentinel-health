@@ -3,10 +3,10 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SignIn from "@/components/SignIn";
-import Dashboard from "./pages/Dashboard";
-import LogGlucose from "./pages/LogGlucose";
-import LogSleep from "./pages/LogSleep";
-import LogMigraine from "./pages/LogMigraine";
+import Dashboard from "./Dashboard";
+import LogGlucose from "./LogGlucose";
+import LogSleep from "./LogSleep";
+import LogMigraine from "./LogMigraine";
 
 
 
