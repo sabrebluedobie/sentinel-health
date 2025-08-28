@@ -1,8 +1,11 @@
-// src/components/AuthContext.jsx
 import React, { createContext, useEffect, useState, useContext } from "react";
-import supabase from "../lib/supabase";
+import supabase from "@/lib/supabase";
 
-export const AuthContext = createContext({ session: null, user: null, loading: true });
+export const AuthContext = createContext({
+  session: null,
+  user: null,
+  loading: true,
+});
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -12,23 +15,27 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }
-    init();
+    const bootstrap = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(data.session ?? null);
+        setUser(data.session?.user ?? null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    bootstrap();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession ?? null);
+      setUser(newSession?.user ?? null);
+      setLoading(false);
     });
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe?.();
+      listener?.subscription?.unsubscribe?.();
     };
   }, []);
 
@@ -39,6 +46,5 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+// handy hook if you like:
+export const useAuth = () => useContext(AuthContext);
