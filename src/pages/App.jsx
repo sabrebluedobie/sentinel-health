@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import "../styles/globals.css";
 import { ThemeProvider } from "../components/ThemeContext";
-import { AuthProvider, AuthContext } from "../components/AuthContext";
+import { AuthProvider, AuthContext } from "../components/AuthContext.jsx"
 import Header from "../components/Header";
 import Settings from "../components/Settings";
 import SignIn from "../components/SignIn";
