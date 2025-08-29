@@ -3,91 +3,74 @@ import React, { useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
 export default function Settings() {
-  // Nightscout form state
+  // Nightscout connection form
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
   const [apiSecret, setApiSecret] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [msgKind, setMsgKind] = useState("info"); // 'info' | 'ok' | 'err'
+  const [saveMsg, setSaveMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // Theme toggle
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "light"
-  );
+  // Manual sync
+  const [days, setDays] = useState(3);
+  const [syncMsg, setSyncMsg] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
-  // Apply theme immediately on mount & when changed
+  // Load existing connection (optional, best effort)
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  // Prefill Nightscout values if the row already exists
-  useEffect(() => {
-    let cancel = false;
+    let cancelled = false;
     (async () => {
-      try {
-        setMsg("");
-        // RLS policy allows the authed user to read their single row
-        const { data, error } = await supabase
-          .from("nightscout_connections")
-          .select("url, token, api_secret")
-          .maybeSingle();
-        if (error) throw error;
-        if (!cancel && data) {
-          setUrl(data.url || "");
-          setToken(data.token || "");
-          setApiSecret(data.api_secret || "");
-        }
-      } catch (e) {
-        if (!cancel) {
-          setMsgKind("err");
-          setMsg(e.message || "Failed to load Nightscout connection");
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("nightscout_connections")
+        .select("url, token, api_secret")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setUrl(data.url || "");
+        setToken(data.token || "");
+        setApiSecret(data.api_secret || "");
       }
     })();
-    return () => {
-      cancel = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  function validUrl(u) {
-    try {
-      const x = new URL(u);
-      return x.protocol === "https:" || x.protocol === "http:";
-    } catch {
-      return false;
-    }
+  async function saveNightscout(e) {
+    e.preventDefault();
+    setSaveMsg("");
+    setSaving(true);
+    const { error } = await supabase.rpc("set_nightscout_connection", {
+      p_url: url.trim(),
+      p_token: token || null,
+      p_api_secret: apiSecret || null,
+    });
+    setSaving(false);
+    setSaveMsg(error ? `Error: ${error.message}` : "Nightscout connection saved.");
   }
 
-  async function handleSave(e) {
-    e.preventDefault();
-    setMsg("");
-    setMsgKind("info");
-
-    if (!validUrl(url)) {
-      setMsgKind("err");
-      setMsg("Please enter a valid http(s) Nightscout URL.");
+  async function manualSync() {
+    setSyncMsg("");
+    setSyncing(true);
+    // Use the user's JWT to authenticate our /api/nightscout/pull call
+    const { data: { session } } = await supabase.auth.getSession();
+    const access = session?.access_token;
+    if (!access) {
+      setSyncing(false);
+      setSyncMsg("You must be signed in.");
       return;
     }
-
-    setBusy(true);
     try {
-      // <-- This is the “quick client call reminder”, wired into the form.
-      const { data, error } = await supabase.rpc("set_nightscout_connection", {
-        p_api_secret: apiSecret || null,
-        p_token: token || null,
-        p_url: url,
+      const r = await fetch(`/api/nightscout/pull?days=${days}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access}` },
       });
-      if (error) throw error;
-
-      setMsgKind("ok");
-      setMsg("Nightscout connection saved.");
+      const json = await r.json();
+      if (!r.ok || !json?.ok) throw new Error(json?.error || `HTTP ${r.status}`);
+      setSyncMsg(`Pulled ${json.fetched} entries — inserted ${json.inserted}, skipped ${json.skipped}.`);
     } catch (e) {
-      setMsgKind("err");
-      setMsg(e.message || "Failed to save Nightscout connection.");
+      setSyncMsg(`Sync failed: ${e.message}`);
     } finally {
-      setBusy(false);
+      setSyncing(false);
     }
   }
 
@@ -95,115 +78,87 @@ export default function Settings() {
     <div className="container" style={{ padding: 16 }}>
       <h1 style={{ margin: "12px 0 16px" }}>Settings</h1>
 
-      {/* Theme */}
+      {/* Nightscout connection */}
       <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Appearance</h2>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="radio"
-              name="theme"
-              value="light"
-              checked={theme === "light"}
-              onChange={() => setTheme("light")}
-            />
-            Light
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="radio"
-              name="theme"
-              value="dark"
-              checked={theme === "dark"}
-              onChange={() => setTheme("dark")}
-            />
-            Dark
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="radio"
-              name="theme"
-              value="system"
-              checked={theme === "system"}
-              onChange={() => setTheme("system")}
-            />
-            System
-          </label>
-        </div>
-        <p className="muted" style={{ marginTop: 8 }}>
-          Tip: make sure your CSS uses <code>[data-theme="dark"]</code> rules or CSS variables to style dark mode.
-        </p>
-      </div>
-
-      {/* Nightscout */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Nightscout Pro</h2>
-        <p className="muted" style={{ marginTop: 4 }}>
-          Enter your Nightscout site URL and (optionally) a token or API secret.
-        </p>
-
-        <form onSubmit={handleSave} style={{ display: "grid", gap: 10, marginTop: 12 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Nightscout URL</span>
+        <h2 style={{ marginTop: 0 }}>Nightscout</h2>
+        <form onSubmit={saveNightscout} style={{ display: "grid", gap: 10, maxWidth: 560 }}>
+          <label>
+            <div className="muted" style={{ marginBottom: 4 }}>Nightscout URL</div>
             <input
               type="url"
-              placeholder="https://your-nightscout.example.com"
+              required
+              placeholder="https://my-nightscout.example.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              required
-              autoComplete="url"
               style={inputStyle}
             />
           </label>
-
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Token (optional)</span>
+          <label>
+            <div className="muted" style={{ marginBottom: 4 }}>Token (optional)</div>
             <input
               type="text"
-              placeholder="e.g. my_read_token"
+              placeholder="If your site uses tokens"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              autoComplete="off"
               style={inputStyle}
             />
           </label>
-
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>API Secret (optional)</span>
+          <label>
+            <div className="muted" style={{ marginBottom: 4 }}>API Secret (optional)</div>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder="If your site uses API secret"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
-              autoComplete="new-password"
               style={inputStyle}
+              autoComplete="new-password"
             />
           </label>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit" className="btn" disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </button>
-            {msg && (
-              <div
-                style={{
-                  alignSelf: "center",
-                  color: msgKind === "err" ? "#b91c1c" : msgKind === "ok" ? "#166534" : "#555",
-                }}
-              >
-                {msg}
-              </div>
-            )}
-          </div>
+          <button type="submit" disabled={saving} style={primaryBtn}>
+            {saving ? "Saving…" : "Save connection"}
+          </button>
+          {saveMsg && <div className="muted">{saveMsg}</div>}
         </form>
+      </div>
+
+      {/* Manual Nightscout sync */}
+      <div className="card" style={{ padding: 16, borderRadius: 14 }}>
+        <h2 style={{ marginTop: 0 }}>Manual Nightscout Sync</h2>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <label>
+            <span className="muted" style={{ marginRight: 8 }}>Range:</span>
+            <select value={days} onChange={(e) => setDays(Number(e.target.value))} style={inputStyle}>
+              <option value={1}>Last 24 hours</option>
+              <option value={3}>Last 3 days</option>
+              <option value={7}>Last 7 days</option>
+              <option value={14}>Last 14 days</option>
+              <option value={30}>Last 30 days</option>
+            </select>
+          </label>
+          <button onClick={manualSync} disabled={syncing} style={primaryBtn}>
+            {syncing ? "Syncing…" : "Pull now"}
+          </button>
+        </div>
+        {syncMsg && <div className="muted" style={{ marginTop: 8 }}>{syncMsg}</div>}
       </div>
     </div>
   );
 }
 
 const inputStyle = {
+  width: "100%",
   padding: "10px 12px",
   borderRadius: 10,
   border: "1px solid #ddd",
   outline: "none",
+};
+
+const primaryBtn = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid var(--primary, #1a73e8)",
+  background: "var(--primary, #1a73e8)",
+  color: "#fff",
+  cursor: "pointer",
 };
