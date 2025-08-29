@@ -60,6 +60,23 @@ function CgmPanel() {
       setStatus("Connection failed.");
     }
   };
+  try {
+  const u = baseUrl.replace(/\/+$/, "") + "/api/v1/entries.json?count=1" + (token ? `&token=${encodeURIComponent(token)}` : "");
+  const r = await fetch(u, { method: "GET" });
+  const text = await r.text().catch(() => "");
+  if (!r.ok) {
+    if (r.status === 525 || text.includes("Error code 525")) {
+      throw new Error("Nightscout SSL handshake failed (525). Your Nightscout host’s HTTPS/TLS is misconfigured or offline.");
+    }
+    throw new Error(`Nightscout test failed (${r.status}). ${text.slice(0, 180)}`);
+  }
+  // If we got JSON, great:
+  JSON.parse(text); // throws if CF error html
+  setMsg("Nightscout test OK.");
+} catch (e) {
+  setMsg(`Test failed: ${e.message}`);
+}
+
   return (
     <section>
       <h3>Connect CGM</h3>
