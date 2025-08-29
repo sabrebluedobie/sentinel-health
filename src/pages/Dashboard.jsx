@@ -124,34 +124,18 @@ export default function Dashboard() {
     }
   };
 
-  // Initial load
   useEffect(() => {
-    if (!user || loading) return;
-    refreshAll();
-  }, [user?.id, loading]);
+  if (!user) return;
+  const ch = supabase
+    .channel("realtime:dashboard")
+    .on("postgres_changes", { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${user.id}` }, () => fetchAll())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sleep_data",       filter: `user_id=eq.${user.id}` }, () => fetchAll())
+    .on("postgres_changes", { event: "*", schema: "public", table: "migraine_entries", filter: `user_id=eq.${user.id}` }, () => fetchAll())
+    .subscribe();
 
-  // Realtime subscriptions
-  useEffect(() => {
-    if (!user) return;
+  return () => { supabase.removeChannel(ch); };
+}, [user]);
 
-    const channel = supabase
-      .channel("realtime:dashboard")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${user.id}` },
-        () => refreshAll()
-      )
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "sleep_data", filter: `user_id=eq.${user.id}` },
-        () => refreshAll()
-      )
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "migraine_entries", filter: `user_id=eq.${user.id}` },
-        () => refreshAll()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id]);
 
   // Derived chart data for Recharts
   const glucoseChartData = useMemo(() => (
