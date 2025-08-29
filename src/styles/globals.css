@@ -26,6 +26,21 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
 a { color: inherit; text-decoration: none; }
 a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
 
+/* Force legible inputs in both themes */
+.input {
+  background: var(--input-bg, #ffffff) !important;
+  color: var(--input-fg, #111111) !important;
+  border-color: var(--border, #e5e7eb) !important;
+}
+.input::placeholder { opacity: .65; }
+
+/* If you use a dark data-theme */
+[data-theme="dark"] .input {
+  --input-bg: #0b1220;
+  --input-fg: #e5e7eb;
+  --border: #334155;
+}
+
 /* Accessible focus outline (uses --focus from theme.css if present) */
 :focus-visible {
   outline: 3px solid var(--focus, #93C5FD);
