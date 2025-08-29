@@ -1,5 +1,30 @@
 import React, { useState, useContext } from "react";
 import { ThemeContext } from "./ThemeContext";
+// src/pages/Settings.jsx (or wherever your Sync button lives)
+import supabase from "@/lib/supabase";
+
+async function handleSyncNow() {
+  setSyncMsg("Syncing…");
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const res = await fetch("/api/nightscout/sync", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ sinceDays: 14 }) // optional
+  });
+
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || j.ok === false) {
+    setSyncMsg(`Sync failed: ${j.error || res.statusText}`);
+  } else {
+    setSyncMsg(`Synced ${j.inserted || 0} readings.`);
+  }
+}
 
 export default function Settings() {
   const [tab, setTab] = useState("colors");
