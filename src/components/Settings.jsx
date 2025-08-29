@@ -7,16 +7,16 @@ async function handleSyncNow() {
   setSyncMsg("Syncing…");
 
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
 
-  const res = await fetch("/api/nightscout/sync", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ sinceDays: 14 }) // optional
-  });
+  await fetch("/api/nightscout/sync", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session?.access_token || ""}`,
+  },
+  body: JSON.stringify({ sinceDays: 14 }),
+});
+  const token = session?.access_token;
 
   const j = await res.json().catch(() => ({}));
   if (!res.ok || j.ok === false) {
