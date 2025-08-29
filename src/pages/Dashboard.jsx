@@ -113,7 +113,7 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <Link className="btn" to "/settings">Settings</Link>
+        <Link className="btn" to="/settings">Settings</Link>
         <Link className="btn" to="/log-glucose">Log glucose</Link>
         <Link className="btn" to="/log-sleep">Log sleep</Link>
         <Link className="btn" to="/log-migraine">Log migraine</Link>
