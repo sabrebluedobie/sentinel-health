@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "@/components/AuthContext";
 import supabase from "@/lib/supabase";
@@ -14,26 +14,23 @@ export default function Dashboard() {
   const { user, loading } = useContext(AuthContext);
   const nav = useNavigate();
 
-  // ---- UI state ----
   const [g, setG] = useState({ last: null, series: [], loading: true });
   const [s, setS] = useState({ totalMin: 0, avgEff: null, loading: true });
   const [symData, setSymData] = useState([]); // [{name, value}]
   const [err, setErr] = useState("");
 
-  // 30-day window
-  const sinceISO = useMemo(
-    () => new Date(Date.now() - 30 * 86400000).toISOString(),
-    []
-  );
-
-  // ---------- fetchers ----------
+  // --------------------------
+  // Fetchers (safe & defensive)
+  // --------------------------
   async function fetchGlucose() {
     if (!user) return;
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+
     const { data, error } = await supabase
       .from("glucose_readings")
       .select("device_time,value_mgdl")
       .eq("user_id", user.id)
-      .gte("device_time", sinceISO)
+      .gte("device_time", since)
       .order("device_time", { ascending: true })
       .limit(2000);
 
@@ -41,43 +38,72 @@ export default function Dashboard() {
 
     const series = (data ?? [])
       .map(r => ({ t: new Date(r.device_time).getTime(), v: Number(r.value_mgdl) }))
-      .filter(p => isFinite(p.v))
+      .filter(p => Number.isFinite(p.v))
       .sort((a, b) => a.t - b.t);
 
     const last = series.length ? series[series.length - 1].v : null;
     setG({ last, series, loading: false });
-    // Debug
-    console.log("[Dashboard] Glucose points:", series.length);
+    console.log("[Dashboard] Glucose points:", series.length, series.slice(-3));
   }
 
   async function fetchSleep() {
     if (!user) return;
-    // NOTE: using start/stop per your actual table (no end_time)
+
+    // Pull everything; map columns client-side to tolerate schema drift
     const { data, error } = await supabase
       .from("sleep_data")
-      .select("start,stop,efficiency")
+      .select("*")
       .eq("user_id", user.id)
-      .gte("start", sinceISO)
-      .order("start", { ascending: true })
-      .limit(5000);
+      .limit(2000);
 
     if (error) throw error;
+
+    const SINCE_TS = Date.now() - 30 * 86400000;
 
     let totalMin = 0;
     let effSum = 0;
     let effCount = 0;
 
-    for (const r of data ?? []) {
-      if (r.start && r.stop) {
-        const min = (new Date(r.stop) - new Date(r.start)) / 60000;
-        if (isFinite(min) && min > 0) totalMin += min;
-      }
-      if (r.efficiency != null) {
-        const e = Number(r.efficiency);
-        if (isFinite(e)) {
-          effSum += e;
-          effCount++;
+    // track which cols were actually used (debugging)
+    const usedCols = { start: new Set(), stop: new Set(), eff: new Set() };
+
+    const getFirst = (row, candidates) => {
+      for (const c of candidates) {
+        if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== "") {
+          return [c, row[c]];
         }
+      }
+      return [null, null];
+    };
+    const toTs = (v) => {
+      const t = Date.parse(v);
+      return Number.isFinite(t) ? t : NaN;
+    };
+
+    // common variants we’ve seen
+    const startCandidates = ["start_time", "start", "sleep_start", "bedtime", "date", "logged_at"];
+    const stopCandidates  = ["end_time", "stop", "sleep_end", "wake_time", "wakeup", "logged_at"];
+    const effCandidates   = ["efficiency", "sleep_efficiency", "score", "eff"];
+
+    for (const r of data ?? []) {
+      const [sCol, sRaw] = getFirst(r, startCandidates);
+      const [eCol, eRaw] = getFirst(r, stopCandidates);
+      const sTs = sRaw ? toTs(sRaw) : NaN;
+      const eTs = eRaw ? toTs(eRaw) : NaN;
+
+      // Only count sessions in the last 30d with sane timestamps
+      if (Number.isFinite(sTs) && Number.isFinite(eTs) && eTs > sTs && sTs >= SINCE_TS) {
+        totalMin += (eTs - sTs) / 60000;
+        if (sCol) usedCols.start.add(sCol);
+        if (eCol) usedCols.stop.add(eCol);
+      }
+
+      const [effCol, effRaw] = getFirst(r, effCandidates);
+      const effNum = effRaw !== null ? Number(effRaw) : NaN;
+      if (Number.isFinite(effNum)) {
+        effSum += effNum;
+        effCount++;
+        if (effCol) usedCols.eff.add(effCol);
       }
     }
 
@@ -86,24 +112,29 @@ export default function Dashboard() {
       avgEff: effCount ? effSum / effCount : null,
       loading: false,
     });
-    console.log("[Dashboard] Sleep summary:", { totalMin, avg: effCount ? effSum / effCount : null });
+
+    console.log("[Dashboard] Sleep used columns:", {
+      start: [...usedCols.start],
+      stop: [...usedCols.stop],
+      efficiency: [...usedCols.eff],
+    });
   }
 
   async function fetchMigraines() {
     if (!user) return;
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
 
     const { data, error } = await supabase
       .from("migraine_entries")
       .select("symptoms,created_at")
       .eq("user_id", user.id)
-      .gte("created_at", sinceISO)
+      .gte("created_at", since)
       .order("created_at", { ascending: true })
       .limit(5000);
 
     if (error) throw error;
 
     const counts = new Map();
-
     const norm = (sym) => {
       if (Array.isArray(sym)) return sym.map(s => String(s).toLowerCase().trim());
       if (typeof sym === "string") {
@@ -115,13 +146,11 @@ export default function Dashboard() {
       }
       return [];
     };
-
     for (const r of data ?? []) {
       for (const k of norm(r.symptoms)) {
         counts.set(k, (counts.get(k) || 0) + 1);
       }
     }
-
     const pie = [...counts.entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
@@ -130,26 +159,28 @@ export default function Dashboard() {
     console.log("[Dashboard] Migraine symptoms:", pie);
   }
 
-  // ---------- initial load ----------
+  // --------------------------
+  // Initial load
+  // --------------------------
   useEffect(() => {
     if (loading || !user) return;
     let cancelled = false;
-
     (async () => {
+      setErr("");
       try {
-        setErr("");
         await Promise.all([fetchGlucose(), fetchSleep(), fetchMigraines()]);
       } catch (e) {
         console.error(e);
         if (!cancelled) setErr(e.message || "Failed to load data");
       }
     })();
-
     return () => { cancelled = true; };
-  }, [user, loading]); // run when auth ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading]);
 
-  // ---------- REALTIME listeners ----------
-  // Place this AFTER the fetch* functions (already done here).
+  // --------------------------
+  // Realtime subscriptions
+  // --------------------------
   useEffect(() => {
     if (!user) return;
 
@@ -162,7 +193,6 @@ export default function Dashboard() {
           () => fetchGlucose()
         )
         .subscribe(),
-
       supabase
         .channel("sleep_feed")
         .on(
@@ -171,7 +201,6 @@ export default function Dashboard() {
           () => fetchSleep()
         )
         .subscribe(),
-
       supabase
         .channel("migraine_feed")
         .on(
@@ -182,29 +211,26 @@ export default function Dashboard() {
         .subscribe(),
     ];
 
-    return () => {
-      channels.forEach(c => supabase.removeChannel(c));
-    };
-  }, [user?.id]);
+    return () => { channels.forEach(c => supabase.removeChannel(c)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-  // ---------- UI ----------
+  // --------------------------
+  // UI
+  // --------------------------
   if (loading) {
     return <div className="container" style={{ padding: 24 }}>Loading…</div>;
   }
   if (!user) {
-    return (
-      <div className="container" style={{ padding: 24 }}>
-        <div className="card" style={{ padding: 16, borderRadius: 14, border: "1px solid var(--border,#eee)" }}>
-          <h2 style={{ marginTop: 0 }}>Welcome</h2>
-          <p>Please <Link to="/signin">sign in</Link> to see your dashboard.</p>
-        </div>
-      </div>
-    );
+    // If unauthenticated, send to sign-in
+    nav("/signin", { replace: true });
+    return null;
   }
 
   return (
     <div className="container" style={{ padding: 16 }}>
       <h1 style={{ margin: "12px 0 16px" }}>Dashboard</h1>
+
       {err && (
         <div className="card" style={{ border: "1px solid #fca5a5", background: "#fff7f7", padding: 12, borderRadius: 10, marginBottom: 12 }}>
           {err}
@@ -234,22 +260,17 @@ export default function Dashboard() {
         <div style={{ height: 220, marginTop: 12 }}>
           <ResponsiveContainer>
             <LineChart
-              data={g.series.map(p => ({ t: p.t, v: p.v }))}
+              data={g.series.map(p => ({ t: new Date(p.t), v: p.v }))}
               margin={{ top: 10, right: 10, bottom: 5, left: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="t"
-                type="number"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={(ts) => new Date(ts).toLocaleDateString()}
+                tickFormatter={(d) => new Date(d).toLocaleDateString()}
                 minTickGap={24}
               />
               <YAxis domain={["auto", "auto"]} />
-              <Tooltip
-                labelFormatter={(ts) => new Date(ts).toLocaleString()}
-                formatter={(v) => [`${v} mg/dL`, "glucose"]}
-              />
+              <Tooltip labelFormatter={(d) => new Date(d).toLocaleString()} formatter={(v) => [`${v} mg/dL`, "glucose"]} />
               <Line type="monotone" dataKey="v" dot={false} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -285,11 +306,11 @@ export default function Dashboard() {
                 cx="50%"
                 cy="50%"
                 outerRadius={90}
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
-                {symData.map((_, i) => <Cell key={i} />)}
+                {symData.map((_, i) => (
+                  <Cell key={i} />
+                ))}
               </Pie>
               <Tooltip />
               <Legend />
@@ -306,9 +327,7 @@ function Metric({ label, value, sub }) {
   return (
     <div>
       <div style={{ fontSize: 24, fontWeight: 700 }}>{value}</div>
-      <div className="muted">
-        {label}{sub ? ` — ${sub}` : ""}
-      </div>
+      <div className="muted">{label}{sub ? ` — ${sub}` : ""}</div>
     </div>
   );
 }
