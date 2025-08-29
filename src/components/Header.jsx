@@ -37,6 +37,14 @@ export default function Header() {
         ) : (
           <Link to="/signin" className="btn" style={styles.signin}>Sign in</Link>
         )}
+        </nav>
+
+        
+      <nav style={{ display: "flex", gap: 12 }}>
+        {/* other links */}
+      <Link to="/settings">Settings</Link>
+
+
       </nav>
     </header>
   );
