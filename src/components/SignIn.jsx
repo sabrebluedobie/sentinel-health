@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import supabase from "../lib/supabase";
 import logo from "../assets/logo.png"; // make sure file exists
+// src/pages/SignIn.jsx
+export { default } from "../components/SignIn.jsx";
+
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "Sentinel Health";
 const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.png";

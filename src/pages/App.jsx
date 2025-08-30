@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/layout";
 import Dashboard from "@/pages/Dashboard.jsx";
-import SignIn from "@/pages/SignIn.jsx";
-import SignUp from "@/pages/SignUp.jsx";
+import SignIn from "@/pages/SignIn.jsx";            // single auth screen (handles sign-in/sign-up/reset)
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";
 import LogGlucose from "@/pages/LogGlucose.jsx";
@@ -31,12 +30,17 @@ export default function App() {
   return (
     <Layout>
       <Routes>
+        {/* Public routes */}
         <Route path="/sign-in" element={user ? <Navigate to="/" replace /> : <SignIn />} />
-        <Route path="/sign-up" element={user ? <Navigate to="/" replace /> : <SignUp />} />
+        <Route path="/sign-up" element={user ? <Navigate to="/" replace /> : <SignIn />} />
+
+        {/* Private routes */}
         <Route path="/" element={user ? <Dashboard /> : <Navigate to="/sign-in" replace />} />
         <Route path="/log-migraine" element={user ? <LogMigraine /> : <Navigate to="/sign-in" replace />} />
         <Route path="/log-sleep" element={user ? <LogSleep /> : <Navigate to="/sign-in" replace />} />
         <Route path="/log-glucose" element={user ? <LogGlucose /> : <Navigate to="/sign-in" replace />} />
+
+        {/* Fallback */}
         <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
       </Routes>
     </Layout>
