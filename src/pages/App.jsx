@@ -29,14 +29,16 @@ export default function App() {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/signin" element={user ? <Navigate to="/" replace /> : <SignIn />} />
-        <Route path="/" element={user ? <Dashboard /> : <Navigate to="/signin" replace />} />
-        <Route path="/log-migraine" element={user ? <LogMigraine /> : <Navigate to="/signin" replace />} />
-        <Route path="/log-sleep" element={user ? <LogSleep /> : <Navigate to="/signin" replace />} />
-        <Route path="/log-glucose" element={user ? <LogGlucose /> : <Navigate to="/signin" replace />} />
-        <Route path="*" element={<Navigate to={user ? "/" : "/signin"} replace />} />
-      </Routes>
-    </Layout>
+  <Routes>
+    {/* ONLY <Route> children here */}
+    <Route path="/" element={user ? <Dashboard /> : <Navigate to="/signin" replace />} />
+    <Route path="/signin" element={user ? <Navigate to="/" replace /> : <SignIn />} />
+    <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignUp />} />
+    <Route path="/log-migraine" element={user ? <LogMigraine /> : <Navigate to="/signin" replace />} />
+    <Route path="/log-sleep" element={user ? <LogSleep /> : <Navigate to="/signin" replace />} />
+    <Route path="/log-glucose" element={user ? <LogGlucose /> : <Navigate to="/signin" replace />} />
+    <Route path="*" element={<Navigate to={user ? "/" : "/signin"} replace />} />
+  </Routes>
+</Layout>
   );
 }
