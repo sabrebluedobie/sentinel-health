@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "@/components/AuthContext";
@@ -19,6 +20,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
+
+// AI headache types
+import HeadacheTypesChart from "@/components/HeadacheTypesChart.jsx";
+import { useHeadacheTypes } from "@/hooks/useHeadacheTypes.js";
 
 // Read pie colors saved by Settings → PieColorsEditor
 function getPieSymptomColorMap() {
@@ -44,7 +49,7 @@ export default function Dashboard() {
   const [s, setS] = useState({ totalMin: 0, avgEff: null, dailyHours: [], loading: true });
 
   // Migraines: symptoms pie + counts
-  const [symData, setSymData] = useState([]);
+  const [symData, setSymData] = useState([]); // [{ name, value }]
   const [migStats, setMigStats] = useState({ last30: 0, allTime: 0, recent: [] });
 
   // Show “Supabase tables on load”
@@ -162,7 +167,7 @@ export default function Dashboard() {
       return [];
     };
 
-    for (const r of data ?? []) {
+    for (const r of (data ?? [])) {
       for (const k of norm(r.symptoms)) counts.set(k, (counts.get(k) || 0) + 1);
     }
     const pie = [...counts.entries()]
@@ -193,7 +198,6 @@ export default function Dashboard() {
       glucose: glu.count ?? 0,
       sleep: slp.count ?? 0,
     });
-    // reuse migraine count for allTime if needed
     setMigStats((m) => ({ ...m, allTime: mig.count ?? m.allTime }));
   }
 
@@ -240,7 +244,36 @@ export default function Dashboard() {
   if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
   if (!user) return null;
 
+  // Settings → pie color map
   const colorMap = getPieSymptomColorMap();
+
+  // Build a symptom summary string to feed the AI model (fallback if none)
+  const symptomSummary = (symData.length
+    ? symData.slice(0, 8).map((s) => `${s.name} (${s.value})`).join(", ")
+    : "throbbing unilateral pain, photophobia, phonophobia, nausea"
+  );
+
+  // Optional type color map for AI chart
+  const typeColorMap = {
+    Migraine: "#8ecae6",
+    Tension: "#219ebc",
+    Cluster: "#023047",
+    "Medication-overuse": "#ffb703",
+    Sinus: "#fb8500",
+  };
+
+  const {
+    data: htData,
+    loading: htLoading,
+    err: htErr,
+    run: runHeadacheTypes,
+  } = useHeadacheTypes(symptomSummary);
+
+  // refresh AI suggestions when symptoms pie changes
+  useEffect(() => {
+    runHeadacheTypes(symptomSummary);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symData.map((s) => `${s.name}:${s.value}`).join("|")]);
 
   return (
     <div className="container" style={{ padding: 16 }}>
@@ -257,29 +290,17 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <Link className="btn" to="/settings">
-          Settings
-        </Link>
-        <Link className="btn" to="/log-glucose">
-          Log glucose
-        </Link>
-        <Link className="btn" to="/log-sleep">
-          Log sleep
-        </Link>
-        <Link className="btn" to="/log-migraine">
-          Log migraine
-        </Link>
-        <Link className="btn" to="/education">
-          Education
-        </Link>
+        <Link className="btn" to="/settings">Settings</Link>
+        <Link className="btn" to="/log-glucose">Log glucose</Link>
+        <Link className="btn" to="/log-sleep">Log sleep</Link>
+        <Link className="btn" to="/log-migraine">Log migraine</Link>
+        <Link className="btn" to="/education">Education</Link>
       </div>
 
       {/* Supabase tables summary */}
       <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Your data (Supabase)</h2>
-        <div className="muted" style={{ marginTop: 4 }}>
-          live counts from tables
-        </div>
+        <div className="muted" style={{ marginTop: 4 }}>live counts from tables</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 12 }}>
           <StatTile label="Migraine entries" value={tableCounts.migraines} />
           <StatTile label="Glucose readings" value={tableCounts.glucose} />
@@ -367,9 +388,7 @@ export default function Dashboard() {
 
         {!!migStats.recent.length && (
           <div style={{ marginTop: 8 }}>
-            <div className="muted" style={{ marginBottom: 4 }}>
-              Recent entries
-            </div>
+            <div className="muted" style={{ marginBottom: 4 }}>Recent entries</div>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {migStats.recent.map((r) => (
                 <li key={r.id} style={{ marginBottom: 2 }}>
@@ -402,6 +421,26 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
         {!symData.length && <div className="muted">No migraine entries yet.</div>}
+      </div>
+
+      {/* AI Suggestions — Headache Types */}
+      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <h2 style={{ margin: 0 }}>AI Suggestions — Headache Types</h2>
+          <button className="btn" onClick={() => runHeadacheTypes(symptomSummary)} disabled={htLoading}>
+            {htLoading ? "Analyzing…" : "Re-run on current symptoms"}
+          </button>
+        </div>
+
+        {htErr && <div className="muted" style={{ color: "#b91c1c", marginTop: 8 }}>{htErr}</div>}
+
+        <div style={{ marginTop: 12 }}>
+          <HeadacheTypesChart items={htData.items} colorMap={typeColorMap} />
+        </div>
+
+        <p className="muted" style={{ marginTop: 12 }}>
+          Educational only — not medical advice. Seek care for severe, sudden, or unusual symptoms.
+        </p>
       </div>
     </div>
   );
