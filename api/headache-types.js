@@ -1,33 +1,22 @@
 // api/headache-types.js
+// Minimal Node.js serverless function for Vercel (no Edge)
+// Requires: env OPENAI_API_KEY set in Vercel → Project → Settings → Environment Variables
+
+export const config = { runtime: 'nodejs' };
+
 import { streamText } from 'ai';
 
-export const config = {
-  runtime: 'edge',
-};
-
-function buildPrompt(symptoms) {
-  return `
-You are a medical-education assistant (NOT a diagnostic tool). Given the patient's reported headache symptoms, 
-return a concise JSON array of possible headache types with short distinguishing features and an estimated likelihood.
-
-REQUIREMENTS:
-- Return ONLY valid JSON (no commentary).
-- JSON array of objects, each object with:
-  - "type": string (e.g., "Migraine", "Tension", "Cluster", "Sinus", "Medication-overuse")
-  - "keySymptoms": string[] (2–4 short bullet points)
-  - "likelihood": number (0.0–1.0) that sums to ~1.0 across items
-- Include 4–6 items max.
-- Consider red flags (e.g., thunderclap headache, focal neuro deficits) by lowering likelihoods and adding a "See a clinician" item if appropriate.
-
-Patient-reported symptoms:
-${symptoms || 'none provided'}
-`.trim();
-}
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   try {
-    const { symptoms } = (req.method === 'POST') ? await req.json() : {};
-    const prompt = buildPrompt(symptoms);
+    const body = await readJson(req);
+    const symptoms = body?.symptoms || '';
+
+    const prompt = `
+Return ONLY valid JSON: an array of 4–6 items.
+Each item: { "type": string, "keySymptoms": string[], "likelihood": number 0..1 }.
+Sum of likelihoods should be ~1. This is educational, not diagnostic.
+Patient symptoms: ${symptoms || 'none provided'}
+`.trim();
 
     const { textStream } = await streamText({
       model: 'openai/gpt-5',
@@ -35,43 +24,55 @@ export default async function handler(req) {
     });
 
     let jsonText = '';
-    for await (const chunk of textStream) {
-      jsonText += chunk;
-    }
+    for await (const chunk of textStream) jsonText += chunk;
 
-    let parsed = [];
-    try {
-      parsed = JSON.parse(jsonText);
-      if (!Array.isArray(parsed)) parsed = [];
-    } catch {
-      parsed = [];
-    }
-
-    const items = parsed
-      .filter(
-        (x) =>
-          x &&
-          typeof x.type === 'string' &&
-          Array.isArray(x.keySymptoms) &&
-          typeof x.likelihood === 'number'
-      )
-      .map((x) => ({
-        type: x.type,
-        keySymptoms: x.keySymptoms.slice(0, 4).map(String),
-        likelihood: Math.max(0, Math.min(1, Number(x.likelihood))),
-      }));
-
-    const total = items.reduce((sum, i) => sum + i.likelihood, 0) || 1;
-    const normalized = items.map((i) => ({ ...i, likelihood: i.likelihood / total }));
-
-    return new Response(JSON.stringify({ items: normalized }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    });
+    const items = normalize(safeParseArray(jsonText));
+    res.setHeader('content-type', 'application/json');
+    res.status(200).send(JSON.stringify({ items }));
   } catch (err) {
-    return new Response(JSON.stringify({ error: err?.message || 'Server error' }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    });
+    res.setHeader('content-type', 'application/json');
+    res.status(500).send(JSON.stringify({ error: err?.message || 'Server error' }));
   }
 }
+
+// --- tiny helpers ---
+async function readJson(req) {
+  try {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const raw = Buffer.concat(chunks).toString('utf8') || '{}';
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function safeParseArray(txt) {
+  try {
+    const v = JSON.parse(txt);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalize(parsed) {
+  const items = (parsed || [])
+    .filter(
+      (x) =>
+        x &&
+        typeof x.type === 'string' &&
+        Array.isArray(x.keySymptoms) &&
+        typeof x.likelihood === 'number'
+    )
+    .map((x) => ({
+      type: x.type,
+      keySymptoms: x.keySymptoms.slice(0, 4).map(String),
+      likelihood: clamp01(Number(x.likelihood)),
+    }));
+
+  const total = items.reduce((s, i) => s + i.likelihood, 0) || 1;
+  return items.map((i) => ({ ...i, likelihood: i.likelihood / total }));
+}
+
+const clamp01 = (n) => (n < 0 ? 0 : n > 1 ? 1 : n);
