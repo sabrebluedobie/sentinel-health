@@ -1,10 +1,14 @@
 // src/pages/Dashboard.jsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+// Sentinel Dashboard — aligned to repo patterns (useAuth, two-row header, realtime)
+// Pulls from glucose_readings, sleep_data, migraine_entries and renders charts
+// Adds AI Suggestions — Headache Types (via /api/headache-types)
+
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "@/components/AuthContext";
+import { useAuth } from "@/components/AuthContext"; // per recent updates :contentReference[oaicite:1]{index=1}
 import supabase from "@/lib/supabase";
 
-// recharts
+// Recharts
 import {
   ResponsiveContainer,
   LineChart,
@@ -21,11 +25,11 @@ import {
   Cell,
 } from "recharts";
 
-// AI headache types
+// AI headache suggestions
 import HeadacheTypesChart from "@/components/HeadacheTypesChart.jsx";
 import { useHeadacheTypes } from "@/hooks/useHeadacheTypes.js";
 
-// Read pie colors saved by Settings → PieColorsEditor
+// ===== Helpers (mirrors your defensive parsing + style) =====
 function getPieSymptomColorMap() {
   try {
     const raw = localStorage.getItem("app.pieSymptomColors");
@@ -36,9 +40,19 @@ function getPieSymptomColorMap() {
   }
 }
 
+// Greeting helper (present in your header commits) :contentReference[oaicite:2]{index=2}
+function getFirstName(user) {
+  if (!user) return "";
+  const meta = user.user_metadata || {};
+  if (meta.first_name) return String(meta.first_name);
+  if (meta.full_name) return String(meta.full_name).split(" ")[0];
+  if (user.email) return String(user.email).split("@")[0];
+  return "";
+}
+
 export default function Dashboard() {
-  const { user, loading } = useContext(AuthContext);
-  const nav = useNavigate();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   const [err, setErr] = useState("");
 
@@ -52,15 +66,19 @@ export default function Dashboard() {
   const [symData, setSymData] = useState([]); // [{ name, value }]
   const [migStats, setMigStats] = useState({ last30: 0, allTime: 0, recent: [] });
 
-  // Show “Supabase tables on load”
+  // Supabase table counts on load
   const [tableCounts, setTableCounts] = useState({ migraines: 0, glucose: 0, sleep: 0 });
 
   const sinceISO = useMemo(() => new Date(Date.now() - 30 * 86400000).toISOString(), []);
 
+  // Nav guard (some routes are protected elsewhere too) :contentReference[oaicite:3]{index=3}
   useEffect(() => {
-    if (!loading && !user) nav("/signin", { replace: true });
-  }, [loading, user, nav]);
+    if (!loading && !user) navigate("/signin", { replace: true });
+  }, [loading, user, navigate]);
 
+  // --------------------------
+  // Fetchers (defensive)
+  // --------------------------
   async function fetchGlucose() {
     if (!user) return;
     const { data, error } = await supabase
@@ -83,7 +101,7 @@ export default function Dashboard() {
   async function fetchSleep() {
     if (!user) return;
 
-    // Defensive select for schema drift: prefer start_time/end_time; fall back to start/stop
+    // Pull everything; map columns client-side to tolerate schema drift (per your recent refactor) :contentReference[oaicite:4]{index=4}
     const { data, error } = await supabase
       .from("sleep_data")
       .select("*")
@@ -167,7 +185,7 @@ export default function Dashboard() {
       return [];
     };
 
-    for (const r of (data ?? [])) {
+    for (const r of data ?? []) {
       for (const k of norm(r.symptoms)) counts.set(k, (counts.get(k) || 0) + 1);
     }
     const pie = [...counts.entries()]
@@ -217,10 +235,10 @@ export default function Dashboard() {
     refreshAll();
   }, [user?.id, loading]);
 
-  // Realtime updates
+  // Realtime updates (pattern from your recent commit) :contentReference[oaicite:5]{index=5}
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
+    const ch = supabase
       .channel("realtime:dashboard")
       .on(
         "postgres_changes",
@@ -238,13 +256,14 @@ export default function Dashboard() {
         () => refreshAll()
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => supabase.removeChannel(ch);
   }, [user?.id]);
 
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (!user) return null;
 
-  // Settings → pie color map
+  // ===== Header (two-row) per your UI refactor ===== 
+  const firstName = getFirstName(user);
   const colorMap = getPieSymptomColorMap();
 
   // Build a symptom summary string to feed the AI model (fallback if none)
@@ -253,7 +272,7 @@ export default function Dashboard() {
     : "throbbing unilateral pain, photophobia, phonophobia, nausea"
   );
 
-  // Optional type color map for AI chart
+  // Optional color map for AI chart
   const typeColorMap = {
     Migraine: "#8ecae6",
     Tension: "#219ebc",
@@ -262,190 +281,227 @@ export default function Dashboard() {
     Sinus: "#fb8500",
   };
 
-  const {
-    data: htData,
-    loading: htLoading,
-    err: htErr,
-    run: runHeadacheTypes,
-  } = useHeadacheTypes(symptomSummary);
+  const { data: htData, loading: htLoading, err: htErr, run: runHeadacheTypes } =
+    useHeadacheTypes(symptomSummary);
 
-  // refresh AI suggestions when symptoms pie changes
   useEffect(() => {
     runHeadacheTypes(symptomSummary);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symData.map((s) => `${s.name}:${s.value}`).join("|")]);
 
   return (
-    <div className="container" style={{ padding: 16 }}>
-      <h1 style={{ margin: "12px 0 16px" }}>Dashboard</h1>
+    <div className="main">
+      <header className="header safe-pad" style={{ padding: "8px 12px", background: "#063b63", color: "#fff" }}>
+        {/* Row 1: title + greeting + right side actions */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 24, height: 24, background: "rgba(255,255,255,.2)", borderRadius: 6 }} />
+            <div style={{ fontWeight: 700 }}>Sentinel — Dashboard</div>
+            {firstName ? <div style={{ opacity: 0.85, fontSize: 14 }}>Hi, {firstName}!</div> : null}
+          </div>
 
-      {err && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <Link className="btn" to="/education" style={btnGhostWhite}>
+              Education
+            </Link>
+            <Link className="btn" to="/settings" style={btnGhostWhite}>
+              Settings
+            </Link>
+          </div>
+        </div>
+
+        {/* Row 2: action buttons (mobile-friendly grid) */}
         <div
-          className="card"
-          style={{ border: "1px solid #fca5a5", background: "#fff7f7", padding: 12, borderRadius: 10, marginBottom: 12 }}
+          className="action-row"
+          style={{
+            marginTop: 10,
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+            gap: 8,
+          }}
         >
-          {err}
-        </div>
-      )}
-
-      {/* Quick actions */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <Link className="btn" to="/settings">Settings</Link>
-        <Link className="btn" to="/log-glucose">Log glucose</Link>
-        <Link className="btn" to="/log-sleep">Log sleep</Link>
-        <Link className="btn" to="/log-migraine">Log migraine</Link>
-        <Link className="btn" to="/education">Education</Link>
-      </div>
-
-      {/* Supabase tables summary */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Your data (Supabase)</h2>
-        <div className="muted" style={{ marginTop: 4 }}>live counts from tables</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 12 }}>
-          <StatTile label="Migraine entries" value={tableCounts.migraines} />
-          <StatTile label="Glucose readings" value={tableCounts.glucose} />
-          <StatTile label="Sleep rows" value={tableCounts.sleep} />
-        </div>
-      </div>
-
-      {/* Glucose */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 style={{ margin: 0 }}>Blood glucose</h2>
-          <div className="muted">last 30 days</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{g.last == null ? "—" : `${g.last} mg/dL`}</div>
-          <div className="muted">latest reading</div>
-        </div>
-        <div style={{ height: 220, marginTop: 12 }}>
-          <ResponsiveContainer>
-            <LineChart data={g.series.map((p) => ({ t: new Date(p.t), v: p.v }))} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="t" tickFormatter={(d) => new Date(d).toLocaleDateString()} minTickGap={24} />
-              <YAxis domain={["auto", "auto"]} />
-              <Tooltip labelFormatter={(d) => new Date(d).toLocaleString()} formatter={(v) => [`${v} mg/dL`, "glucose"]} />
-              <Line type="monotone" dataKey="v" dot={false} strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        {!g.series.length && <div className="muted">No glucose data yet.</div>}
-      </div>
-
-      {/* Sleep bar graph */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 style={{ margin: 0 }}>Sleep (bar graph)</h2>
-          <div className="muted">hours per day — last 30 days</div>
-        </div>
-        <div style={{ height: 220, marginTop: 12 }}>
-          <ResponsiveContainer>
-            <BarChart
-              data={s.dailyHours.map((d) => ({ day: new Date(d.day), hours: d.hours }))}
-              margin={{ top: 10, right: 10, bottom: 5, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" tickFormatter={(d) => new Date(d).toLocaleDateString()} minTickGap={24} />
-              <YAxis domain={[0, "auto"]} />
-              <Tooltip labelFormatter={(d) => new Date(d).toLocaleString()} formatter={(v) => [`${v} h`, "sleep"]} />
-              <Bar dataKey="hours" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{ display: "flex", gap: 24, marginTop: 8, flexWrap: "wrap" }}>
-          <StatTile label="Total sleep (30d)" value={`${Math.round(s.totalMin / 60)} h`} sub={`${s.totalMin} min`} />
-          <StatTile label="Avg. efficiency" value={s.avgEff == null ? "—" : `${s.avgEff.toFixed(0)}%`} />
-        </div>
-      </div>
-
-      {/* Migraines: counts + symptoms pie */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 style={{ margin: 0 }}>Migraines</h2>
-          <div className="muted">LogMigraine table + symptoms</div>
+          <Link className="btn" to="/log-migraine" style={{ ...btnSolid, background: "#063b63" }}>
+            + Migraine
+          </Link>
+          <Link className="btn" to="/log-glucose" style={{ ...btnSolid, background: "#7c3aed" }}>
+            + Glucose
+          </Link>
+          <Link className="btn" to="/log-sleep" style={{ ...btnSolid, background: "#2563eb" }}>
+            + Sleep
+          </Link>
+          <Link className="btn" to="/dashboard" style={{ ...btnSolid, background: "#f59e0b", color: "#111827" }}>
+            Refresh
+          </Link>
         </div>
 
-        <div style={{ overflowX: "auto", marginTop: 8 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 8 }}>Metric</th>
-                <th style={{ textAlign: "right", padding: 8 }}>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ padding: 8, borderTop: "1px solid #eee" }}># migraines (last 30d)</td>
-                <td style={{ padding: 8, borderTop: "1px solid #eee", textAlign: "right" }}>{migStats.last30}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 8, borderTop: "1px solid #eee" }}># migraines (all time)</td>
-                <td style={{ padding: 8, borderTop: "1px solid #eee", textAlign: "right" }}>{migStats.allTime ?? "—"}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {/* Mobile tightening */}
+        <style>{`
+          @media (max-width: 640px) {
+            header.header .action-row { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+            header.header .btn { padding: 8px 10px !important; }
+          }
+        `}</style>
+      </header>
 
-        {!!migStats.recent.length && (
-          <div style={{ marginTop: 8 }}>
-            <div className="muted" style={{ marginBottom: 4 }}>Recent entries</div>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {migStats.recent.map((r) => (
-                <li key={r.id} style={{ marginBottom: 2 }}>
-                  {new Date(r.when).toLocaleString()} — {r.symptoms.join(", ")}
-                </li>
-              ))}
-            </ul>
+      {/* ================= Main ================= */}
+      <main style={{ padding: "16px 12px" }}>
+        {err && (
+          <div className="card" style={{ border: "1px solid #fca5a5", background: "#fff7f7", padding: 12, borderRadius: 10, marginBottom: 12 }}>
+            {err}
           </div>
         )}
 
-        <div style={{ height: 260, marginTop: 12 }}>
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={symData.length ? symData : [{ name: "no data", value: 1 }]}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+        {/* Supabase tables summary */}
+        <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Your data (Supabase)</h2>
+          <div className="muted" style={{ marginTop: 4 }}>live counts from tables</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 12 }}>
+            <StatTile label="Migraine entries" value={tableCounts.migraines} />
+            <StatTile label="Glucose readings" value={tableCounts.glucose} />
+            <StatTile label="Sleep rows" value={tableCounts.sleep} />
+          </div>
+        </div>
+
+        {/* Glucose */}
+        <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h2 style={{ margin: 0 }}>Blood glucose</h2>
+            <div className="muted">last 30 days</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{g.last == null ? "—" : `${g.last} mg/dL`}</div>
+            <div className="muted">latest reading</div>
+          </div>
+          <div style={{ height: 220, marginTop: 12 }}>
+            <ResponsiveContainer>
+              <LineChart data={g.series.map((p) => ({ t: new Date(p.t), v: p.v }))} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="t" tickFormatter={(d) => new Date(d).toLocaleDateString()} minTickGap={24} />
+                <YAxis domain={["auto", "auto"]} />
+                <Tooltip labelFormatter={(d) => new Date(d).toLocaleString()} formatter={(v) => [`${v} mg/dL`, "glucose"]} />
+                <Line type="monotone" dataKey="v" dot={false} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {!g.series.length && <div className="muted">No glucose data yet.</div>}
+        </div>
+
+        {/* Sleep bar graph */}
+        <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h2 style={{ margin: 0 }}>Sleep (bar graph)</h2>
+            <div className="muted">hours per day — last 30 days</div>
+          </div>
+          <div style={{ height: 220, marginTop: 12 }}>
+            <ResponsiveContainer>
+              <BarChart
+                data={s.dailyHours.map((d) => ({ day: new Date(d.day), hours: d.hours }))}
+                margin={{ top: 10, right: 10, bottom: 5, left: 0 }}
               >
-                {(symData.length ? symData : [{ name: "no data" }]).map((slice, i) => (
-                  <Cell key={i} fill={colorMap[slice.name] || undefined} />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" tickFormatter={(d) => new Date(d).toLocaleDateString()} minTickGap={24} />
+                <YAxis domain={[0, "auto"]} />
+                <Tooltip labelFormatter={(d) => new Date(d).toLocaleString()} formatter={(v) => [`${v} h`, "sleep"]} />
+                <Bar dataKey="hours" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ display: "flex", gap: 24, marginTop: 8, flexWrap: "wrap" }}>
+            <StatTile label="Total sleep (30d)" value={`${Math.round(s.totalMin / 60)} h`} sub={`${s.totalMin} min`} />
+            <StatTile label="Avg. efficiency" value={s.avgEff == null ? "—" : `${s.avgEff.toFixed(0)}%`} />
+          </div>
+        </div>
+
+        {/* Migraines: counts + symptoms pie */}
+        <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h2 style={{ margin: 0 }}>Migraines</h2>
+            <div className="muted">LogMigraine table + symptoms</div>
+          </div>
+
+          <div style={{ overflowX: "auto", marginTop: 8 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: 8 }}>Metric</th>
+                  <th style={{ textAlign: "right", padding: 8 }}>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: 8, borderTop: "1px solid #eee" }}># migraines (last 30d)</td>
+                  <td style={{ padding: 8, borderTop: "1px solid #eee", textAlign: "right" }}>{migStats.last30}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 8, borderTop: "1px solid #eee" }}># migraines (all time)</td>
+                  <td style={{ padding: 8, borderTop: "1px solid #eee", textAlign: "right" }}>{migStats.allTime ?? "—"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {!!migStats.recent.length && (
+            <div style={{ marginTop: 8 }}>
+              <div className="muted" style={{ marginBottom: 4 }}>Recent entries</div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {migStats.recent.map((r) => (
+                  <li key={r.id} style={{ marginBottom: 2 }}>
+                    {new Date(r.when).toLocaleString()} — {r.symptoms.join(", ")}
+                  </li>
                 ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+              </ul>
+            </div>
+          )}
+
+          <div style={{ height: 260, marginTop: 12 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={symData.length ? symData : [{ name: "no data", value: 1 }]}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {(symData.length ? symData : [{ name: "no data" }]).map((slice, i) => (
+                    <Cell key={i} fill={colorMap[slice.name] || undefined} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {!symData.length && <div className="muted">No migraine entries yet.</div>}
         </div>
-        {!symData.length && <div className="muted">No migraine entries yet.</div>}
-      </div>
 
-      {/* AI Suggestions — Headache Types */}
-      <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 style={{ margin: 0 }}>AI Suggestions — Headache Types</h2>
-          <button className="btn" onClick={() => runHeadacheTypes(symptomSummary)} disabled={htLoading}>
-            {htLoading ? "Analyzing…" : "Re-run on current symptoms"}
-          </button>
+        {/* AI Suggestions — Headache Types */}
+        <div className="card" style={{ padding: 16, borderRadius: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h2 style={{ margin: 0 }}>AI Suggestions — Headache Types</h2>
+            <button className="btn" onClick={() => runHeadacheTypes(symptomSummary)} disabled={htLoading}>
+              {htLoading ? "Analyzing…" : "Re-run on current symptoms"}
+            </button>
+          </div>
+
+          {htErr && <div className="muted" style={{ color: "#b91c1c", marginTop: 8 }}>{htErr}</div>}
+
+          <div style={{ marginTop: 12 }}>
+            <HeadacheTypesChart items={htData.items} colorMap={typeColorMap} />
+          </div>
+
+          <p className="muted" style={{ marginTop: 12 }}>
+            Educational only — not medical advice. Seek care for severe, sudden, or unusual symptoms.
+          </p>
         </div>
-
-        {htErr && <div className="muted" style={{ color: "#b91c1c", marginTop: 8 }}>{htErr}</div>}
-
-        <div style={{ marginTop: 12 }}>
-          <HeadacheTypesChart items={htData.items} colorMap={typeColorMap} />
-        </div>
-
-        <p className="muted" style={{ marginTop: 12 }}>
-          Educational only — not medical advice. Seek care for severe, sudden, or unusual symptoms.
-        </p>
-      </div>
+      </main>
     </div>
   );
 }
 
+// ===== Small UI bits =====
 function StatTile({ label, value, sub }) {
   return (
     <div>
@@ -457,3 +513,19 @@ function StatTile({ label, value, sub }) {
     </div>
   );
 }
+
+const btnGhostWhite = {
+  fontSize: 12,
+  padding: "8px 12px",
+  background: "rgba(255,255,255,.14)",
+  border: "1px solid rgba(255,255,255,.25)",
+  borderRadius: 6,
+  color: "#fff",
+};
+
+const btnSolid = {
+  color: "#fff",
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontWeight: 600,
+};

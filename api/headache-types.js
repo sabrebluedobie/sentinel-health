@@ -1,10 +1,5 @@
 // api/headache-types.js
 import { streamText } from 'ai';
-import OpenAI from 'openai';
-
-// If you prefer the new provider style:
-// import { createOpenAI } from '@ai-sdk/openai';
-// const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const config = {
   runtime: 'edge',
@@ -34,20 +29,16 @@ export default async function handler(req) {
     const { symptoms } = (req.method === 'POST') ? await req.json() : {};
     const prompt = buildPrompt(symptoms);
 
-    // Using the low-friction 'ai' package server-side call.
     const { textStream } = await streamText({
-      // If you're on the new provider API, replace with: model: openai('gpt-5')
       model: 'openai/gpt-5',
       prompt,
     });
 
-    // Collect the streamed text (JSON)
     let jsonText = '';
     for await (const chunk of textStream) {
       jsonText += chunk;
     }
 
-    // Best-effort parse & shape
     let parsed = [];
     try {
       parsed = JSON.parse(jsonText);
@@ -56,7 +47,6 @@ export default async function handler(req) {
       parsed = [];
     }
 
-    // Normalize + clamp
     const items = parsed
       .filter(
         (x) =>
