@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
-export default function SignIn() {
+export default function SignIn({ initialMode = "signin" }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -12,13 +12,40 @@ export default function SignIn() {
     return n && n.startsWith("/") ? n : "/";
   }, [location.search]);
 
-  const [mode, setMode] = useState("signin"); // 'signin' | 'signup' | 'reset'
+  const [mode, setMode] = useState(initialMode); // 'signin' | 'signup' | 'reset'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  function onLogoError(e) {
+    const img = e.currentTarget;
+    if (!img.dataset.fallback) {
+      img.dataset.fallback = "1";
+      img.src = "/logo.png";
+    }
+  }
+
+  async function handleGoogle() {
+    setError("");
+    setNotice("");
+    // optional: stash next across the redirect
+    try {
+      sessionStorage.setItem("oauth_next", next);
+    } catch {}
+    const redirectTo = window.location.origin; // after Google returns, we land here and AuthProvider picks up the session
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        // You can uncomment these if you want refresh tokens:
+        // queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+    if (error) setError(error.message);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -30,11 +57,9 @@ export default function SignIn() {
       if (mode === "signup") {
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (confirm !== password) throw new Error("Passwords do not match.");
-
         const { error: signUpErr } = await supabase.auth.signUp({ email, password });
         if (signUpErr) throw signUpErr;
 
-        // Try immediate sign-in; if email confirmation required, show notice.
         const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signInErr) {
           setNotice("Check your email to confirm your account, then sign in.");
@@ -57,7 +82,6 @@ export default function SignIn() {
         return;
       }
 
-      // Sign in
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signInErr) throw signInErr;
       navigate(next, { replace: true });
@@ -68,21 +92,13 @@ export default function SignIn() {
     }
   }
 
-  // Minimal inline styles (works even if global CSS isn't loaded)
+  // inline styles so card looks right even if global CSS isn’t loaded
   const wrap = { minHeight: "100vh", background: "#ececec", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };
   const card = { width: "100%", maxWidth: 420, background: "#fff", borderRadius: 16, boxShadow: "0 6px 24px rgba(0,0,0,.08)", padding: 24 };
   const label = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 };
   const input = { width: "100%", border: "1px solid #d1d5db", borderRadius: 10, padding: "10px 12px", outline: "none" };
   const button = { width: "100%", borderRadius: 10, padding: "10px 12px", background: "#2563eb", color: "#fff", fontWeight: 600, border: 0, cursor: "pointer" };
-
-  // Graceful logo fallback: try /assets/logo.png, fallback to /logo.png if it 404s
-  function onLogoError(e) {
-    const img = e.currentTarget;
-    if (!img.dataset.fallback) {
-      img.dataset.fallback = "1";
-      img.src = "/logo.png";
-    }
-  }
+  const buttonGhost = { width: "100%", borderRadius: 10, padding: "10px 12px", background: "#fff", color: "#111827", fontWeight: 600, border: "1px solid #d1d5db", cursor: "pointer" };
 
   return (
     <div style={wrap}>
@@ -100,6 +116,13 @@ export default function SignIn() {
 
         {notice && <div style={{ background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: 8, borderRadius: 8, marginBottom: 12 }}>{notice}</div>}
         {error && <div style={{ background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", padding: 8, borderRadius: 8, marginBottom: 12 }}>{error}</div>}
+
+        {/* Sign in with Google */}
+        <button type="button" onClick={handleGoogle} style={buttonGhost}>
+          Continue with Google
+        </button>
+
+        <div style={{ textAlign: "center", margin: "10px 0", color: "#9ca3af", fontSize: 12 }}>or</div>
 
         <form onSubmit={handleSubmit} autoComplete="on" style={{ display: "grid", gap: 12 }}>
           <label style={label} htmlFor="email">Email</label>
