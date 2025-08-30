@@ -1,8 +1,8 @@
 import React, { useContext } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthContext } from "@/components/AuthContext";
-import Dashboard from "@/pages/Dashboard";
-import Settings from "@/pages/Settings";
+import Dashboard from "@/pages/Dashboard.jsx";
+import Settings from "@/pages/Settings.jsx";
 import Education from "@/components/Education.jsx";
 
 function Protected({ children }) {
