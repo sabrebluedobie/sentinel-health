@@ -5,19 +5,24 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!url || !anon) {
-  console.warn("[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
+  // You’ll see this locally if env vars are missing
+  console.warn("[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
 }
 
-// Single client instance in-browser (avoids multiple clients during HMR)
-const _client = (() => {
+const client = (() => {
   if (typeof window !== "undefined") {
-    const g = window;
-    if (g.__sentinel_supabase__) return g.__sentinel_supabase__;
-    g.__sentinel_supabase__ = createClient(url, anon);
-    return g.__sentinel_supabase__;
+    // Reuse a single instance across HMR/page reloads
+    if (!window.__supabase_client__) {
+      window.__supabase_client__ = createClient(url, anon, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      });
+    }
+    return window.__supabase_client__;
   }
-  return createClient(url, anon);
+  return createClient(url, anon, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
 })();
 
-export const supabase = _client; // <-- named export
-export default _client;          // <-- default export
+export const supabase = client;   // named
+export default client;            // default

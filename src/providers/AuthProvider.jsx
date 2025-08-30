@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
-const AuthContext = createContext({ session: null, user: null, loading: true });
+const AuthContext = createContext({ user: null, session: null, loading: true });
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -15,18 +15,16 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (error) console.error("[auth] getSession error:", error);
         if (!mounted) return;
         setSession(data?.session ?? null);
         setUser(data?.session?.user ?? null);
-      } catch (e) {
-        console.error("[Auth] getSession failed:", e);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
       setUser(newSession?.user ?? null);
       setLoading(false);
@@ -34,12 +32,12 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe?.();
+      data?.subscription?.unsubscribe?.();
     };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, loading }}>
+    <AuthContext.Provider value={{ user, session, loading }}>
       {children}
     </AuthContext.Provider>
   );
