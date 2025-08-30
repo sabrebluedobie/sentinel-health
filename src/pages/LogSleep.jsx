@@ -1,119 +1,143 @@
-// src/pages/LogSleep.jsx
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/components/AuthContext";
-import { SleepData } from "@/data/supabaseStore";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../providers/AuthProvider.jsx";
+
+function TinyLineChart({ data, xKey, yKey, width = 640, height = 160, yMax }) {
+  const pad = 24;
+  if (!data?.length) return <div className="text-sm text-gray-500">No data yet.</div>;
+  const xs = data.map(d => new Date(d[xKey]).getTime());
+  const ys = data.map(d => Number(d[yKey]) || 0);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = 0, maxY = yMax ?? Math.max(10, Math.ceil(Math.max(...ys) * 1.2));
+  const pts = xs.map((xv, i) => {
+    const px = pad + ((xv - minX) / (maxX - minX || 1)) * (width - 2 * pad);
+    const py = height - pad - ((ys[i] - minY) / (maxY - minY || 1)) * (height - 2 * pad);
+    return `${px},${py}`;
+  }).join(" ");
+  return <svg viewBox={`0 0 ${width} ${height}`} className="w-full"><polyline fill="none" stroke="currentColor" strokeWidth="2" points={pts} /></svg>;
+}
 
 export default function LogSleep() {
-  const { user, loading } = useAuth();
-  const nav = useNavigate();
+  const { user } = useAuth();
 
-  const now = new Date();
-  const sixHoursAgo = new Date(now.getTime() - 6 * 3600 * 1000);
+  const [form, setForm] = useState({
+    timestamp: new Date().toISOString().slice(0,16),
+    hours_slept: "",
+    sleep_quality: 3,
+    notes: ""
+  });
 
-  const [start, setStart] = useState(sixHoursAgo.toISOString().slice(0,16)); // yyyy-MM-ddTHH:mm
-  const [end, setEnd] = useState(now.toISOString().slice(0,16));
-  const [eff, setEff] = useState(""); // %
-  const [light, setLight] = useState("");
-  const [deep, setDeep] = useState("");
-  const [rem, setRem] = useState("");
-  const [awake, setAwake] = useState("");
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!loading && !user) nav("/signin?next=/log-sleep", { replace: true });
-  }, [user, loading, nav]);
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    setMsg("");
-    const startIso = new Date(start).toISOString();
-    const endIso = new Date(end).toISOString();
-    if (new Date(endIso) <= new Date(startIso)) return setMsg("End must be after Start.");
-    setBusy(true);
-    try {
-      const stages = {};
-      if (light) stages.light = Number(light);
-      if (deep) stages.deep = Number(deep);
-      if (rem) stages.rem = Number(rem);
-      if (awake) stages.awake = Number(awake);
-
-      await SleepData.create({
-        start_time: startIso,
-        end_time: endIso,
-        efficiency: eff ? Number(eff) : null,
-        stages: Object.keys(stages).length ? stages : null,
-        note: note || null,
-        source: "manual",
-      });
-
-      setMsg("Saved! Your dashboard will update shortly.");
-      setTimeout(() => nav("/", { replace: true }), 600);
-    } catch (err) {
-      setMsg(err.message || "Save failed.");
-    } finally {
-      setBusy(false);
-    }
+  async function loadRows() {
+    const { data, error } = await supabase
+      .from("sleep_data")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("timestamp", { ascending: false })
+      .limit(50);
+    if (error) console.error(error);
+    setRows(data || []);
   }
 
-  if (loading || !user) return <div className="container" style={{padding:24}}>Loading…</div>;
+  useEffect(() => {
+    loadRows();
+    const channel = supabase
+      .channel("sleep_data_realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "sleep_data",
+        filter: `user_id=eq.${user.id}`,
+      }, () => loadRows())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user.id]);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const { error } = await supabase.from("sleep_data").insert({
+      user_id: user.id,
+      timestamp: new Date(form.timestamp).toISOString(),
+      hours_slept: form.hours_slept ? Number(form.hours_slept) : null,
+      sleep_quality: Number(form.sleep_quality),
+      notes: form.notes || null,
+    });
+    setSaving(false);
+    if (error) return setError(error.message);
+    setForm({ timestamp: new Date().toISOString().slice(0,16), hours_slept: "", sleep_quality: 3, notes: "" });
+    // realtime refresh will kick in
+  };
 
   return (
-    <div className="container" style={{ padding: 16 }}>
-      <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h1 style={{ margin: 0 }}>Log Sleep</h1>
-          <Link to="/" className="btn">Back</Link>
-        </div>
+    <div className="p-6 space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold">Log Sleep</h1>
+        <p className="text-gray-600">Track hours and quality.</p>
+      </header>
 
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12, marginTop: 12 }}>
-          <label>
-            <div className="muted">Start</div>
-            <input type="datetime-local" value={start} onChange={(e)=>setStart(e.target.value)} className="input" required />
-          </label>
+      <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-4">
+        {error && <p className="md:col-span-2 text-red-600 text-sm">{error}</p>}
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Date & Time</span>
+          <input type="datetime-local" className="border rounded p-2"
+                 value={form.timestamp}
+                 onChange={(e)=>setForm({...form, timestamp: e.target.value})} required />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Hours Slept</span>
+          <input type="number" min="0" step="0.25" className="border rounded p-2"
+                 value={form.hours_slept}
+                 onChange={(e)=>setForm({...form, hours_slept: e.target.value})} required />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Sleep Quality (1–5)</span>
+          <input type="number" min="1" max="5" className="border rounded p-2"
+                 value={form.sleep_quality}
+                 onChange={(e)=>setForm({...form, sleep_quality: e.target.value})} required />
+        </label>
+        <label className="flex flex-col gap-1 md:col-span-2">
+          <span className="text-sm font-medium">Notes</span>
+          <textarea className="border rounded p-2" rows={3}
+                    value={form.notes}
+                    onChange={(e)=>setForm({...form, notes: e.target.value})} />
+        </label>
+        <button className="bg-blue-600 text-white rounded px-4 py-2" disabled={saving}>
+          {saving ? "Saving…" : "Save Sleep"}
+        </button>
+      </form>
 
-          <label>
-            <div className="muted">End</div>
-            <input type="datetime-local" value={end} onChange={(e)=>setEnd(e.target.value)} className="input" required />
-          </label>
+      <section>
+        <h2 className="text-xl font-semibold mb-3">Hours slept (last 50)</h2>
+        <TinyLineChart
+          data={[...rows].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))}
+          xKey="timestamp"
+          yKey="hours_slept"
+          yMax={12}
+        />
+      </section>
 
-          <label>
-            <div className="muted">Efficiency % (optional)</div>
-            <input type="number" min="0" max="100" step="1" value={eff} onChange={(e)=>setEff(e.target.value)} className="input" />
-          </label>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
-            <label>
-              <div className="muted">Light (min)</div>
-              <input type="number" min="0" step="1" value={light} onChange={(e)=>setLight(e.target.value)} className="input" />
-            </label>
-            <label>
-              <div className="muted">Deep (min)</div>
-              <input type="number" min="0" step="1" value={deep} onChange={(e)=>setDeep(e.target.value)} className="input" />
-            </label>
-            <label>
-              <div className="muted">REM (min)</div>
-              <input type="number" min="0" step="1" value={rem} onChange={(e)=>setRem(e.target.value)} className="input" />
-            </label>
-            <label>
-              <div className="muted">Awake (min)</div>
-              <input type="number" min="0" step="1" value={awake} onChange={(e)=>setAwake(e.target.value)} className="input" />
-            </label>
-          </div>
-
-          <label>
-            <div className="muted">Note (optional)</div>
-            <textarea value={note} onChange={(e)=>setNote(e.target.value)} className="input" rows={3} />
-          </label>
-
-          <button type="submit" disabled={busy} className="btn">
-            {busy ? "Saving…" : "Save"}
-          </button>
-          {msg && <div className="muted">{msg}</div>}
-        </form>
-      </div>
+      <section>
+        <h2 className="text-xl font-semibold mb-3">Recent entries</h2>
+        <ul className="space-y-2">
+          {rows.map(r=>(
+            <li key={r.id} className="border rounded p-3 flex items-center justify-between">
+              <div>
+                <div className="font-medium">{new Date(r.timestamp).toLocaleString()}</div>
+                {r.notes && <div className="text-sm text-gray-600">{r.notes}</div>}
+              </div>
+              <div className="text-sm">
+                <div><strong>{r.hours_slept}</strong> h</div>
+                <div>Quality: {r.sleep_quality}/5</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

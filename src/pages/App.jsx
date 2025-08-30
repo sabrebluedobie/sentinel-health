@@ -1,91 +1,44 @@
 // src/pages/App.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-
-// Components / context
-import Header from "../components/Header.jsx";
-import { useAuth } from "../components/AuthContext.jsx";
-
-// Pages (these live in /src/pages)
-import Dashboard from "./Dashboard.jsx";
-import LogGlucose from "./LogGlucose.jsx";
-import LogSleep from "./LogSleep.jsx";
-import LogMigraine from "./LogMigraine.jsx";
-import Settings from "./Settings.jsx";
-
-// Sign-in lives in /src/components per your repo
-import SignIn from "../components/SignIn.jsx";
-
-// Guard: only allow authenticated users
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (!user) return <Navigate to="/signin" replace />;
-  return children;
-}
+import Layout from "@/layout";
+import Dashboard from "@/pages/Dashboard.jsx";
+import SignIn from "@/pages/SignIn.jsx";
+import SignUp from "@/pages/SignUp.jsx";
+import LogMigraine from "@/pages/LogMigraine.jsx";
+import LogSleep from "@/pages/LogSleep.jsx";
+import LogGlucose from "@/pages/LogGlucose.jsx";
+import { supabase } from "@/lib/supabase";
 
 export default function App() {
+  const [ready, setReady] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setReady(true);
+    })();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user || null);
+    });
+    return () => subscription?.unsubscribe?.();
+  }, []);
+
+  if (!ready) return <div style={{ padding: 16 }}>Loading…</div>;
+
   return (
-    <>
-      <Header />
+    <Layout>
       <Routes>
-        {/* Public */}
-        <Route path="/signin" element={<SignIn />} />
-
-        {/* Private */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-glucose"
-          element={
-            <ProtectedRoute>
-              <LogGlucose />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-sleep"
-          element={
-            <ProtectedRoute>
-              <LogSleep />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-migraine"
-          element={
-            <ProtectedRoute>
-              <LogMigraine />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/sign-in" element={user ? <Navigate to="/" replace /> : <SignIn />} />
+        <Route path="/sign-up" element={user ? <Navigate to="/" replace /> : <SignUp />} />
+        <Route path="/" element={user ? <Dashboard /> : <Navigate to="/sign-in" replace />} />
+        <Route path="/log-migraine" element={user ? <LogMigraine /> : <Navigate to="/sign-in" replace />} />
+        <Route path="/log-sleep" element={user ? <LogSleep /> : <Navigate to="/sign-in" replace />} />
+        <Route path="/log-glucose" element={user ? <LogGlucose /> : <Navigate to="/sign-in" replace />} />
+        <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
       </Routes>
-    </>
+    </Layout>
   );
 }
