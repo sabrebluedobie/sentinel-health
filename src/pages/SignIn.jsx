@@ -3,18 +3,12 @@ import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
-// Optional: set a custom logo via VITE_APP_LOGO; falls back to /logo.png (public/)
-const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.png";
-
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // support ?next=/path so protected pages can bounce here and back
   const next = useMemo(() => {
-    const sp = new URLSearchParams(location.search);
-    const n = sp.get("next");
-    // basic safety: only allow same-origin paths
+    const n = new URLSearchParams(location.search).get("next");
     return n && n.startsWith("/") ? n : "/";
   }, [location.search]);
 
@@ -40,8 +34,7 @@ export default function SignIn() {
         const { error: signUpErr } = await supabase.auth.signUp({ email, password });
         if (signUpErr) throw signUpErr;
 
-        // If email confirmation is required, the user won't be logged in yet.
-        // Try a normal sign-in; if it fails, show a friendly message.
+        // Try immediate sign-in; if email confirmation required, show notice.
         const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signInErr) {
           setNotice("Check your email to confirm your account, then sign in.");
@@ -64,7 +57,7 @@ export default function SignIn() {
         return;
       }
 
-      // mode === 'signin'
+      // Sign in
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signInErr) throw signInErr;
       navigate(next, { replace: true });
@@ -75,105 +68,93 @@ export default function SignIn() {
     }
   }
 
+  // Minimal inline styles (works even if global CSS isn't loaded)
+  const wrap = { minHeight: "100vh", background: "#ececec", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };
+  const card = { width: "100%", maxWidth: 420, background: "#fff", borderRadius: 16, boxShadow: "0 6px 24px rgba(0,0,0,.08)", padding: 24 };
+  const label = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6 };
+  const input = { width: "100%", border: "1px solid #d1d5db", borderRadius: 10, padding: "10px 12px", outline: "none" };
+  const button = { width: "100%", borderRadius: 10, padding: "10px 12px", background: "#2563eb", color: "#fff", fontWeight: 600, border: 0, cursor: "pointer" };
+
+  // Graceful logo fallback: try /assets/logo.png, fallback to /logo.png if it 404s
+  function onLogoError(e) {
+    const img = e.currentTarget;
+    if (!img.dataset.fallback) {
+      img.dataset.fallback = "1";
+      img.src = "/logo.png";
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md border rounded-2xl shadow-sm p-6 bg-white">
-        <div className="flex items-center justify-center mb-4">
-          <img src={LOGO_PATH} alt="App logo" style={{ height: 48 }} />
+    <div style={wrap}>
+      <div style={card} aria-label="Sign in card">
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+          <img src="/assets/logo.png" alt="App logo" style={{ height: 48 }} onError={onLogoError} />
         </div>
 
-        <h1 className="text-xl font-semibold text-center mb-1">
+        <h1 style={{ fontSize: 20, fontWeight: 700, textAlign: "center", marginBottom: 4 }}>
           {mode === "signup" ? "Create account" : mode === "reset" ? "Reset password" : "Sign in"}
         </h1>
-        <p className="text-center text-sm text-gray-600 mb-4">
-          {mode === "signup"
-            ? "Join Sentinel Health"
-            : mode === "reset"
-            ? "We’ll email you a secure link"
-            : "Welcome back"}
+        <p style={{ textAlign: "center", color: "#6b7280", marginBottom: 12 }}>
+          {mode === "signup" ? "Join Sentinel Health" : mode === "reset" ? "We’ll email you a secure link" : "Welcome back"}
         </p>
 
-        {notice ? <div className="mb-3 text-sm text-emerald-700 bg-emerald-50 p-2 rounded">{notice}</div> : null}
-        {error ? <div className="mb-3 text-sm text-red-700 bg-red-50 p-2 rounded">{error}</div> : null}
+        {notice && <div style={{ background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: 8, borderRadius: 8, marginBottom: 12 }}>{notice}</div>}
+        {error && <div style={{ background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", padding: 8, borderRadius: 8, marginBottom: 12 }}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block">
-            <span className="text-sm">Email</span>
-            <input
-              type="email"
-              className="mt-1 w-full border rounded px-3 py-2"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </label>
+        <form onSubmit={handleSubmit} autoComplete="on" style={{ display: "grid", gap: 12 }}>
+          <label style={label} htmlFor="email">Email</label>
+          <input
+            id="email" name="email" type="email" inputMode="email"
+            autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck="false"
+            style={input} value={email} onChange={(e) => setEmail(e.target.value)} required
+          />
 
           {mode !== "reset" && (
             <>
-              <label className="block">
-                <span className="text-sm">Password</span>
-                <input
-                  type="password"
-                  className="mt-1 w-full border rounded px-3 py-2"
-                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </label>
-
-              {mode === "signup" && (
-                <label className="block">
-                  <span className="text-sm">Confirm password</span>
-                  <input
-                    type="password"
-                    className="mt-1 w-full border rounded px-3 py-2"
-                    autoComplete="new-password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    required
-                  />
-                </label>
-              )}
+              <label style={label} htmlFor="password">{mode === "signup" ? "Create password" : "Password"}</label>
+              <input
+                id="password" name="password" type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                style={input} value={password} onChange={(e) => setPassword(e.target.value)} required
+              />
             </>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white rounded px-4 py-2 disabled:opacity-60"
-          >
-            {submitting
-              ? "Working…"
-              : mode === "signup"
-              ? "Create account"
-              : mode === "reset"
-              ? "Send reset link"
-              : "Sign in"}
+          {mode === "signup" && (
+            <>
+              <label style={label} htmlFor="confirm">Confirm password</label>
+              <input
+                id="confirm" name="confirm" type="password" autoComplete="new-password"
+                style={input} value={confirm} onChange={(e) => setConfirm(e.target.value)} required
+              />
+            </>
+          )}
+
+          <button type="submit" style={button} disabled={submitting}>
+            {submitting ? "Working…" : mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}
           </button>
         </form>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", marginTop: 10, fontSize: 14 }}>
           {mode !== "signup" && (
-            <button className="underline" onClick={() => { setMode("signup"); setError(""); setNotice(""); }}>
+            <button type="button" onClick={() => { setMode("signup"); setError(""); setNotice(""); }} style={{ background: "transparent", border: 0, color: "#2563eb", cursor: "pointer" }}>
               Create account
             </button>
           )}
           {mode !== "reset" && (
-            <button className="underline" onClick={() => { setMode("reset"); setError(""); setNotice(""); }}>
+            <button type="button" onClick={() => { setMode("reset"); setError(""); setNotice(""); }} style={{ background: "transparent", border: 0, color: "#2563eb", cursor: "pointer" }}>
               Forgot password?
             </button>
           )}
           {mode !== "signin" && (
-            <button className="underline" onClick={() => { setMode("signin"); setError(""); setNotice(""); }}>
+            <button type="button" onClick={() => { setMode("signin"); setError(""); setNotice(""); }} style={{ background: "transparent", border: 0, color: "#2563eb", cursor: "pointer" }}>
               Back to sign in
             </button>
           )}
         </div>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <Link to="/">Go home</Link>
+        <div style={{ textAlign: "center", marginTop: 10, fontSize: 14 }}>
+          <Link to="/" style={{ color: "#6b7280" }}>Go home</Link>
         </div>
       </div>
     </div>
