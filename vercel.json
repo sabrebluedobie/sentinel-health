@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/headache-types", "destination": "/api/router.js" },
-    { "source": "/api/(.*)", "destination": "/api/router.js" }
+    { "source": "/api/(.*)", "destination": "/api/router.js" },
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
