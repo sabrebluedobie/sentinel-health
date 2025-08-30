@@ -81,11 +81,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        // inside <Routes> … </Routes>
-<Route path="/log-glucose" element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
-<Route path="/log-sleep" element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
-<Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
-
+        
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
