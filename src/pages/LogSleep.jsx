@@ -3,8 +3,14 @@ import React, { useState } from "react";
 import supabase from "@/lib/supabase";
 
 function localToISO(local) {
+  // "YYYY-MM-DDTHH:mm"
   const d = new Date(local.replace(" ", "T"));
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+function localToDate(local) {
+  // Keep the user’s *local* calendar date to match their intent
+  // e.g. "2025-08-31T23:30" -> "2025-08-31"
+  return (local && local.split("T")[0]) || null;
 }
 
 export default function LogSleep() {
@@ -27,7 +33,9 @@ export default function LogSleep() {
 
     const start_time = localToISO(start);
     const end_time = localToISO(end);
-    if (!start_time) return setMsg("Please provide a valid start time.");
+    const date = localToDate(start); // <-- NEW: required by your table
+
+    if (!start_time || !date) return setMsg("Please provide a valid start time.");
     if (end_time && new Date(end_time) <= new Date(start_time)) {
       return setMsg("End time must be after start time.");
     }
@@ -37,6 +45,7 @@ export default function LogSleep() {
       user_id: uid,
       start_time,
       end_time: end_time || null,
+      date, // <-- populate NOT NULL column
       created_at: new Date().toISOString(),
     });
     setSaving(false);
