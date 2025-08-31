@@ -5,9 +5,9 @@ import React, { useState, useCallback } from "react";
  * Priority:
  *   1) /logo.png           (from /public)
  *   2) /assets/logo.png    (served asset folder)
- *   3) /access/logo.png    (your note said this exists)
+ *   3) /assets/logo.png    (your note said this exists)
  */
-const CANDIDATES = ["/logo.png", "/assets/logo.png", "/access/logo.png"];
+const CANDIDATES = ["/logo.png", "/assets/logo.png", "/assets/logo.png"];
 
 export default function Logo({ size = 48, style }) {
   const [idx, setIdx] = useState(0);
