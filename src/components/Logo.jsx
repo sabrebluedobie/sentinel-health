@@ -7,7 +7,7 @@ import React, { useState, useCallback } from "react";
  *   2) /assets/logo.png    (served asset folder)
  *   3) /assets/logo.png    (your note said this exists)
  */
-const CANDIDATES = ["/logo.png", "/assets/logo.png", "/assets/logo.png"];
+const CANDIDATES = ["/logo.png", "src/assets/logo.png", "/assets/logo.png", "/public/logo.png" ];
 
 export default function Logo({ size = 48, style }) {
   const [idx, setIdx] = useState(0);
