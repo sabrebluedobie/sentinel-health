@@ -1,16 +1,32 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App.jsx";
-import { AuthProvider } from "@/components/AuthContext";
-import "./index.css";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AuthGate from "./auth/AuthGate";
+import AppShell from "./AppShell";        // layout for /app/*
+import LoginPage from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+// ...other imports
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
-  </React.StrictMode>
+createRoot(document.getElementById("root")!).render(
+  <BrowserRouter>
+    <Routes>
+      {/* public */}
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* protected */}
+      <Route
+        path="/app/*"
+        element={
+          <AuthGate>
+            <AppShell />
+          </AuthGate>
+        }
+      >
+        <Route index element={<Dashboard />} />
+        {/* more /app routes... */}
+      </Route>
+
+      {/* default -> app (or landing) */}
+      <Route path="*" element={<AuthGate><AppShell /></AuthGate>} />
+    </Routes>
+  </BrowserRouter>
 );
