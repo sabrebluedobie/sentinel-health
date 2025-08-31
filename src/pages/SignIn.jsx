@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
+import "SignIn.module.css";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -54,9 +55,9 @@ export default function SignIn() {
         autoComplete="on"            // ✅ enable browser autofill
         name="signin"                // ✅ helps Chrome profile manager
       >
-        <img src="/logo.png" alt="Sentinel Health" className="logo" style={{ width: 48, height: 48, borderRadius: 12 }} />
+        <img src="/src/assets/logo.png" alt="Sentinel Health" className="logo" style={{ width: 48, height: 48, borderRadius: 12 }} />
 
-        <h1 className="h1" style={{ marginTop: 8, marginBottom: 4, fontSize: 28, textAlign: "center" }}>Sign in</h1>
+        <h1 className="h1" style={{ marginTop: 8, marginBottom: 4, fontSize: 28, textAlign: "center" }}>Sign into Sentinel Health</h1>
         <div style={{ textAlign: "center", color: "#6b7280", marginBottom: 16 }}>Welcome back</div>
 
         <button
@@ -64,7 +65,9 @@ export default function SignIn() {
           onClick={signInWithGoogle}
           className="btn"
           disabled={busy}
-          style={{ width: "100%", borderRadius: 12, height: 44, fontWeight: 600, background: "#fff" }}
+          style={{ width: "100%", borderRadius: 12, height: 44, fontWeight: 600, 
+          color: "#fff",
+          background: "#042d4d" }}
         >
           Continue with Google
         </button>
@@ -85,7 +88,9 @@ export default function SignIn() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{ height: 44, borderRadius: 12 }}
+          style={{ height: 44, borderRadius: 12,
+          backgroundColor: #ececec,
+           }}
         />
 
         <label className="label" htmlFor="password">Password</label>
@@ -98,14 +103,16 @@ export default function SignIn() {
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           required
-          style={{ height: 44, borderRadius: 12 }}
+          style={{ height: 44, borderRadius: 12,
+          backgroundColor: #ececec,
+           }}
         />
 
         <button
           className="btn primary"
           type="submit"
           disabled={busy}
-          style={{ width: "100%", marginTop: 16, height: 44, borderRadius: 12, background: "#2563eb", borderColor: "#2563eb" }}
+          style={{ width: "100%", marginTop: 16, height: 44, borderRadius: 12, background: "#466dc2ff", borderColor: "#2563eb" }}
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
