@@ -19,7 +19,7 @@ export default function Header() {
   return (
     <header className="site-header" style={styles.header}>
       <Link to="/" style={styles.brand}>
-        <img src="/logo.png" alt="Logo" className="brand-logo" style={styles.logo} />
+        <img src="/assets/logo.png" alt="Logo" className="brand-logo" style={styles.logo} />
         <span style={styles.name}>{APP_NAME}</span>
       </Link>
 

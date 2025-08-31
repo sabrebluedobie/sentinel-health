@@ -12,7 +12,7 @@ import Settings from "./pages/Settings.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
 import ErrorBoundary from "./components/debug/ErrorBoundary.jsx";
-import "/assets/logo.png"
+
 
 createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
