@@ -9,6 +9,7 @@ import MigraineLogModal from "@/components/modals/MigraineLogModal.jsx";
 import GlucoseModal from "@/components/modals/GlucoseModal.jsx";
 import SleepModal from "@/components/modals/SleepModal.jsx";
 import SettingsModal from "@/components/modals/SettingsModal.jsx";
+import EducationModal from "@/components/modals/EducationModal.jsx";
 
 async function getUid() {
   const { data } = await supabase.auth.getSession();
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [openGlucose, setOpenGlucose] = useState(false);
   const [openSleep, setOpenSleep] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
+  const [openEducation, setOpenEducation] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -143,6 +145,15 @@ export default function Dashboard() {
         <button className="btn" onClick={() => window.location.reload()} disabled={loading}>
           {loading ? "Loading…" : "Refresh"}
         </button>
+        {/* Quick education access */}
+        <button 
+          className="btn"
+          onClick={() => setOpenEducation(true)}
+          style={{ background: "#f3f4f6", color: "#374151" }}
+          title="Learn about migraine types and when to seek help"
+        >
+          📚 Education
+        </button>
         <div style={{ marginLeft: "auto", color: msg ? "#b00020" : "#6b7280" }}>{msg || ""}</div>
       </div>
 
@@ -242,6 +253,7 @@ export default function Dashboard() {
       {openSleep && <SleepModal open={openSleep} onClose={() => setOpenSleep(false)} onSave={handleSaveSleep} />}
       {openMigraine && <MigraineLogModal open={openMigraine} onClose={() => setOpenMigraine(false)} onSave={handleSaveMigraine} />}
       {openSettings && <SettingsModal open={openSettings} onClose={() => setOpenSettings(false)} />}
+      {openEducation && <EducationModal onClose={() => setOpenEducation(false)} />}
     </div>
   );
 }

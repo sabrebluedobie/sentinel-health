@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import Logo from "@/components/Logo.jsx";
+import EducationModal from "@/components/modals/EducationModal.jsx";
 
 export default function App() {
   const { pathname } = useLocation();
+  const [showEducation, setShowEducation] = useState(false);
 
   const NavBtn = ({ to, children }) => (
     <Link
@@ -48,12 +50,35 @@ export default function App() {
           <NavBtn to="/settings">Settings</NavBtn>
         </nav>
 
-        <div style={{ justifySelf: "end", fontSize: 12, color: "#9ca3af" }} />
+        <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Education button - always accessible */}
+          <button 
+            className="btn"
+            onClick={() => setShowEducation(true)}
+            style={{
+              background: "#2563eb",
+              color: "#fff",
+              fontSize: 12,
+              padding: "6px 10px",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
+            }}
+            title="Migraine education and symptom guide"
+          >
+            📚 Learn
+          </button>
+        </div>
       </header>
 
       <main style={{ flex: 1, width: "100%", maxWidth: 1100, margin: "0 auto", padding: 16 }}>
         <Outlet />
       </main>
+
+      {/* Education Modal - available everywhere */}
+      {showEducation && (
+        <EducationModal onClose={() => setShowEducation(false)} />
+      )}
     </div>
   );
 }
