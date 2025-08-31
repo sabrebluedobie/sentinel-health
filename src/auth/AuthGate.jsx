@@ -1,4 +1,3 @@
-// src/auth/AuthGate.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
@@ -8,10 +7,6 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-/**
- * Prevents rapid duplicate navigations (Chrome "ipc flooding" protection).
- * Only navigates when the target differs from the current path.
- */
 function useSafeNavigate() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -20,7 +15,7 @@ function useSafeNavigate() {
   return useCallback(
     (to, opts) => {
       const now = Date.now();
-      if (lastRef.current.to === to && now - lastRef.current.t < 800) return; // ignore spam
+      if (lastRef.current.to === to && now - lastRef.current.t < 800) return;
       lastRef.current = { to, t: now };
       if (pathname !== to) navigate(to, opts);
     },
@@ -34,7 +29,6 @@ export default function AuthGate({ children }) {
   const safeNavigate = useSafeNavigate();
   const loc = useLocation();
 
-  // Load session once, subscribe to changes.
   useEffect(() => {
     let unsub = () => {};
     (async () => {
@@ -47,21 +41,16 @@ export default function AuthGate({ children }) {
     return () => unsub();
   }, []);
 
-  // Wait until auth status is known to avoid loops/flashes
-  if (!ready) return null; // or a spinner component
+  if (!ready) return null;
 
-  // Public route(s); everything else is considered protected
   const isSignIn = loc.pathname === "/sign-in";
   const needsAuth = !isSignIn && loc.pathname.startsWith("/app");
 
   if (!session && needsAuth) {
-    // Not logged in -> go to sign-in (once)
     safeNavigate("/sign-in", { replace: true });
     return null;
   }
-
   if (session && isSignIn) {
-    // Already logged in -> send to app home (once)
     safeNavigate("/app", { replace: true });
     return null;
   }

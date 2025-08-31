@@ -1,19 +1,16 @@
-// src/pages/App.jsx
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 export default function App() {
   const { pathname } = useLocation();
 
-  const NavLink = ({ to, children }) => (
+  const NavBtn = ({ to, children }) => (
     <Link
       to={to}
+      className="btn"
       style={{
-        padding: "6px 10px",
-        borderRadius: 8,
         textDecoration: "none",
-        color: pathname === to ? "#111" : "#444",
-        background: pathname === to ? "#e8e8e8" : "transparent",
+        background: pathname === to ? "#e8e8e8" : "#fff",
       }}
     >
       {children}
@@ -23,35 +20,27 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <header
+        className="card"
         style={{
+          maxWidth: 1100,
+          margin: "16px auto",
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "12px 16px",
-          borderBottom: "1px solid #eee",
         }}
       >
-        {/* Logo served from /public/logo.png */}
-        <img
-          src="/logo.png"
-          alt="Sentinel Health"
-          style={{ height: 32 }}
-        />
-
-        <nav style={{ display: "flex", gap: 8, marginLeft: 16 }}>
-          <NavLink to="/app">Dashboard</NavLink>
-          <NavLink to="/log-glucose">Glucose</NavLink>
-          <NavLink to="/log-sleep">Sleep</NavLink>
-          <NavLink to="/log-migraine">Migraine</NavLink>
-          <NavLink to="/settings">Settings</NavLink>
+        <img src="/logo.png" alt="Sentinel Health" className="logo" style={{ margin: 0, width: 40, height: 40 }} />
+        <nav style={{ display: "flex", gap: 8 }}>
+          <NavBtn to="/app">Dashboard</NavBtn>
+          <NavBtn to="/log-glucose">Glucose</NavBtn>
+          <NavBtn to="/log-sleep">Sleep</NavBtn>
+          <NavBtn to="/log-migraine">Migraine</NavBtn>
+          <NavBtn to="/settings">Settings</NavBtn>
         </nav>
-
-        <div style={{ marginLeft: "auto", fontSize: 12, color: "#666" }}>
-          {/* you can inject user email/initials here later */}
-        </div>
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "#666" }} />
       </header>
 
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, width: "100%", maxWidth: 1100, margin: "0 auto", padding: 16 }}>
         <Outlet />
       </main>
     </div>
