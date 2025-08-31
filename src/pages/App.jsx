@@ -10,6 +10,7 @@ import LogGlucose from "@/pages/LogGlucose";
 import LogSleep from "@/pages/LogSleep";
 import LogMigraine from "@/pages/LogMigraine";
 import SignIn from "@/pages/SignIn"; // keep SignIn under /pages for consistency
+import "./assets/logo.png" // ensure logo is bundled
 
 export default function App() {
   return (
