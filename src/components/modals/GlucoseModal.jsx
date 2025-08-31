@@ -1,67 +1,68 @@
-// Sentinel Starter Kit — 2025-08-22T19:28:17.351757Z
-
+// src/components/modals/GlucoseModal.jsx
 import React, { useState } from "react";
 import Modal from "../common/Modal.jsx";
-import { insertGlucose } from "../../services/glucose.js";
-import { localTzOffsetMinutes } from "../../lib/helpers.js";
+import "../forms/form.css";
 
-export default function GlucoseModal({ onClose, user }){
-  const [value,setValue]=useState("");
-  const [when,setWhen]=useState(()=> new Date().toISOString().slice(0,16));
-  const [readingType,setReadingType]=useState("random");
-  const [note,setNote]=useState("");
-  const [source,setSource]=useState("");
-  const [trend,setTrend]=useState("");
-  const [saving,setSaving]=useState(false);
+export default function GlucoseModal({ open, onClose, onSave, initial }) {
+  const [value, setValue]       = useState(() => initial?.value_mgdl ?? "");
+  const [when, setWhen]         = useState(() => initial?.time || new Date().toISOString().slice(0,16));
+  const [readingType, setType]  = useState(() => initial?.reading_type || "random");
+  const [trend, setTrend]       = useState(() => initial?.trend || "");
+  const [source, setSource]     = useState(() => initial?.source || "");
+  const [note, setNote]         = useState(() => initial?.note || "");
 
-  async function save(){
-    if(!user?.id) return;
-    setSaving(true);
-    try {
-      const payload = {
-        user_id: user.id,
-        device_time: new Date(when).toISOString(),
-        reading_type: readingType || null,
-        note: note || null,
-        created_at: new Date().toISOString(),
-        source: source || null,
-        value_mgdl: value==="" ? null : parseFloat(String(value).trim()),
-        trend: trend || null,
-        timezone_offset_min: localTzOffsetMinutes(),
-      };
-      await insertGlucose(payload);
-      onClose();
-    } finally { setSaving(false); }
+  if (!open) return null;
+
+  async function handleSave() {
+    const payload = {
+      value_mgdl: value==="" ? null : Number(value),
+      time: new Date(when).toISOString(),
+      reading_type: readingType || null,
+      trend: trend || null,
+      source: source || null,
+      note: note || null
+    };
+    await onSave?.(payload);
+    onClose?.();
   }
 
-  return (<Modal onClose={onClose}>
-    <h3 style={{marginBottom:8}}>Log Glucose</h3>
-    <label>Value (mg/dL)
-      <input type="number" inputMode="decimal" value={value} onChange={e=>setValue(e.target.value)} />
-    </label>
-    <label>Time
-      <input type="datetime-local" value={when} onChange={e=>setWhen(e.target.value)} />
-    </label>
-    <label>Reading type
-      <select value={readingType} onChange={e=>setReadingType(e.target.value)}>
-        <option value="random">Random</option>
-        <option value="fasting">Fasting</option>
-        <option value="post_meal">Post meal</option>
-        <option value="bedtime">Bedtime</option>
-      </select>
-    </label>
-    <label>Source
-      <input value={source} onChange={e=>setSource(e.target.value)} placeholder="Dexcom, Libre, Manual..." />
-    </label>
-    <label>Trend
-      <input value={trend} onChange={e=>setTrend(e.target.value)} placeholder="rising / falling / steady" />
-    </label>
-    <label>Note
-      <textarea rows={2} value={note} onChange={e=>setNote(e.target.value)} />
-    </label>
-    <div style={{marginTop:12, display:"flex", gap:8}}>
-      <button onClick={save} disabled={saving} style={{background:"#7c3aed", color:"#fff", padding:"8px 12px", borderRadius:8}}>{saving?"Saving…":"Save"}</button>
-      <button onClick={onClose} style={{padding:"8px 12px"}}>Cancel</button>
-    </div>
-  </Modal>);
+  return (
+    <Modal onClose={onClose}>
+      <h3 style={{ margin: 0, marginBottom: 12 }}>Log Glucose</h3>
+
+      <label className="label">Value (mg/dL)
+        <input className="input" type="number" inputMode="decimal" value={value} onChange={e=>setValue(e.target.value)} />
+      </label>
+
+      <label className="label">Time
+        <input className="input" type="datetime-local" value={when} onChange={e=>setWhen(e.target.value)} />
+      </label>
+
+      <label className="label">Reading type
+        <select className="input" value={readingType} onChange={e=>setType(e.target.value)}>
+          <option value="random">Random</option>
+          <option value="fasting">Fasting</option>
+          <option value="post_meal">Post meal</option>
+          <option value="bedtime">Bedtime</option>
+        </select>
+      </label>
+
+      <label className="label">Trend
+        <input className="input" value={trend} onChange={e=>setTrend(e.target.value)} placeholder="rising / falling / steady" />
+      </label>
+
+      <label className="label">Source
+        <input className="input" value={source} onChange={e=>setSource(e.target.value)} placeholder="Dexcom, Libre, Manual…" />
+      </label>
+
+      <label className="label">Note
+        <textarea className="input" rows={2} value={note} onChange={e=>setNote(e.target.value)} />
+      </label>
+
+      <div className="row">
+        <button className="btn primary" onClick={handleSave}>Save</button>
+        <button className="btn" onClick={onClose}>Cancel</button>
+      </div>
+    </Modal>
+  );
 }

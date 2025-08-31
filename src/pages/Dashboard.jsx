@@ -6,6 +6,38 @@ import {
   LineChart, Line, BarChart, Bar, AreaChart, Area
 } from "recharts";
 
+// in src/pages/Dashboard.jsx (snippet)
+import MigraineLogModal from "../components/modals/MigraineLogModal.jsx";
+import GlucoseModal     from "../components/modals/GlucoseModal.jsx";
+import SleepModal       from "../components/modals/SleepModal.jsx";
+import SettingsModal    from "../components/modals/SettingsModal.jsx";
+
+// ... state like: const [openMigraine,setOpenMigraine]=useState(false) etc.
+
+{openMigraine && (
+  <MigraineLogModal
+    open={openMigraine}
+    onClose={() => setOpenMigraine(false)}
+    onSave={handleSaveMigraine}  // <-- writes to `migraine_episodes`
+  />
+)}
+{openGlucose && (
+  <GlucoseModal
+    open={openGlucose}
+    onClose={() => setOpenGlucose(false)}
+    onSave={handleSaveGlucose}   // <-- writes to `glucose_readings` (or your table)
+  />
+)}
+{openSleep && (
+  <SleepModal
+    open={openSleep}
+    onClose={() => setOpenSleep(false)}
+    onSave={handleSaveSleep}     // <-- writes to `sleep_data`
+  />
+)}
+{openSettings && <SettingsModal open={openSettings} onClose={() => setOpenSettings(false)} />}
+
+
 async function getUid() {
   const { data } = await supabase.auth.getSession();
   return data?.session?.user?.id || null;
