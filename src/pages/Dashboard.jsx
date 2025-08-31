@@ -73,7 +73,7 @@ export default function Dashboard() {
 
   // Nav guard (some routes are protected elsewhere too) :contentReference[oaicite:3]{index=3}
   useEffect(() => {
-    if (!loading && !user) navigate("/signin", { replace: true });
+    if (!loading && !user) navigate("/sign-in", { replace: true });
   }, [loading, user, navigate]);
 
   // --------------------------

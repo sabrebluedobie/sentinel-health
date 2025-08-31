@@ -13,7 +13,7 @@ export default function Header() {
 
   async function doSignOut() {
     await supabase.auth.signOut();
-    nav("/signin", { replace: true });
+    nav("/sign-in", { replace: true });
   }
 
   return (
@@ -35,7 +35,7 @@ export default function Header() {
             </button>
           </>
         ) : (
-          <Link to="/signin" className="btn" style={styles.signin}>Sign in</Link>
+          <Link to="/sign-in" className="btn" style={styles.signin}>Sign in</Link>
         )}
         </nav>
 

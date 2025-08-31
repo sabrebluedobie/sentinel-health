@@ -8,7 +8,7 @@ import Education from "@/components/Education.jsx";
 function Protected({ children }) {
   const { user, loading } = useContext(AuthContext);
   if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (!user) return <Navigate to="/signin" replace />;
+  if (!user) return <Navigate to="/sign-in" replace />;
   return children;
 }
 

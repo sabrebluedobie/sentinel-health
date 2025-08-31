@@ -7,6 +7,6 @@ export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return null; // or a spinner
-  if (!user) return <Navigate to="/signin" replace state={{ from: location }} />;
+  if (!user) return <Navigate to="/sign-in" replace state={{ from: location }} />;
   return children;
 }
