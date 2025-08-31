@@ -1,3 +1,2 @@
-server/
-api-old/
-api.bak/
+# .vercelignore — keep helpers available
+# (leave empty to upload everything)
