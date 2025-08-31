@@ -159,14 +159,17 @@ export default function Dashboard() {
   async function fetchMigraines() {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("migraine_episodes")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("created_at", sinceISO)
-      .order("started_at", { ascending: false })
-      .limit(5000);
-    if (error) throw error;
+    // latest migraine episode
+const { data: m } = await supabase
+  .from("migraine_episodes")
+  .select("*")
+  .eq("user_id", uid)
+  .order("start_time", { ascending: false }) // changed
+  .limit(1);
+
+{latest.migraine
+  ? `Last: ${new Date(latest.migraine.start_time).toLocaleString()} (sev ${latest.migraine.severity})`
+  : "No episodes yet"}
 
     // Normalize symptom field (array | JSON string | CSV)
     const counts = new Map();
