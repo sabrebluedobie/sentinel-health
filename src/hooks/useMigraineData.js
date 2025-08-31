@@ -4,7 +4,7 @@ import { useAuth } from "../components/AuthContext";
 
 /**
  * Pulls recent migraine entries.
- * Assumes table: migraine_entries (id, user_id, created_at, pain, symptoms[], notes)
+ * Assumes table: migraine_episodes (id, user_id, created_at, pain, symptoms[], notes)
  */
 export function useMigraineData({ days = 30 } = {}) {
   const { user } = useAuth();
@@ -24,7 +24,7 @@ export function useMigraineData({ days = 30 } = {}) {
     async function fetchData() {
       setLoading(true);
       const { data: rows, error } = await supabase
-        .from("migraine_entries")
+        .from("migraine_episodes")
         .select("id, created_at, pain, symptoms, notes")
         .eq("user_id", user.id)
         .gte("created_at", since.toISOString())
@@ -68,7 +68,7 @@ export function useMigraineData({ days = 30 } = {}) {
 
     const ch = supabase.channel("migraine_changes")
       .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "migraine_entries", filter: `user_id=eq.${user.id}` },
+        { event: "INSERT", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${user.id}` },
         () => fetchData()
       )
       .subscribe();

@@ -3,7 +3,7 @@ import supabase from "@/lib/supabase";
 const TABLES = {
   glucose: "glucose_readings",
   sleep: "sleep_data",
-  migraine: "migraine_entries",
+  migraine: "migraine_episodes",
 };
 
 // ---- current user id (throws if not logged in) ----

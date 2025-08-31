@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 // Sentinel Dashboard — aligned to repo patterns (useAuth, two-row header, realtime)
-// Pulls from glucose_readings, sleep_data, migraine_entries and renders charts
+// Pulls from glucose_readings, sleep_data, migraine_episodes and renders charts
 // Adds AI Suggestions — Headache Types (via /api/headache-types)
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -160,11 +160,11 @@ export default function Dashboard() {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("migraine_entries")
-      .select("id,symptoms,created_at")
+      .from("migraine_episodes")
+      .select("*")
       .eq("user_id", user.id)
       .gte("created_at", sinceISO)
-      .order("created_at", { ascending: false })
+      .order("started_at", { ascending: false })
       .limit(5000);
     if (error) throw error;
 
@@ -207,7 +207,7 @@ export default function Dashboard() {
   async function fetchCounts() {
     if (!user) return;
     const [mig, glu, slp] = await Promise.all([
-      supabase.from("migraine_entries").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("migraine_episodes").select("*", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("glucose_readings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("sleep_data").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     ]);
@@ -252,7 +252,7 @@ export default function Dashboard() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "migraine_entries", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${user.id}` },
         () => refreshAll()
       )
       .subscribe();
