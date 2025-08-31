@@ -81,4 +81,18 @@ a{color:inherit}
 .h1 { color: #111827; }
 .label { color: #374151; }
 .btn { color: #374151; }
+.input,
+input.input,
+input[type="email"].input,
+input[type="password"].input { background:#fff !important; color:#111 !important; }
+.input::placeholder { color:#6b7280 !important; opacity:1; }
+input.input:-webkit-autofill,
+input.input:-webkit-autofill:hover,
+input.input:-webkit-autofill:focus {
+  -webkit-text-fill-color:#111 !important;
+  box-shadow:0 0 0 1000px #fff inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+.btn { color:#1f2937; }
+.btn.primary { background:#2563eb; color:#fff; border-color:rgba(0,0,0,.06); }
 
