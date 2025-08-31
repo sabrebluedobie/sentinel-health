@@ -7,6 +7,12 @@ import GlucoseModal from "../components/modals/GlucoseModal.jsx";
 import SleepModal from "../components/modals/SleepModal.jsx";
 import SettingsModal from "../components/modals/SettingsModal.jsx";
 
+import {
+  ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
+  LineChart, Line, BarChart, Bar, AreaChart, Area
+} from "recharts";
+
+
 // (charts omitted for brevity; keep your recharts code if you had it)
 
 async function getUid() {
