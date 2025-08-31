@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
-import "./assets/logo.png"
 import {
   ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
   LineChart, Line, BarChart, Bar, AreaChart, Area
