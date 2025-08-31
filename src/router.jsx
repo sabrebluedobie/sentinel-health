@@ -7,6 +7,7 @@ import SignIn from "@/src/components/SignIn.jsx";
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogGlucose from "@/pages/LogGlucose.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";
+import NightscoutSettings from "@/src/pages/NightscoutSettings.jsx";
 import Protected from "@/routes/Protected.jsx";
 
 export default function Router() {
@@ -45,6 +46,14 @@ export default function Router() {
           element={
             <Protected>
               <LogSleep />
+            </Protected>
+          }
+        />
+        <Route
+          path="/nightscout-settings"
+          element={
+            <Protected>
+              <NightscoutSettings />
             </Protected>
           }
         />

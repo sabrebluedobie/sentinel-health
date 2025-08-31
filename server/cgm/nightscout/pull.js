@@ -3,6 +3,39 @@ import crypto from "node:crypto";
 
 
 // ---- Supabase (server) ----
+const [connectionData, setConnectionData] = useState({
+  url: '',
+  token: '',
+  api_secret: ''
+});
+
+const handleSave = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const response = await fetch('/api/nightscout/connection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}` // your auth token
+      },
+      body: JSON.stringify(connectionData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      // Replace the placeholder message
+      setMessage('Saved ✓');
+      // Optionally test the connection
+      testConnection();
+    } else {
+      setMessage(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    setMessage('Failed to save connection');
+  }
+};
 
 function normalizeBaseUrl(raw){
   if(!raw) return null;
