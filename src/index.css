@@ -75,3 +75,10 @@ a{color:inherit}
   .form-grid{display:grid;grid-template-columns:170px 1fr;gap:2vw;align-items:center}
   .label--left{text-align:right;margin:0}
 }
+
+/* Softer card text + borders + axis feel */
+.card { border-color: #e5e7eb; }
+.h1 { color: #111827; }
+.label { color: #374151; }
+.btn { color: #374151; }
+
