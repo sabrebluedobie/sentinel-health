@@ -1,46 +1,135 @@
-import React, { useState } from "react";
-import SettingsSources from "./SettingsSources";
-import PieColorsEditor from "@/components/charts/PieColorsEditor";
+import React, { useEffect, useState } from "react";
+import supabase from "@/lib/supabase";
 
 export default function Settings() {
-  const [tab, setTab] = useState("appearance"); // "appearance" | "sources"
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+  const [status, setStatus] = useState("Loading…");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function getHeaders() {
+    const { data } = await supabase.auth.getSession();
+    const jwt = data?.session?.access_token;
+    if (!jwt) throw new Error("Not signed in.");
+    return {
+      Authorization: `Bearer ${jwt}`,
+      "Content-Type": "application/json",
+    };
+  }
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: s } = await supabase.auth.getSession();
+        const uid = s?.session?.user?.id;
+        if (!uid) return setStatus("Not signed in.");
+
+        const { data, error } = await supabase
+          .from("nightscout_connections")
+          .select("url, token, api_secret")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (!mounted) return;
+        if (error) setStatus("Error loading connection");
+        else {
+          setUrl(data?.url || "");
+          setToken(data?.token || "");
+          setApiSecret(data?.api_secret || "");
+          setStatus(data?.url ? "Connected" : "Not connected");
+        }
+      } catch (e) {
+        if (mounted) setStatus(String(e.message || e));
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  async function callApi(path, body) {
+    const headers = await getHeaders();
+    const res = await fetch(path, {
+      method: "POST",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let json = null;
+    try { json = await res.json(); } catch {}
+    if (!res.ok || (json && json.ok === false)) {
+      const msg = json?.error || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return json || {};
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true); setMsg("");
+    try {
+      if (!/^https?:\/\//i.test(url)) throw new Error("Enter a valid Nightscout URL (starts with http/https).");
+      await callApi("/api/nightscout/save", { url, token, api_secret: apiSecret });
+      setStatus("Connected");
+      setMsg("Saved ✓");
+    } catch (e) {
+      setMsg(`Save failed: ${String(e.message || e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function test() {
+    setBusy(true); setMsg("");
+    try {
+      await callApi("/api/nightscout/test");
+      setMsg("Nightscout OK ✓");
+    } catch (e) {
+      setMsg(`Test failed: ${String(e.message || e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sync() {
+    setBusy(true); setMsg("");
+    try {
+      const r = await callApi("/api/nightscout/sync", { sinceDays: 14 });
+      setMsg(`Synced: ${r?.inserted ?? 0} entries ✓`);
+    } catch (e) {
+      setMsg(`Sync failed: ${String(e.message || e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className="container" style={{ padding: 16 }}>
-      <h1 style={{ margin: "12px 0 16px" }}>Settings</h1>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "1.5rem" }}>
+      <h1>Settings</h1>
+      <p>Status: <strong>{status}</strong></p>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button className={`btn ${tab === "appearance" ? "btn-primary" : ""}`} onClick={() => setTab("appearance")}>
-          Appearance
-        </button>
-        <button className={`btn ${tab === "sources" ? "btn-primary" : ""}`} onClick={() => setTab("sources")}>
-          Data sources
-        </button>
-      </div>
+      <form onSubmit={save} style={{ display: "grid", gap: 12, maxWidth: 640 }}>
+        <label>
+          Nightscout URL
+          <input type="url" value={url} onChange={(e)=>setUrl(e.target.value)} placeholder="https://your-ns.example.com" required />
+        </label>
+        <label>
+          Token (optional)
+          <input type="text" value={token} onChange={(e)=>setToken(e.target.value)} />
+        </label>
+        <label>
+          API Secret (optional)
+          <input type="password" value={apiSecret} onChange={(e)=>setApiSecret(e.target.value)} />
+        </label>
 
-      {tab === "appearance" && (
-        <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-          <h2 style={{ margin: 0 }}>Pie slice colors (Migraine symptoms)</h2>
-          <div className="muted" style={{ marginTop: 4 }}>
-            Customize symptom → color. Saved to local storage and applied to the dashboard pie.
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <PieColorsEditor storageKey="app.pieSymptomColors" />
-          </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="submit" disabled={busy}>{busy ? "Working…" : "Save"}</button>
+          <button type="button" onClick={test} disabled={busy}>Test</button>
+          <button type="button" onClick={sync} disabled={busy}>Sync</button>
         </div>
-      )}
 
-      {tab === "sources" && (
-        <div className="card" style={{ padding: 16, borderRadius: 14 }}>
-          <h2 style={{ margin: 0 }}>Connect glucose</h2>
-          <div className="muted" style={{ marginTop: 4 }}>
-            Connect a CGM (Dexcom, Libre) or switch to manual entry.
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <SettingsSources />
-          </div>
-        </div>
-      )}
-    </div>
+        <div style={{ minHeight: 20, color: msg.includes("✓") ? "green" : "crimson" }}>{msg}</div>
+      </form>
+    </main>
   );
 }

@@ -1,65 +1,75 @@
-import React, { useEffect, useState } from "react";
-import supabase from '@/lib/supabase';
+import React, { useState } from "react";
+import supabase from "@/lib/supabase";
 
 export default function LogGlucose() {
-  const [userId, setUserId] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [value, setValue] = useState(110);
-  const [ts, setTs] = useState(() => new Date().toISOString().slice(0,16)); // local datetime input
+  const [value, setValue] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data?.user?.id ?? null));
-  }, []);
-
-  async function fetchRows(uid) {
-    const { data } = await supabase
-      .from("glucose_readings")
-      .select("*")
-      .eq("user_id", uid)
-      .order("measured_at", { ascending: false })
-      .limit(200);
-    setRows(data || []);
+  async function getUserId() {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.id || null;
   }
 
-  useEffect(() => {
-    if (!userId) return;
-    fetchRows(userId);
-    const ch = supabase.channel(`glucose:${userId}`).on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${userId}` },
-      () => fetchRows(userId)
-    ).subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [userId]);
-
-  async function onSubmit(e) {
+  async function submit(e) {
     e.preventDefault();
-    if (!userId) return;
-    const { error } = await supabase.from("glucose_readings").insert({
-      user_id: userId,
-      value_mgdl: value,
-      measured_at: new Date(ts).toISOString()
-    });
-    if (!error) setValue(110);
+    setMsg("");
+    const uid = await getUserId();
+    if (!uid) return setMsg("Not signed in.");
+
+    const mgdl = Number(value);
+    if (!Number.isFinite(mgdl) || mgdl < 20 || mgdl > 600) {
+      return setMsg("Please enter a glucose value between 20 and 600 mg/dL.");
+    }
+
+    setSaving(true);
+    const row = {
+      user_id: uid,
+      device_time: new Date().toISOString(),
+      value_mgdl: mgdl,
+      trend: null,
+      source: "manual",
+      note: note || null,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.from("glucose_readings").insert(row);
+    setSaving(false);
+    if (error) return setMsg(`Save failed: ${error.message}`);
+    setValue("");
+    setNote("");
+    setMsg("Saved ✓");
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: "24px auto" }}>
-      <h2>Log Glucose</h2>
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 8, maxWidth: 480 }}>
-        <label>mg/dL</label>
-        <input type="number" value={value} onChange={(e)=>setValue(parseInt(e.target.value || 0, 10))} min={20} max={600} required />
-        <label>Time</label>
-        <input type="datetime-local" value={ts} onChange={(e)=>setTs(e.target.value)} required />
-        <button>Add</button>
+    <main style={{ maxWidth: 600, margin: "0 auto", padding: "1.5rem" }}>
+      <h1>Log Glucose</h1>
+      <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+        <label>
+          Value (mg/dL)
+          <input
+            type="number"
+            inputMode="numeric"
+            min="20"
+            max="600"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Note (optional)
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g., after lunch"
+          />
+        </label>
+        <button disabled={saving} type="submit">{saving ? "Saving…" : "Save"}</button>
+        <div style={{ minHeight: 20, color: msg.startsWith("Saved") ? "green" : "crimson" }}>{msg}</div>
       </form>
-
-      <h3 style={{ marginTop: 24 }}>Your readings</h3>
-      <ul>
-        {rows.map(r => (
-          <li key={r.id}>{new Date(r.measured_at).toLocaleString()} — {r.value_mgdl} mg/dL</li>
-        ))}
-      </ul>
-    </div>
+    </main>
   );
 }
