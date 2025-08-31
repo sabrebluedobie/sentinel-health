@@ -1,7 +1,7 @@
 // src/pages/NotFound.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-// import { supabase } from "../lib/supabase"; // not needed here
+import supabase from '@/lib/supabase'
 
 export default function NotFound() {
   return (

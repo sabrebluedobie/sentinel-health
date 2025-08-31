@@ -1,61 +1,33 @@
 // src/pages/App.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "@/layout";
-import Dashboard from "@/pages/Dashboard.jsx";
-import SignIn from "@/pages/SignIn.jsx";
-import LogMigraine from "@/pages/LogMigraine.jsx";
-import LogSleep from "@/pages/LogSleep.jsx";
-import LogGlucose from "@/pages/LogGlucose.jsx";
-import { useAuth } from "@/components/AuthContext.jsx";
-import ProtectedRoute from "@/components/ProtectedRoute.jsx";
+import { AuthProvider } from "@/components/AuthContext";
+import Header from "@/components/Header";
+import ProtectedRoute from "@/components/ProtectedRoute";
+
+import Dashboard from "@/pages/Dashboard";
+import LogGlucose from "@/pages/LogGlucose";
+import LogSleep from "@/pages/LogSleep";
+import LogMigraine from "@/pages/LogMigraine";
+import SignIn from "@/pages/SignIn"; // keep SignIn under /pages for consistency
 
 export default function App() {
-  const { user } = useAuth();
-
   return (
-    <Layout>
+    <AuthProvider>
+      <Header />
       <Routes>
         {/* Public */}
-        <Route path="/sign-in" element={user ? <Navigate to="/" replace /> : <SignIn />} />
+        <Route path="/sign-in" element={<SignIn />} />
 
         {/* Private */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-migraine"
-          element={
-            <ProtectedRoute>
-              <LogMigraine />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-sleep"
-          element={
-            <ProtectedRoute>
-              <LogSleep />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/log-glucose"
-          element={
-            <ProtectedRoute>
-              <LogGlucose />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/log-glucose" element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
+        <Route path="/log-sleep" element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
+        <Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Layout>
+    </AuthProvider>
   );
 }

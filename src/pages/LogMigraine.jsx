@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import supabase from '@/lib/supabase'
 
 export default function LogMigraine() {
   const [userId, setUserId] = useState(null);

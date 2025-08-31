@@ -1,7 +1,7 @@
 // src/routes/Protected.jsx
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import supabase from '@/lib/supabase';
 
 export default function Protected({ children }) {
   const [checked, setChecked] = useState(false);
