@@ -1,12 +1,32 @@
-// Sentinel Starter Kit — 2025-08-22T19:28:17.351757Z
-
+// src/services/glucose.js
 import supabase from "@/lib/supabase";
-export async function listGlucose(userId){
-  const { data, error } = await supabase.from("glucose_readings").select("*").eq("user_id", userId)
-    .order("device_time",{ascending:false}).limit(1000);
-  if(error) throw error; return data||[];
-}
-export async function insertGlucose(payload){
-  const { error } = await supabase.from("glucose_readings").insert(payload);
-  if(error) throw error; return true;
+
+/**
+ * Expects payload with:
+ * user_id (uuid), device_time (ISO), value_mgdl (number),
+ * [trend (string|null), source (string|null), reading_type (string|null), note (string|null)],
+ * timezone_offset_min (number|null)
+ */
+export async function insertGlucose(payload) {
+  const required = ["user_id", "device_time", "value_mgdl"];
+  for (const k of required) {
+    if (payload[k] === undefined || payload[k] === null || payload[k] === "")
+      throw new Error(`Missing required field: ${k}`);
+  }
+
+  const row = {
+    user_id: payload.user_id,
+    device_time: new Date(payload.device_time).toISOString(),
+    value_mgdl: Number(payload.value_mgdl),
+    trend: payload.trend ?? null,
+    source: payload.source ?? "manual",
+    reading_type: payload.reading_type ?? null,
+    note: payload.note ?? null,
+    timezone_offset_min: payload.timezone_offset_min ?? null,
+    created_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("glucose_readings").insert(row);
+  if (error) throw error;
+  return { ok: true };
 }
