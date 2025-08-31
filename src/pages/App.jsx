@@ -40,6 +40,7 @@ export default function App() {
         <div style={{ marginLeft: "auto", fontSize: 12, color: "#666" }} />
       </header>
 
+      {/* This renders Dashboard when path === /app */}
       <main style={{ flex: 1, width: "100%", maxWidth: 1100, margin: "0 auto", padding: 16 }}>
         <Outlet />
       </main>

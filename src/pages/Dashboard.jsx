@@ -108,6 +108,10 @@ export default function Dashboard() {
     }));
   }, [migraineRows]);
 
+  const emptyState = (text) => (
+    <div style={{ color: "#6b7280", fontSize: 14, padding: "8px 0" }}>{text}</div>
+  );
+
   return (
     <div>
       <div className="card" style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
@@ -118,6 +122,7 @@ export default function Dashboard() {
         <div style={{ marginLeft: "auto", color: msg ? "#b00020" : "#4a4a4a" }}>{msg || ""}</div>
       </div>
 
+      {/* Action tiles */}
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", marginBottom: 16 }}>
         <div className="card">
           <h3 className="h1" style={{ textAlign: "left" }}>Log Glucose</h3>
@@ -156,47 +161,60 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Charts */}
       <div style={{ display: "grid", gap: 12 }}>
         <div className="card">
           <h3 className="h1" style={{ textAlign: "left" }}>Glucose — 7 day average</h3>
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <LineChart data={glucoseData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" /><YAxis domain={[40, 300]} />
-                <Tooltip /><Legend />
-                <Line type="monotone" dataKey="avg" name="Avg mg/dL" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {!glucoseData.length ? (
+            emptyState("No glucose data yet. Log a reading to see this chart.")
+          ) : (
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <LineChart data={glucoseData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" /><YAxis domain={[40, 300]} />
+                  <Tooltip /><Legend />
+                  <Line type="monotone" dataKey="avg" name="Avg mg/dL" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         <div className="card">
           <h3 className="h1" style={{ textAlign: "left" }}>Sleep — duration (last 30 days)</h3>
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <BarChart data={sleepData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" /><YAxis unit="h" />
-                <Tooltip /><Legend />
-                <Bar dataKey="hours" name="Hours slept" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {!sleepData.length ? (
+            emptyState("No sleep data yet. Log a sleep session to see this chart.")
+          ) : (
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <BarChart data={sleepData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" /><YAxis unit="h" />
+                  <Tooltip /><Legend />
+                  <Bar dataKey="hours" name="Hours slept" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         <div className="card">
           <h3 className="h1" style={{ textAlign: "left" }}>Migraine — severity (last 30 days)</h3>
-          <div style={{ width: "100%", height: 240 }}>
-            <ResponsiveContainer>
-              <AreaChart data={migraineData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" /><YAxis domain={[0, 10]} />
-                <Tooltip /><Legend />
-                <Area type="monotone" dataKey="severity" name="Severity" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {!migraineData.length ? (
+            emptyState("No migraine episodes yet. Log one to see this chart.")
+          ) : (
+            <div style={{ width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <AreaChart data={migraineData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" /><YAxis domain={[0, 10]} />
+                  <Tooltip /><Legend />
+                  <Area type="monotone" dataKey="severity" name="Severity" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
     </div>
