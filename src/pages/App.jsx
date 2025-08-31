@@ -1,33 +1,59 @@
 // src/pages/App.jsx
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/components/AuthContext";
-import Header from "@/components/Header";
-import ProtectedRoute from "@/components/ProtectedRoute";
-
-import Dashboard from "@/pages/Dashboard";
-import LogGlucose from "@/pages/LogGlucose";
-import LogSleep from "@/pages/LogSleep";
-import LogMigraine from "@/pages/LogMigraine";
-import SignIn from "@/pages/SignIn"; // keep SignIn under /pages for consistency
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 export default function App() {
+  const { pathname } = useLocation();
+
+  const NavLink = ({ to, children }) => (
+    <Link
+      to={to}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 8,
+        textDecoration: "none",
+        color: pathname === to ? "#111" : "#444",
+        background: pathname === to ? "#e8e8e8" : "transparent",
+      }}
+    >
+      {children}
+    </Link>
+  );
+
   return (
-    <AuthProvider>
-      <Header />
-      <Routes>
-        {/* Public */}
-        <Route path="/sign-in" element={<SignIn />} />
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 16px",
+          borderBottom: "1px solid #eee",
+        }}
+      >
+        {/* Logo served from /public/logo.png */}
+        <img
+          src="/logo.png"
+          alt="Sentinel Health"
+          style={{ height: 32 }}
+        />
 
-        {/* Private */}
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/log-glucose" element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
-        <Route path="/log-sleep" element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
-        <Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
+        <nav style={{ display: "flex", gap: 8, marginLeft: 16 }}>
+          <NavLink to="/app">Dashboard</NavLink>
+          <NavLink to="/log-glucose">Glucose</NavLink>
+          <NavLink to="/log-sleep">Sleep</NavLink>
+          <NavLink to="/log-migraine">Migraine</NavLink>
+          <NavLink to="/settings">Settings</NavLink>
+        </nav>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AuthProvider>
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "#666" }}>
+          {/* you can inject user email/initials here later */}
+        </div>
+      </header>
+
+      <main style={{ flex: 1 }}>
+        <Outlet />
+      </main>
+    </div>
   );
 }
