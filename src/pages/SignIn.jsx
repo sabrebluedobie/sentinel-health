@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
-import "SignIn.module.css";
+
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,

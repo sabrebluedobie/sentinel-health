@@ -1,5 +1,6 @@
 // src/pages/Education.jsx
 import React, { useEffect } from "react";
+import "/src/components/modals/EducationModal.jsx"
 
 export default function Education() {
   // Optional: ensure the page starts at top on mount
