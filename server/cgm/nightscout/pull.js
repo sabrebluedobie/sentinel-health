@@ -1,4 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
+import crypto from "node:crypto";
+
+
+// ---- Supabase (server) ----
 
 function normalizeBaseUrl(raw){
   if(!raw) return null;

@@ -6,6 +6,24 @@ async function getUid() {
   return data?.session?.user?.id || null;
 }
 
+async function saveGlucose({ value_mgdl, time, note }) {
+  // Save to Supabase if you want to keep a local copy
+  await supabase.from("glucose_readings").insert([{ value_mgdl, time, note }]);
+
+  // Forward to Nightscout
+  await fetch("/api/nightscout/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: "glucose",
+      value_mgdl,
+      time,
+      reading_type: "sgv",
+      note,
+    }),
+  });
+}
+
 export default function LogGlucose() {
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
@@ -44,7 +62,7 @@ export default function LogGlucose() {
   return (
     <main className="center-wrap">
       <form className="card" onSubmit={submit}>
-        <img src="/logo.png" alt="Sentinel Health" className="logo" />
+        <img src="/assets/logo.png" alt="Sentinel Health" className="logo" />
         <h1 className="h1">Log Glucose</h1>
 
         <label className="label">Value (mg/dL)</label>
