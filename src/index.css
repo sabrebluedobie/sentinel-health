@@ -95,4 +95,24 @@ input.input:-webkit-autofill:focus {
 }
 .btn { color:#1f2937; }
 .btn.primary { background:#2563eb; color:#fff; border-color:rgba(0,0,0,.06); }
+/* keep inputs light everywhere */
+input, textarea, select { color-scheme: light; }
+
+.input,
+input.input,
+input[type="email"].input,
+input[type="password"].input {
+  background: #fff !important;
+  color: #111 !important;
+  border-color: #e5e7eb !important;
+}
+.input::placeholder { color: #6b7280 !important; opacity: 1; }
+
+/* Chrome autofill */
+input.input:-webkit-autofill,
+input.input:-webkit-autofill:hover,
+input.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111 !important;
+  box-shadow: 0 0 0 1000px #fff inset !important;
+}
 
