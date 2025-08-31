@@ -1,12 +1,10 @@
+// src/pages/LogSleep.jsx
 import React, { useState } from "react";
 import supabase from "@/lib/supabase";
 
-// Convert local datetime-local value to ISO without losing the local time intent
 function localToISO(local) {
-  // local format: "YYYY-MM-DDTHH:mm"
   const d = new Date(local.replace(" ", "T"));
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 export default function LogSleep() {
@@ -27,22 +25,24 @@ export default function LogSleep() {
     const uid = await getUserId();
     if (!uid) return setMsg("Not signed in.");
 
-    const startISO = localToISO(start);
-    const endISO = localToISO(end);
-    if (!startISO || !endISO) return setMsg("Please provide valid start and end times.");
-    if (new Date(endISO) <= new Date(startISO)) return setMsg("End time must be after start time.");
+    const start_time = localToISO(start);
+    const end_time = localToISO(end);
+    if (!start_time) return setMsg("Please provide a valid start time.");
+    if (end_time && new Date(end_time) <= new Date(start_time)) {
+      return setMsg("End time must be after start time.");
+    }
 
     setSaving(true);
-    const { error } = await supabase.from("sleep_logs").insert({
+    const { error } = await supabase.from("sleep_data").insert({
       user_id: uid,
-      start_time: startISO,
-      end_time: endISO,
+      start_time,
+      end_time: end_time || null,
       created_at: new Date().toISOString(),
     });
     setSaving(false);
+
     if (error) return setMsg(`Save failed: ${error.message}`);
-    setStart("");
-    setEnd("");
+    setStart(""); setEnd("");
     setMsg("Saved ✓");
   }
 
@@ -50,14 +50,8 @@ export default function LogSleep() {
     <main style={{ maxWidth: 600, margin: "0 auto", padding: "1.5rem" }}>
       <h1>Log Sleep</h1>
       <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
-        <label>
-          Start
-          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} required />
-        </label>
-        <label>
-          End
-          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} required />
-        </label>
+        <label>Start <input type="datetime-local" value={start} onChange={(e)=>setStart(e.target.value)} required /></label>
+        <label>End (optional) <input type="datetime-local" value={end} onChange={(e)=>setEnd(e.target.value)} /></label>
         <button disabled={saving} type="submit">{saving ? "Saving…" : "Save"}</button>
         <div style={{ minHeight: 20, color: msg.startsWith("Saved") ? "green" : "crimson" }}>{msg}</div>
       </form>

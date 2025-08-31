@@ -46,7 +46,7 @@ export default function Dashboard() {
       const [{ data: g1 }, { data: s1 }, { data: m1 }] = await Promise.all([
         supabase.from("glucose_readings").select("*").eq("user_id", uid)
           .order("device_time", { ascending: false }).limit(1),
-        supabase.from("sleep_logs").select("*").eq("user_id", uid)
+        supabase.from("sleep_data").select("*").eq("user_id", uid)
           .order("start_time", { ascending: false }).limit(1),
         supabase.from("migraine_episodes").select("*").eq("user_id", uid)
           .order("start_time", { ascending: false }).limit(1), // if your column is started_at, change here
@@ -57,7 +57,7 @@ export default function Dashboard() {
         supabase.from("glucose_readings").select("device_time, value_mgdl")
           .eq("user_id", uid).gte("device_time", since7)
           .order("device_time", { ascending: true }),
-        supabase.from("sleep_logs").select("start_time, end_time")
+        supabase.from("sleep_data").select("start_time, end_time")
           .eq("user_id", uid).gte("start_time", since30)
           .order("start_time", { ascending: true }),
         supabase.from("migraine_episodes").select("start_time, end_time, severity")
