@@ -20,10 +20,19 @@ export default function SignIn() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/app" },
+      options: {
+        redirectTo: `${window.location.origin}/app`,
+        queryParams: {
+          prompt: "select_account",   // show selector if already signed in to Google
+          access_type: "offline",     // refresh token
+        },
+      },
     });
-    if (error) setMsg(error.message);
-    setBusy(false);
+    if (error) {
+      setMsg(error.message);
+      setBusy(false);
+    }
+    // On success, Supabase redirects; no extra code needed here
   }
 
   async function submit(e) {
@@ -38,80 +47,69 @@ export default function SignIn() {
 
   return (
     <main className="center-wrap" style={{ background: "#ececec" }}>
-      <form className="card" onSubmit={submit} style={{ maxWidth: 520, borderRadius: 16, padding: 28 }}>
-        {/* Logo */}
+      <form
+        className="card"
+        onSubmit={submit}
+        style={{ maxWidth: 520, borderRadius: 16, padding: 28 }}
+        autoComplete="on"            // ✅ enable browser autofill
+        name="signin"                // ✅ helps Chrome profile manager
+      >
         <img src="/logo.png" alt="Sentinel Health" className="logo" style={{ width: 48, height: 48, borderRadius: 12 }} />
 
-        {/* Title */}
         <h1 className="h1" style={{ marginTop: 8, marginBottom: 4, fontSize: 28, textAlign: "center" }}>Sign in</h1>
         <div style={{ textAlign: "center", color: "#6b7280", marginBottom: 16 }}>Welcome back</div>
 
-        {/* Google */}
         <button
           type="button"
           onClick={signInWithGoogle}
           className="btn"
           disabled={busy}
-          style={{
-            width: "100%",
-            borderRadius: 12,
-            height: 44,
-            fontWeight: 600,
-            background: "#fff",
-          }}
+          style={{ width: "100%", borderRadius: 12, height: 44, fontWeight: 600, background: "#fff" }}
         >
           Continue with Google
         </button>
 
-        {/* OR divider */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "16px 0" }}>
           <div style={{ height: 1, background: "var(--card-border)" }} />
           <span style={{ color: "#9ca3af", fontSize: 14 }}>or</span>
           <div style={{ height: 1, background: "var(--card-border)" }} />
         </div>
 
-        {/* Email */}
-        <label className="label" style={{ marginTop: 0 }}>Email</label>
+        <label className="label" htmlFor="email">Email</label>
         <input
           className="input"
+          id="email"
+          name="email"               // ✅ name + autoComplete make autofill work
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
           required
           style={{ height: 44, borderRadius: 12 }}
         />
 
-        {/* Password */}
-        <label className="label">Password</label>
+        <label className="label" htmlFor="password">Password</label>
         <input
           className="input"
+          id="password"
+          name="current-password"    // ✅ name aligns with browser’s password manager
           type="password"
+          autoComplete="current-password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          autoComplete="current-password"
           required
           style={{ height: 44, borderRadius: 12 }}
         />
 
-        {/* Primary submit */}
         <button
           className="btn primary"
           type="submit"
           disabled={busy}
-          style={{
-            width: "100%",
-            marginTop: 16,
-            height: 44,
-            borderRadius: 12,
-            background: "#2563eb", // blue like screenshot
-            borderColor: "#2563eb",
-          }}
+          style={{ width: "100%", marginTop: 16, height: 44, borderRadius: 12, background: "#2563eb", borderColor: "#2563eb" }}
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
 
-        {/* Footer links */}
         <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
           <Link to="/sign-up" style={{ textDecoration: "none", color: "#2563eb" }}>Create account</Link>
           <Link to="/reset-password" style={{ textDecoration: "none", color: "#2563eb" }}>Forgot password?</Link>
@@ -121,7 +119,6 @@ export default function SignIn() {
           <Link to="/" style={{ color: "#6b7280", textDecoration: "none" }}>Go home</Link>
         </div>
 
-        {/* Error */}
         <div className="label" style={{ color: msg ? "#b00020" : "transparent", minHeight: 18, marginTop: 10 }}>
           {msg || "."}
         </div>
