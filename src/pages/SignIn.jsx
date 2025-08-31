@@ -89,7 +89,7 @@ export default function SignIn() {
           onChange={(e) => setEmail(e.target.value)}
           required
           style={{ height: 44, borderRadius: 12,
-          backgroundColor: #ececec,
+          backgroundColor: "#ececec",
            }}
         />
 
@@ -104,7 +104,7 @@ export default function SignIn() {
           onChange={(e) => setPw(e.target.value)}
           required
           style={{ height: 44, borderRadius: 12,
-          backgroundColor: #ececec,
+          backgroundColor: "#ececec",
            }}
         />
 
