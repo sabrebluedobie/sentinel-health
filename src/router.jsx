@@ -3,11 +3,11 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import App from "@/pages/App.jsx";
 import Dashboard from "@/pages/Dashboard.jsx";
-import SignIn from "@/src/components/SignIn.jsx";
+import SignIn from "@/components/SignIn.jsx";
+import NightscoutSettings from "@/pages/NightscoutSettings.jsx";
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogGlucose from "@/pages/LogGlucose.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";
-import NightscoutSettings from "@/src/pages/NightscoutSettings.jsx";
 import Protected from "@/routes/Protected.jsx";
 
 export default function Router() {

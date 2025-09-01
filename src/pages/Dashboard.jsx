@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx (UPDATE your existing Dashboard)
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import NightscoutSignin from '@/src/components/NightscoutSignin.jsx';
+import NightscoutSignin from '@/components/NightscoutSignin.jsx';
 
 export default function Dashboard() {
   const [showNightscoutSettings, setShowNightscoutSettings] = useState(false);
