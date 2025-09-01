@@ -14,11 +14,11 @@ export default function Settings() {
   return (
     <main className="center-wrap">
       <form className="card" onSubmit={save}>
-        <img src="/logo.png" alt="Sentinel Health" className="logo" />
+        <img src="/assets/logo.png" alt="Sentinel Health" className="logo" />
         <h1 className="h1">Settings</h1>
 
         <label className="label">Nightscout URL</label>
-        <input className="input" type="url" value={nightscoutUrl} onChange={e=>setNightscoutUrl(e.target.value)} placeholder="https://example.herokuapp.com" />
+        <input className="input" type="url" value={nightscoutUrl} onChange={e=>setNightscoutUrl(e.target.value)} placeholder="https://nightscout.pro/en_us/knowledge-base/configuring-your-nightscout-url/" />
 
         <label className="label">API Secret</label>
         <input className="input" type="password" value={apiSecret} onChange={e=>setApiSecret(e.target.value)} />
