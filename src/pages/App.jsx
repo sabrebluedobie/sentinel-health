@@ -47,6 +47,7 @@ export default function App() {
           <NavBtn to="/log-sleep">Sleep</NavBtn>
           <NavBtn to="/log-migraine">Migraine</NavBtn>
           <NavBtn to="/settings">Settings</NavBtn>
+          <NavBtn to="/app/education">Education</NavBtn>
         </nav>
 
         <div style={{ justifySelf: "end", fontSize: 12, color: "#9ca3af" }} />

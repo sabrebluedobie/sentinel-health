@@ -9,6 +9,7 @@ import LogGlucose from "./pages/LogGlucose.jsx";
 import LogSleep from "./pages/LogSleep.jsx";
 import LogMigraine from "./pages/LogMigraine.jsx";
 import Settings from "./pages/Settings.jsx";
+import Education from "@/pages/Education.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
 import ErrorBoundary from "./components/debug/ErrorBoundary.jsx";
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/app" element={<AuthGate><App /></AuthGate>}>
           <Route index element={<Dashboard />} />
         </Route>
+        <Route path="education" element={<Education />} />
         <Route path="/log-glucose"  element={<AuthGate><LogGlucose /></AuthGate>} />
         <Route path="/log-sleep"    element={<AuthGate><LogSleep /></AuthGate>} />
         <Route path="/log-migraine" element={<AuthGate><LogMigraine /></AuthGate>} />
