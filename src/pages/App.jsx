@@ -1,7 +1,7 @@
 // src/pages/App.jsx
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import Logo from "@/components/Logo.jsx";
+import Logo from "@/pages/Logo";
 
 export default function App() {
   const { pathname } = useLocation();
