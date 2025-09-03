@@ -1,135 +1,53 @@
 // src/pages/SignIn.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
-
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import BrandBar from "@/components/BrandBar";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
-  const navigate = useNavigate();
-
-  async function signInWithGoogle() {
-    setMsg("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/app`,
-        queryParams: {
-          prompt: "select_account",   // show selector if already signed in to Google
-          access_type: "offline",     // refresh token
-        },
-      },
-    });
-    if (error) {
-      setMsg(error.message);
-      setBusy(false);
-    }
-    // On success, Supabase redirects; no extra code needed here
-  }
-
-  async function submit(e) {
-    e.preventDefault();
-    setMsg("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-    setBusy(false);
-    if (error) return setMsg(error.message);
-    navigate("/app", { replace: true });
-  }
+  const [password, setPassword] = useState("");
 
   return (
-    <main className="center-wrap" style={{ background: "#ececec" }}>
-      <form
-        className="card"
-        onSubmit={submit}
-        style={{ maxWidth: 520, borderRadius: 16, padding: 28 }}
-        autoComplete="on"            // ✅ enable browser autofill
-        name="signin"                // ✅ helps Chrome profile manager
-      >
-        <img src="/src/assets/logo.png" alt="Sentinel Health" className="logo" style={{ width: 48, height: 48, borderRadius: 12 }} />
+    <>
+      <BrandBar />
+      <main className="min-h-[calc(100vh-60px)] bg-slate-100">
+        <div className="mx-auto flex max-w-6xl items-center justify-center px-4 py-10">
+          <div className="card w-full max-w-md">
+            <div className="mb-1 flex items-center gap-2">
+              <img src="/logo.png" alt="Sentinel Health" className="h-6 w-auto" />
+              <span className="text-sm text-slate-500">Sentinel Health</span>
+            </div>
+            <h1 className="mb-1 text-2xl font-semibold">Sign into Sentinel Health</h1>
+            <p className="mb-6 text-slate-500">Welcome back</p>
 
-        <h1 className="h1" style={{ marginTop: 8, marginBottom: 4, fontSize: 28, textAlign: "center" }}>Sign into Sentinel Health</h1>
-        <div style={{ textAlign: "center", color: "#6b7280", marginBottom: 16 }}>Welcome back</div>
+            <button className="btn w-full rounded-xl bg-slate-900 py-2 text-white hover:opacity-90">
+              Continue with Google
+            </button>
 
-        <button
-          type="button"
-          onClick={signInWithGoogle}
-          className="btn"
-          disabled={busy}
-          style={{ width: "100%", borderRadius: 12, height: 44, fontWeight: 600, 
-          color: "#fff",
-          background: "#042d4d" }}
-        >
-          Continue with Google
-        </button>
+            <div className="my-4 text-center text-sm text-slate-400">or</div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "16px 0" }}>
-          <div style={{ height: 1, background: "var(--card-border)" }} />
-          <span style={{ color: "#9ca3af", fontSize: 14 }}>or</span>
-          <div style={{ height: 1, background: "var(--card-border)" }} />
+            <form className="space-y-4">
+              <div>
+                <label className="label" htmlFor="email">Email</label>
+                <input id="email" type="email" className="input mt-1" value={email} onChange={e=>setEmail(e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="password">Password</label>
+                <input id="password" type="password" className="input mt-1" value={password} onChange={e=>setPassword(e.target.value)} />
+              </div>
+              <button type="submit" className="btn-primary w-full py-2">Sign in</button>
+            </form>
+
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <div className="space-x-2">
+                <Link to="/signup" className="text-blue-600 hover:underline">Create account</Link>
+                <Link to="/forgot" className="text-blue-600 hover:underline">Forgot password?</Link>
+              </div>
+              <Link to="/" className="text-slate-500 hover:underline">Go home</Link>
+            </div>
+          </div>
         </div>
-
-        <label className="label" htmlFor="email">Email</label>
-        <input
-          className="input"
-          id="email"
-          name="email"               // ✅ name + autoComplete make autofill work
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ height: 44, borderRadius: 12,
-          backgroundColor: "#ececec",
-           }}
-        />
-
-        <label className="label" htmlFor="password">Password</label>
-        <input
-          className="input"
-          id="password"
-          name="current-password"    // ✅ name aligns with browser’s password manager
-          type="password"
-          autoComplete="current-password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          required
-          style={{ height: 44, borderRadius: 12,
-          backgroundColor: "#ececec",
-           }}
-        />
-
-        <button
-          className="btn primary"
-          type="submit"
-          disabled={busy}
-          style={{ width: "100%", marginTop: 16, height: 44, borderRadius: 12, background: "#466dc2ff", borderColor: "#2563eb" }}
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
-          <Link to="/sign-up" style={{ textDecoration: "none", color: "#2563eb" }}>Create account</Link>
-          <Link to="/reset-password" style={{ textDecoration: "none", color: "#2563eb" }}>Forgot password?</Link>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          <Link to="/" style={{ color: "#6b7280", textDecoration: "none" }}>Go home</Link>
-        </div>
-
-        <div className="label" style={{ color: msg ? "#b00020" : "transparent", minHeight: 18, marginTop: 10 }}>
-          {msg || "."}
-        </div>
-      </form>
-    </main>
+      </main>
+    </>
   );
 }
