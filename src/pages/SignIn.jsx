@@ -1,37 +1,52 @@
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import supabase from "@/lib/supabase";
 
 export default function SignIn() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const nav = useNavigate();
+  const loc = useLocation();
+  const from = loc.state?.from?.pathname || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
 
-  async function handleSubmit(e) {
+  // If already signed in, skip the form
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) nav(from, { replace: true });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setMsg("");
 
+    // small nicety: trim email
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 
     setBusy(false);
 
     if (error) {
-      setMsg(error.message || "Sign-in failed");
+      // Surface common cases nicely
+      if (/Invalid login credentials/i.test(error.message)) {
+        setMsg("Incorrect email or password.");
+      } else if (/Email not confirmed/i.test(error.message)) {
+        setMsg("Please confirm your email, then try signing in.");
+      } else {
+        setMsg(error.message || "Sign-in failed.");
+      }
       return;
     }
 
-    if (data?.user) {
-      navigate(from, { replace: true });
-    }
+    if (data?.user) nav(from, { replace: true });
   }
 
   return (
@@ -45,12 +60,14 @@ export default function SignIn() {
           <p className="mt-1 text-sm text-zinc-500">Welcome back</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4" autoComplete="on">
           <div>
             <label className="label">Email</label>
             <input
               className="input mt-1"
               type="email"
+              inputMode="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -61,6 +78,7 @@ export default function SignIn() {
             <input
               className="input mt-1"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -69,9 +87,14 @@ export default function SignIn() {
 
           {msg && <p className="text-sm text-red-600">{msg}</p>}
 
-          <button type="submit" className="btn-primary w-full" disabled={busy}>
+          <button className="btn-primary w-full" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
+
+          <p className="mt-2 text-center text-xs text-zinc-500">
+            <Link to="/sign-up" className="underline">Create an account</Link> ·{" "}
+            <Link to="/reset" className="underline">Forgot password?</Link>
+          </p>
         </form>
       </div>
     </div>

@@ -1,54 +1,74 @@
 import React, { useState } from "react";
-import supabase from '@/lib/supabase'
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import "/logo.png";
+import { Link, useNavigate } from "react-router-dom";
+import supabase from "@/lib/supabase";
 
 export default function SignUp() {
+  const nav = useNavigate();
   const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const [msg, setMsg] = useState("");
+  const [ok, setOk] = useState("");
 
-  const onSubmit = async (e) => {
+  async function onSubmit(e) {
     e.preventDefault();
-    setError(""); setBusy(true);
-    const { error } = await supabase.auth.signUp({ email, password: pwd });
+    setMsg(""); setOk("");
+    if (password !== confirm) {
+      setMsg("Passwords do not match"); return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/sign-in`
+      }
+    });
     setBusy(false);
-    if (error) setError(error.message);
-    else navigate(from, { replace: true });
-  };
+    if (error) { setMsg(error.message || "Sign up failed"); return; }
+    setOk("Check your email to confirm your account. After confirming, sign in.");
+    // Optional: nav("/sign-in"); // if you don't require email confirmations
+  }
 
   return (
-    <div className="min-h-screen grid place-items-center p-6 bg-brand-100">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3 border rounded-xl p-6 bg-white">
-        <h1 className="text-2xl font-semibold text-brand-900">Create account</h1>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        <input
-          className="w-full border rounded p-2"
-          placeholder="you@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          required
-        />
-        <input
-          className="w-full border rounded p-2"
-          placeholder="Password"
-          value={pwd}
-          onChange={(e) => setPwd(e.target.value)}
-          type="password"
-          required
-        />
-        <button disabled={busy} className="w-full bg-blue-600 text-white rounded p-2">
-          {busy ? "Creating…" : "Create account"}
-        </button>
-        <p className="text-sm">
-          Already have an account? <Link to="/sign-in" className="text-blue-600 underline">Sign in</Link>
-        </p>
-      </form>
+    <div className="app-shell flex items-center justify-center p-6">
+      <div className="w-full max-w-md card">
+        <div className="mb-6 text-center">
+          <img src="/logo.png" alt="Sentinel Health" className="mx-auto h-12 w-auto" />
+          <h1 className="mt-4 text-xl font-semibold">Create your account</h1>
+          <p className="mt-1 text-sm text-zinc-500">Sentinel Health</p>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="label">Email</label>
+            <input className="input mt-1" type="email" required
+                   value={email} onChange={(e)=>setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Password</label>
+            <input className="input mt-1" type="password" required
+                   value={password} onChange={(e)=>setPassword(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Confirm password</label>
+            <input className="input mt-1" type="password" required
+                   value={confirm} onChange={(e)=>setConfirm(e.target.value)} />
+          </div>
+
+          {msg && <p className="text-sm text-red-600">{msg}</p>}
+          {ok  && <p className="text-sm text-emerald-600">{ok}</p>}
+
+          <button className="btn-primary w-full" disabled={busy}>
+            {busy ? "Creating…" : "Create account"}
+          </button>
+
+          <p className="mt-2 text-center text-xs text-zinc-500">
+            Already have an account? <Link to="/sign-in" className="underline">Sign in</Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

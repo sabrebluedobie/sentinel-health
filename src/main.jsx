@@ -1,7 +1,15 @@
+import { AuthProvider } from "@/components/AuthContext.jsx";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    <AuthProvider><App /></AuthProvider>
+  </BrowserRouter>
+);
+
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import "./index.css";
 
 import App from "./pages/App.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
