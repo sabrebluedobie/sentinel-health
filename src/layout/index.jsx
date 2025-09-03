@@ -1,14 +1,8 @@
-import React from "react";
-
+// src/layout/index.jsx (example)
 export default function Layout({ children }) {
   return (
-    <div style={{
-      minHeight:"100%",
-      background:"var(--page-bg,#ececec)",
-      color:"var(--text,#111)",
-      display:"flex",
-      flexDirection:"column"
-    }}>
+    <div className="app-shell">
+      {/* your header/nav here if desired */}
       {children}
     </div>
   );

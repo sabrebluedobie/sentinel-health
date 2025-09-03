@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
 import { GlucoseReading } from "@/entities/GlucoseReading";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, Loader2, FileCheck2, AlertCircle } from "lucide-react";
