@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Brand palette */
+/* Brand tokens (Tailwind v4 @theme) */
 @theme {
   --color-brand-900: #173B63;
   --color-brand-700: #1F5085;
@@ -9,35 +9,11 @@
   --color-brand-300: #77B1E6;
   --color-brand-200: #A6CEF3;
   --color-brand-100: #E6F2FD;
+  --radius-xl2: 1rem;
+  --shadow-soft: 0 8px 24px rgba(0,0,0,.08);
 }
 
-/* Global cards/charts variables (for recharts) */
-:root {
-  --card-radius: 12px;
-  --card-shadow: 0 8px 30px rgba(0,0,0,.08);
-  --card-shadow-hover: 0 12px 40px rgba(0,0,0,.12);
-  --grid-stroke: rgba(0,0,0,.15);
-  --axis-tick:   rgba(0,0,0,.65);
-}
-
-/* Minimal component helpers */
+/* Reusable “card” */
 @layer components {
-  .container-page { @apply max-w-5xl mx-auto p-6; }
-
-  .card {
-    border-radius: var(--card-radius);
-    box-shadow: var(--card-shadow);
-    @apply bg-white border border-slate-200 p-6;
-  }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
-           font-medium transition disabled:opacity-60 disabled:cursor-not-allowed;
-  }
-  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
-  .btn-ghost   { @apply btn bg-white border hover:bg-brand-100; }
-
-  .input { @apply w-full border rounded-lg px-3 py-2 focus:outline-none
-                   focus:ring-2 focus:ring-brand-400 focus:border-brand-400; }
-  .label { @apply text-sm font-medium text-slate-700; }
+  .card { @apply bg-white rounded-[var(--radius-xl2)] shadow-[var(--shadow-soft)] p-6 border border-slate-200; }
 }
