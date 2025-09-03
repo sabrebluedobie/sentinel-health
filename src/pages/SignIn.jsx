@@ -42,14 +42,6 @@ export default function SignIn() {
           <h1 className="mb-1 text-2xl font-semibold">Sign into Sentinel Health</h1>
           <p className="mb-4 text-slate-500">Welcome back</p>
 
-          <button
-            type="button"
-            onClick={signInWithGoogle}
-            disabled={busy}
-            className="btn w-full rounded-xl bg-slate-900 py-2 text-white hover:opacity-90"
-          >
-            Continue with Google
-          </button>
 
           <div className="my-4 text-center text-sm text-slate-400">or</div>
 
