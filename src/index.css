@@ -1,10 +1,23 @@
 /* src/index.css */
 @import "tailwindcss";
+@tailwind components;
+@tailwind utilities;
+
+/* optional tokens you added */
+@theme {
+  --color-brand-900: #173B63;
+  --color-brand-700: #1F5085;
+  --color-brand-500: #2B6AA8;
+  --color-brand-400: #4C8FCC;
+  --color-brand-300: #77B1E6;
+  --color-brand-200: #A6CEF3;
+  --color-brand-100: #E6F2FD;
+  --radius-xl2: 1rem;
+  --shadow-soft: 0 8px 24px rgba(0,0,0,0.08);
+}
 
 @layer components {
-  .card { @apply bg-white rounded-2xl shadow-xl ring-1 ring-black/5 p-6; }
-  .btn  { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium; }
-  .btn-primary { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
-  .input { @apply w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400; }
-  .label { @apply text-sm font-medium text-slate-700; }
+  .card { @apply bg-white rounded-[var(--radius-xl2)] shadow-[var(--shadow-soft)] p-6; }
+  .btn  { @apply inline-flex items-center justify-center rounded-md px-4 py-2 font-medium; }
+  .btn.primary { @apply text-white; }
 }

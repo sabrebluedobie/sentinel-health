@@ -16,6 +16,7 @@ import ErrorBoundary from "./components/debug/ErrorBoundary.jsx";
 
 
 createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
   <ErrorBoundary>
     <BrowserRouter>
       <Routes>
@@ -33,4 +34,6 @@ createRoot(document.getElementById("root")).render(
       </Routes>
     </BrowserRouter>
   </ErrorBoundary>
+  </React.StrictMode>
+
 );
