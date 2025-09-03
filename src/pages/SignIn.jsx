@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import supabase from "@/lib/supabase";
-import TopNav from "@/components/TopNav";
+import TopNav from "@/components/TopNav.jsx";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
