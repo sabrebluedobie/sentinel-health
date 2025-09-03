@@ -1,14 +1,38 @@
+/* src/index.css */
 @import "tailwindcss";
-/* keep your @theme block if you added brand colors/tokens */
 
+/* Brand tokens (Tailwind v4 @theme) */
+@theme {
+  --color-brand-900: #173B63;
+  --color-brand-700: #1F5085;
+  --color-brand-500: #2B6AA8;
+  --color-brand-400: #4C8FCC;
+  --color-brand-300: #77B1E6;
+  --color-brand-200: #A6CEF3;
+  --color-brand-100: #E6F2FD;
+
+  --radius-xl2: 1rem;
+  --shadow-soft: 0 8px 24px rgba(0,0,0,.08);
+}
+
+/* Reusable components */
 @layer components {
-  .card { @apply bg-white rounded-2xl shadow-xl ring-1 ring-black/5 p-6; }
+  .app-shell { @apply min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50; }
 
-  /* define full utility sets directly (don’t @apply a custom class) */
-  .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition; }
-  .btn-primary { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700; }
-  .btn-outline { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium border border-slate-300 hover:bg-slate-50; }
+  .container-page { @apply mx-auto max-w-7xl p-6; }
 
-  .input { @apply w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400; }
+  .card { @apply bg-white rounded-[var(--radius-xl2)] shadow-[var(--shadow-soft)] ring-1 ring-black/5 p-6; }
+
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-medium; }
+  .btn-primary { @apply btn text-white bg-brand-600 hover:bg-brand-700; }
+  .btn-outline { @apply btn border border-brand-600 text-brand-700 hover:bg-brand-100; }
+
   .label { @apply text-sm font-medium text-slate-700; }
+  .input { @apply w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400; }
+}
+
+/* Optional headings */
+@layer utilities {
+  .h1 { @apply text-2xl font-semibold text-slate-900; }
+  .h2 { @apply text-xl font-semibold text-slate-900; }
 }
