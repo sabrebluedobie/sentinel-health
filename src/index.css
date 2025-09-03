@@ -1,10 +1,43 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root { color-scheme: light dark; }
-html, body, #root { height: 100%; }
-body { @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100; }
+/* Brand palette */
+@theme {
+  --color-brand-900: #173B63;
+  --color-brand-700: #1F5085;
+  --color-brand-500: #2B6AA8;
+  --color-brand-400: #4C8FCC;
+  --color-brand-300: #77B1E6;
+  --color-brand-200: #A6CEF3;
+  --color-brand-100: #E6F2FD;
+}
 
-/* optional helper */
-.card { @apply rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900; }
+/* Global cards/charts variables (for recharts) */
+:root {
+  --card-radius: 12px;
+  --card-shadow: 0 8px 30px rgba(0,0,0,.08);
+  --card-shadow-hover: 0 12px 40px rgba(0,0,0,.12);
+  --grid-stroke: rgba(0,0,0,.15);
+  --axis-tick:   rgba(0,0,0,.65);
+}
+
+/* Minimal component helpers */
+@layer components {
+  .container-page { @apply max-w-5xl mx-auto p-6; }
+
+  .card {
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    @apply bg-white border border-slate-200 p-6;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+           font-medium transition disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-ghost   { @apply btn bg-white border hover:bg-brand-100; }
+
+  .input { @apply w-full border rounded-lg px-3 py-2 focus:outline-none
+                   focus:ring-2 focus:ring-brand-400 focus:border-brand-400; }
+  .label { @apply text-sm font-medium text-slate-700; }
+}

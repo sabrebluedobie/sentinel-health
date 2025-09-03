@@ -1,463 +1,441 @@
+// src/pages/Dashboard.jsx (reworked)
+// Sleek dashboard with Recharts; pulls from Supabase tables:
+//   - public.glucose_readings (device_time, value_mgdl, user_id)
+//   - public.sleep_data       (start_time, end_time[, efficiency], user_id)
+//   - public.migraine_episodes(started_at|created_at, pain[, symptoms], user_id)
+// Keeps Nightscout connection CTA. No connectors removed.
+
 import React, { useEffect, useMemo, useState } from "react";
+import supabase from "@/lib/supabase";
+import { Link } from "react-router-dom";
+
+// Recharts
 import {
-  LineChart,
-  Line,
   ResponsiveContainer,
+  LineChart as RLineChart,
+  Line,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
-  ReferenceArea,
-  ReferenceLine,
   Legend,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
 } from "recharts";
-import { Activity, BedDouble, Brain, CalendarDays, TrendingUp, Settings } from "lucide-react";
-import { supabase } from "@/lib/supabase"; // ← verify this path in your project
 
-/**
- * Sentinel Health — Dashboard
- *
- * Visual-first layout with:
- *  - Three Recharts line charts (Blood Sugar, Sleep, Migraines)
- *  - Three matching tables (latest entries)
- *  - Nightscout connector card + status (non-destructive — keeps your connector flow)
- *
- * ✅ Tailwind-only classes. No CSS frameworks that might restyle your UI.
- * ✅ Error + empty states so the page never looks broken.
- * ✅ "Range" filter (7d/30d/90d/YTD/All).
- *
- * IMPORTANT — Map CONFIG to your real tables/columns to avoid 42P01 errors.
- */
+// --- tiny helpers ------------------------------------------------------------
+const dayLabel = (d) =>
+  new Date(d).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 
-// ────────────────────────────────────────────────────────────────────────────────
-// CONFIG — map to your actual Supabase schema
-// ────────────────────────────────────────────────────────────────────────────────
-const CONFIG = {
-  bloodSugar: {
-    title: "Blood Sugar",
-    icon: Activity,
-    table: "blood_glucose", // e.g., blood_glucose
-    columns: { timestamp: "measured_at", value: "mg_dl" }, // timestamptz, numeric
-    thresholds: { low: 70, high: 180 },
-    unit: "mg/dL",
-  },
-  sleep: {
-    title: "Hours of Sleep",
-    icon: BedDouble,
-    table: "sleep_sessions", // e.g., sleep_sessions
-    columns: { timestamp: "slept_on", value: "hours" }, // date, numeric
-    target: { min: 7, max: 9 },
-    unit: "hrs",
-  },
-  migraines: {
-    title: "Migraine Pain",
-    icon: Brain,
-    table: "migraines", // e.g., migraines
-    columns: { timestamp: "occurred_at", value: "pain" }, // timestamptz, int(0-10)
-    scale: [0, 10],
-    unit: "/10",
-  },
-};
+const clamp = (n, lo, hi) => (Number.isFinite(+n) ? Math.min(Math.max(+n, lo), hi) : null);
 
-const RANGES = [
-  { key: "7d", label: "7d" },
-  { key: "30d", label: "30d" },
-  { key: "90d", label: "90d" },
-  { key: "ytd", label: "YTD" },
-  { key: "all", label: "All" },
-];
-
-function startOfRange(rangeKey) {
-  const now = new Date();
-  const d = new Date(now);
-  switch (rangeKey) {
-    case "7d": d.setDate(d.getDate() - 7); return d;
-    case "30d": d.setDate(d.getDate() - 30); return d;
-    case "90d": d.setDate(d.getDate() - 90); return d;
-    case "ytd": return new Date(now.getFullYear(), 0, 1);
-    case "all":
-    default: return null;
-  }
+async function getUserId() {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.user?.id || null;
 }
 
-function fmtDate(d) {
-  try { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
-  catch { return d; }
+function daysAgoISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
 }
 
-function groupByDay(rows, tsKey, valueKey, reducer = (arr) => arr[arr.length - 1]) {
-  const byDay = new Map();
-  for (const r of rows) {
-    const date = new Date(r[tsKey]);
-    const dayKey = isNaN(date) ? String(r[tsKey]) : date.toISOString().slice(0, 10);
-    if (!byDay.has(dayKey)) byDay.set(dayKey, []);
-    byDay.get(dayKey).push(Number(r[valueKey]));
-  }
-  const out = [];
-  for (const [day, vals] of byDay.entries()) out.push({ date: day, value: reducer(vals) });
-  out.sort((a, b) => a.date.localeCompare(b.date));
-  return out;
-}
-
-function fillMissingDays(series) {
-  if (!series.length) return series;
-  const start = new Date(series[0].date);
-  const end = new Date(series[series.length - 1].date);
-  const map = new Map(series.map((p) => [p.date, p.value]));
-  const out = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const key = d.toISOString().slice(0, 10);
-    out.push({ date: key, value: map.has(key) ? map.get(key) : null });
-  }
-  return out;
-}
-
-function Summary({ series, unit }) {
-  const stats = useMemo(() => {
-    const nums = series.map((d) => d.value).filter((v) => typeof v === "number");
-    if (!nums.length) return null;
-    const sum = nums.reduce((a, b) => a + b, 0);
-    const avg = sum / nums.length;
-    const min = Math.min(...nums);
-    const max = Math.max(...nums);
-    return { avg, min, max };
-  }, [series]);
-
-  if (!stats) return <div className="text-sm text-zinc-500 dark:text-zinc-400">No data</div>;
-
-  return (
-    <div className="flex flex-wrap gap-4 text-sm">
-      <div className="flex items-center gap-1"><TrendingUp className="h-4 w-4"/>Avg: <strong>{stats.avg.toFixed(1)}</strong> {unit}</div>
-      <div className="flex items-center gap-1">Min: <strong>{stats.min.toFixed(1)}</strong> {unit}</div>
-      <div className="flex items-center gap-1">Max: <strong>{stats.max.toFixed(1)}</strong> {unit}</div>
-    </div>
-  );
-}
-
-function ChartCard({ title, subtitle, Icon, series, unit, yDomain, thresholds, targetBand }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            {Icon ? <Icon className="h-5 w-5"/> : null}
-            <span>{title}</span>
-          </div>
-          {subtitle ? <div className="text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</div> : null}
-        </div>
-        <Summary series={series} unit={unit} />
-      </div>
-
-      <div className="h-64 w-full">
-        <ResponsiveContainer>
-          <LineChart data={series} margin={{ left: 8, right: 16, top: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tickFormatter={(d) => fmtDate(d)} minTickGap={24} />
-            <YAxis domain={yDomain || ["auto", "auto"]} allowDecimals={true} />
-            <Tooltip
-              formatter={(value) => [
-                typeof value === "number" ? value.toFixed(1) + (unit ? ` ${unit}` : "") : value,
-                title,
-              ]}
-              labelFormatter={(label) => fmtDate(label)}
-            />
-            {targetBand ? (
-              <ReferenceArea y1={targetBand.min} y2={targetBand.max} fillOpacity={0.08} />
-            ) : null}
-            {thresholds?.low != null && <ReferenceLine y={thresholds.low} strokeDasharray="4 4" />}
-            {thresholds?.high != null && <ReferenceLine y={thresholds.high} strokeDasharray="4 4" />}
-            <Legend />
-            <Line type="monotone" dataKey="value" name={title} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-function DataTable({ title, columns, rows, emptyText }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-3 text-base font-semibold">{title}</div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-auto text-left text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-              {columns.map((c) => (
-                <th key={c.key} className="px-2 py-2 font-medium">{c.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="px-2 py-3 text-zinc-500 dark:text-zinc-400" colSpan={columns.length}>{emptyText}</td>
-              </tr>
-            ) : (
-              rows.map((r, i) => (
-                <tr key={i} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                  {columns.map((c) => (
-                    <td key={c.key} className="px-2 py-2">{r[c.key]}</td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function NightscoutCard({ connected }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-3 flex items-center gap-2 text-base font-semibold">
-        <Settings className="h-5 w-5"/>
-        Nightscout Settings
-      </div>
-      <div className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-        {connected ? "Nightscout is connected." : "Click \"Nightscout Settings\" to configure your connection."}
-      </div>
-      <a href="/settings" className="inline-flex items-center justify-center rounded-xl border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
-        Open Settings
-      </a>
-    </div>
-  );
-}
-
+// --- Dashboard ---------------------------------------------------------------
 export default function Dashboard() {
-  const [range, setRange] = useState("30d");
+  const [lookback, setLookback] = useState(30); // 7 | 30 | 90 | 365
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // Chart series
-  const [bloodSugarSeries, setBloodSugarSeries] = useState([]);
-  const [sleepSeries, setSleepSeries] = useState([]);
-  const [migraineSeries, setMigraineSeries] = useState([]);
-
-  // Table rows (latest N in the selected range)
-  const [bloodSugarRows, setBloodSugarRows] = useState([]);
+  // raw rows
+  const [glucoseRows, setGlucoseRows] = useState([]);
   const [sleepRows, setSleepRows] = useState([]);
   const [migraineRows, setMigraineRows] = useState([]);
 
-  // Nightscout status (placeholder; wire to your real table if desired)
-  const [nightscoutConnected] = useState(false);
-
-  const rangeStart = useMemo(() => startOfRange(range), [range]);
-
+  // fetch all
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError("");
+    (async () => {
       try {
-        const gteTS = rangeStart ? rangeStart.toISOString() : null;
+        setLoading(true);
+        setErrorMsg("");
+        const uid = await getUserId();
+        if (!uid) {
+          setErrorMsg("Not signed in.");
+          setLoading(false);
+          return;
+        }
+        const sinceISO = daysAgoISO(lookback);
 
-        // ── Blood Sugar ────────────────────────────────────────────────────────
-        {
-          const { table, columns } = CONFIG.bloodSugar;
-          let q = supabase.from(table).select(`${columns.timestamp}, ${columns.value}`).order(columns.timestamp, { ascending: true });
-          if (gteTS) q = q.gte(columns.timestamp, gteTS);
-          const { data, error } = await q;
-          if (error) throw new Error(`[Blood sugar] ${error.message}`);
+        const [g, s, m] = await Promise.all([
+          supabase
+            .from("glucose_readings")
+            .select("device_time,value_mgdl")
+            .eq("user_id", uid)
+            .gte("device_time", sinceISO)
+            .order("device_time", { ascending: true })
+            .limit(5000),
+          supabase
+            .from("sleep_data")
+            .select("start_time,end_time,efficiency")
+            .eq("user_id", uid)
+            .gte("start_time", sinceISO)
+            .order("start_time", { ascending: true })
+            .limit(1000),
+          supabase
+            .from("migraine_episodes")
+            .select("id,started_at,created_at,pain,symptoms")
+            .eq("user_id", uid)
+            .gte("created_at", sinceISO) // tolerate schemas that only have created_at
+            .order("created_at", { ascending: true })
+            .limit(2000),
+        ]);
 
-          const rows = (data || []).map((r) => ({
-            date: new Date(r[columns.timestamp]).toISOString().slice(0,10),
-            value: Number(r[columns.value]),
-          }));
+        if (cancelled) return;
 
-          const series = rows
-            .map((r) => ({ date: r.date, value: r.value }))
-            .sort((a, b) => a.date.localeCompare(b.date));
-
-          if (!cancelled) {
-            setBloodSugarSeries(fillMissingDays(series));
-            setBloodSugarRows([...rows].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10));
+        // If migraine_episodes doesn’t exist yet, try the legacy table once
+        if (m.error && m.error.code === "42P01") {
+          const legacy = await supabase
+            .from("migraine_entries")
+            .select("id,created_at as started_at,pain,symptoms")
+            .eq("user_id", uid)
+            .gte("created_at", sinceISO)
+            .order("created_at", { ascending: true })
+            .limit(2000);
+          if (!legacy.error) {
+            m.data = legacy.data;
+            m.error = null;
           }
         }
 
-        // ── Sleep (sum per day) ───────────────────────────────────────────────
-        {
-          const { table, columns } = CONFIG.sleep;
-          let q = supabase.from(table).select(`${columns.timestamp}, ${columns.value}`).order(columns.timestamp, { ascending: true });
-          if (gteTS) q = q.gte(columns.timestamp, gteTS);
-          const { data, error } = await q;
-          if (error) throw new Error(`[Sleep] ${error.message}`);
-
-          const byDay = new Map();
-          for (const row of data || []) {
-            const d = new Date(row[columns.timestamp]);
-            const key = isNaN(d) ? String(row[columns.timestamp]) : d.toISOString().slice(0, 10);
-            const hrs = Number(row[columns.value]);
-            byDay.set(key, (byDay.get(key) || 0) + (isNaN(hrs) ? 0 : hrs));
-          }
-          const series = Array.from(byDay.entries()).map(([date, value]) => ({ date, value }))
-            .sort((a, b) => a.date.localeCompare(b.date));
-          const flatRows = (data || []).map((r) => ({
-            date: new Date(r[columns.timestamp]).toISOString().slice(0,10),
-            value: Number(r[columns.value]),
-          }));
-          if (!cancelled) {
-            setSleepSeries(fillMissingDays(series));
-            setSleepRows([...flatRows].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10));
-          }
+        // handle glucose
+        if (g.error && g.error.code === "42P01") {
+          throw new Error("Table public.glucose_readings not found.");
         }
+        setGlucoseRows(g.data || []);
 
-        // ── Migraines (max pain per day) ──────────────────────────────────────
-        {
-          const { table, columns } = CONFIG.migraines;
-          let q = supabase.from(table).select(`${columns.timestamp}, ${columns.value}`).order(columns.timestamp, { ascending: true });
-          if (gteTS) q = q.gte(columns.timestamp, gteTS);
-          const { data, error } = await q;
-          if (error) throw new Error(`[Migraines] ${error.message}`);
-
-          const series = groupByDay(data || [], columns.timestamp, columns.value, (vals) => Math.max(...vals.map(Number)));
-          const flatRows = (data || []).map((r) => ({
-            date: new Date(r[columns.timestamp]).toISOString().slice(0,10),
-            value: Number(r[columns.value]),
-          }));
-          if (!cancelled) {
-            setMigraineSeries(fillMissingDays(series));
-            setMigraineRows([...flatRows].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10));
-          }
+        // handle sleep
+        if (s.error && s.error.code === "42P01") {
+          throw new Error("Table public.sleep_data not found.");
         }
+        setSleepRows(s.data || []);
+
+        // handle migraines
+        if (m.error) throw m.error;
+        setMigraineRows(m.data || []);
       } catch (e) {
-        console.error(e);
-        if (!cancelled) setError(e.message || String(e));
-        // Fallback demo data so visuals remain
-        if (!cancelled) {
-          if (!bloodSugarSeries.length) setBloodSugarSeries(demoSeries(110, 20, 65, 185));
-          if (!sleepSeries.length) setSleepSeries(demoSeries(7.2, 10, 2, 10));
-          if (!migraineSeries.length) setMigraineSeries(demoSeries(3.0, 10, 0, 10));
-        }
+        setErrorMsg(e.message || "Failed to load dashboard");
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-    load();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lookback]);
 
+  // realtime refresh
+  useEffect(() => {
+    let subs = [];
+    (async () => {
+      const uid = await getUserId();
+      if (!uid) return;
+      subs = [
+        supabase
+          .channel("glucose_feed")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "glucose_readings", filter: `user_id=eq.${uid}` },
+            () => setLookback((d) => d) // trigger refetch via dep
+          )
+          .subscribe(),
+        supabase
+          .channel("sleep_feed")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "sleep_data", filter: `user_id=eq.${uid}` },
+            () => setLookback((d) => d)
+          )
+          .subscribe(),
+        supabase
+          .channel("migraine_feed")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "migraine_episodes", filter: `user_id=eq.${uid}` },
+            () => setLookback((d) => d)
+          )
+          .subscribe(),
+      ];
+    })();
+    return () => {
+      subs.forEach((c) => supabase.removeChannel(c));
+    };
+  }, []);
+
+  // ---- derived chart data ---------------------------------------------------
+  const glucoseSeries = useMemo(() => {
+    // daily avg mg/dL
+    const byDay = new Map();
+    for (const r of glucoseRows) {
+      const key = (r.device_time || "").slice(0, 10);
+      if (!key) continue;
+      const arr = byDay.get(key) || [];
+      arr.push(Number(r.value_mgdl));
+      byDay.set(key, arr);
+    }
+    return [...byDay.entries()]
+      .map(([date, vals]) => ({ date, mgdl: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [glucoseRows]);
+
+  const sleepSeries = useMemo(() => {
+    // total hours slept per day = sum(end_time - start_time)
+    const byDay = new Map();
+    for (const r of sleepRows) {
+      const start = Date.parse(r.start_time);
+      const end = Date.parse(r.end_time);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      const key = new Date(start).toISOString().slice(0, 10);
+      const prev = byDay.get(key) || 0;
+      byDay.set(key, prev + (end - start) / 3_600_000);
+    }
+    return [...byDay.entries()]
+      .map(([date, hours]) => ({ date, hours: +hours.toFixed(2) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [sleepRows]);
+
+  const migraineSeries = useMemo(() => {
+    // pain over time (average per day)
+    const byDay = new Map();
+    for (const r of migraineRows) {
+      const when = r.started_at || r.created_at;
+      const key = when ? String(when).slice(0, 10) : null;
+      const pain = clamp(r.pain, 0, 10);
+      if (!key || pain == null) continue;
+      const entry = byDay.get(key) || { total: 0, n: 0 };
+      entry.total += pain;
+      entry.n += 1;
+      byDay.set(key, entry);
+    }
+    return [...byDay.entries()]
+      .map(([date, { total, n }]) => ({ date, pain: +(total / n).toFixed(1) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [migraineRows]);
+
+  // recent tables
+  const recentGlucose = useMemo(() => [...glucoseRows].reverse().slice(0, 8), [glucoseRows]);
+  const recentSleep = useMemo(() => [...sleepRows].reverse().slice(0, 8), [sleepRows]);
+  const recentMigraine = useMemo(() => [...migraineRows].reverse().slice(0, 8), [migraineRows]);
+
+  // ---- UI -------------------------------------------------------------------
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-3">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5" />
-          <h1 className="text-xl font-semibold">Health Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          {RANGES.map((r) => (
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <header className="flex items-center justify-between mb-4">
+        <h1 className="text-3xl font-bold">Health Dashboard</h1>
+        <div className="inline-flex rounded-md shadow-sm overflow-hidden border">
+          {[7, 30, 90, 365].map((d) => (
             <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`rounded-xl px-3 py-1.5 text-sm ${
-                range === r.key
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              key={d}
+              onClick={() => setLookback(d)}
+              className={`px-3 py-1 text-sm ${
+                lookback === d ? "bg-slate-900 text-white" : "bg-white hover:bg-slate-50"
               }`}
             >
-              {r.label}
+              {d === 365 ? "YTD" : `${d}d`}
             </button>
           ))}
         </div>
+      </header>
+
+      {!!errorMsg && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 p-3">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* CHARTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Blood Sugar */}
+        <div className="bg-white rounded-2xl shadow p-4">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h2 className="font-semibold">Blood Sugar</h2>
+              <p className="text-slate-500 text-sm">Daily avg (mg/dL)</p>
+            </div>
+            <span className="text-slate-400 text-xs">{glucoseSeries.length} days</span>
+          </div>
+          <div className="h-56 mt-2">
+            <ResponsiveContainer>
+              <RLineChart data={glucoseSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={dayLabel} minTickGap={12} />
+                <YAxis domain={[0, "dataMax + 40"]} />
+                <Tooltip labelFormatter={dayLabel} />
+                <Legend />
+                <Line type="monotone" dataKey="mgdl" name="Avg mg/dL" strokeWidth={2} dot={false} />
+              </RLineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Sleep */}
+        <div className="bg-white rounded-2xl shadow p-4">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h2 className="font-semibold">Hours of Sleep</h2>
+              <p className="text-slate-500 text-sm">Sum per day</p>
+            </div>
+            <span className="text-slate-400 text-xs">{sleepSeries.length} days</span>
+          </div>
+          <div className="h-56 mt-2">
+            <ResponsiveContainer>
+              <BarChart data={sleepSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={dayLabel} minTickGap={12} />
+                <YAxis />
+                <Tooltip labelFormatter={dayLabel} />
+                <Legend />
+                <Bar dataKey="hours" name="Hours" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Migraine Pain */}
+        <div className="bg-white rounded-2xl shadow p-4">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h2 className="font-semibold">Migraine Pain</h2>
+              <p className="text-slate-500 text-sm">Average per day (0–10)</p>
+            </div>
+            <span className="text-slate-400 text-xs">{migraineSeries.length} days</span>
+          </div>
+          <div className="h-56 mt-2">
+            <ResponsiveContainer>
+              <AreaChart data={migraineSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={dayLabel} minTickGap={12} />
+                <YAxis domain={[0, 10]} />
+                <Tooltip labelFormatter={dayLabel} />
+                <Legend />
+                <Area type="monotone" dataKey="pain" name="Avg pain" fillOpacity={0.25} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
-          {error}
-        </div>
-      ) : null}
-
-      {/* Layout: main charts + sidebar for connectors */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Main content */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <ChartCard
-              title={CONFIG.bloodSugar.title}
-              subtitle="Daily readings"
-              Icon={CONFIG.bloodSugar.icon}
-              series={bloodSugarSeries}
-              unit={CONFIG.bloodSugar.unit}
-              yDomain={[40, 260]}
-              thresholds={CONFIG.bloodSugar.thresholds}
-            />
-            <ChartCard
-              title={CONFIG.sleep.title}
-              subtitle="Sum per day"
-              Icon={CONFIG.sleep.icon}
-              series={sleepSeries}
-              unit={CONFIG.sleep.unit}
-              yDomain={[0, 12]}
-              targetBand={CONFIG.sleep.target}
-            />
-            <ChartCard
-              title={CONFIG.migraines.title}
-              subtitle="Max pain per day"
-              Icon={CONFIG.migraines.icon}
-              series={migraineSeries}
-              unit={CONFIG.migraines.unit}
-              yDomain={CONFIG.migraines.scale}
-            />
-          </div>
-
-          {/* Tables */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <DataTable
-              title="Recent Glucose"
-              columns={[{ key: "date", label: "Date" }, { key: "value", label: `Value (${CONFIG.bloodSugar.unit})` }]}
-              rows={bloodSugarRows}
-              emptyText="No glucose entries in range"
-            />
-            <DataTable
-              title="Recent Sleep"
-              columns={[{ key: "date", label: "Date" }, { key: "value", label: `Hours (${CONFIG.sleep.unit})` }]}
-              rows={sleepRows}
-              emptyText="No sleep entries in range"
-            />
-            <DataTable
-              title="Recent Migraines"
-              columns={[{ key: "date", label: "Date" }, { key: "value", label: `Pain (${CONFIG.migraines.unit})` }]}
-              rows={migraineRows}
-              emptyText="No migraine entries in range"
-            />
-          </div>
-        </div>
-
-        {/* Sidebar — keep connectors / Nightscout Pro */}
-        <div className="space-y-6">
-          <NightscoutCard connected={nightscoutConnected} />
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="mb-2 text-base font-semibold">Quick Actions</div>
-            <div className="flex flex-wrap gap-2">
-              <a href="/glucose" className="rounded-xl border border-zinc-300 px-3 py-1.5 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">📊 Log Glucose</a>
-              <a href="/migraine" className="rounded-xl border border-zinc-300 px-3 py-1.5 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">😖 Log Migraine</a>
-              <a href="/sleep" className="rounded-xl border border-zinc-300 px-3 py-1.5 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">💤 Log Sleep</a>
+      {/* Nightscout CTA + Quick Actions */}
+      <section className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl shadow p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚙️</span>
+            <div>
+              <h3 className="font-semibold">Nightscout Settings</h3>
+              <p className="text-slate-500 text-sm">Configure your CGM connection</p>
             </div>
           </div>
+          <Link className="inline-block mt-3 text-blue-600 underline" to="/settings">
+            Open Settings
+          </Link>
         </div>
-      </div>
+        <div className="bg-white rounded-2xl shadow p-4 lg:col-span-2">
+          <h3 className="font-semibold mb-2">Quick Actions</h3>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <Link className="px-3 py-2 rounded border hover:bg-slate-50" to="/log/glucose">📊 Log Glucose</Link>
+            <Link className="px-3 py-2 rounded border hover:bg-slate-50" to="/log/migraine">🤕 Log Migraine</Link>
+            <Link className="px-3 py-2 rounded border hover:bg-slate-50" to="/log/sleep">💤 Log Sleep</Link>
+          </div>
+        </div>
+      </section>
 
-      {loading ? (
-        <div className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
-      ) : null}
+      {/* Recent tables */}
+      <section className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl shadow p-4">
+          <h3 className="font-semibold mb-2">Recent Glucose</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500">
+                <th className="py-1">Date</th>
+                <th className="py-1">Value (mg/dL)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentGlucose.length === 0 && (
+                <tr><td colSpan={2} className="py-2 text-slate-500">No entries</td></tr>
+              )}
+              {recentGlucose.map((r, i) => (
+                <tr key={i} className="border-t">
+                  <td className="py-1">{new Date(r.device_time).toLocaleString()}</td>
+                  <td className="py-1">{r.value_mgdl}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow p-4">
+          <h3 className="font-semibold mb-2">Recent Sleep</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500">
+                <th className="py-1">Start</th>
+                <th className="py-1">End</th>
+                <th className="py-1">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentSleep.length === 0 && (
+                <tr><td colSpan={3} className="py-2 text-slate-500">No entries</td></tr>
+              )}
+              {recentSleep.map((r, i) => {
+                const start = Date.parse(r.start_time);
+                const end = Date.parse(r.end_time);
+                const hrs = Number.isFinite(start) && Number.isFinite(end) && end > start
+                  ? ((end - start) / 3_600_000).toFixed(2)
+                  : "—";
+                return (
+                  <tr key={i} className="border-t">
+                    <td className="py-1">{new Date(r.start_time).toLocaleString()}</td>
+                    <td className="py-1">{new Date(r.end_time).toLocaleString()}</td>
+                    <td className="py-1">{hrs}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow p-4">
+          <h3 className="font-semibold mb-2">Recent Migraines</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500">
+                <th className="py-1">When</th>
+                <th className="py-1">Pain</th>
+                <th className="py-1">Symptoms</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentMigraine.length === 0 && (
+                <tr><td colSpan={3} className="py-2 text-slate-500">No entries</td></tr>
+              )}
+              {recentMigraine.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-1">{new Date(r.started_at || r.created_at).toLocaleString()}</td>
+                  <td className="py-1">{r.pain ?? "—"}</td>
+                  <td className="py-1">{Array.isArray(r.symptoms) ? r.symptoms.join(", ") : (r.symptoms || "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {loading && (
+        <div className="mt-6 text-slate-500">Loading…</div>
+      )}
     </div>
   );
-}
-
-// --------- Demo fallback series (used only on error) ---------
-function demoSeries(center = 100, days = 14, min = 80, max = 180) {
-  const today = new Date();
-  const out = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const variance = (Math.sin(i / 2) + Math.random() * 0.5) * (max - min) * 0.1;
-    const val = Math.min(max, Math.max(min, center + (Math.random() - 0.5) * variance));
-    out.push({ date: d.toISOString().slice(0, 10), value: Number(val.toFixed(1)) });
-  }
-  return out;
 }
