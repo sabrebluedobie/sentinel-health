@@ -1,38 +1,29 @@
 // api/nightscout/save.js
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "Method not allowed" });
-    }
+    if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
-    // Require auth: the client will send the Supabase JWT in the Authorization header
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
     if (!token) return res.status(401).json({ ok: false, error: "No auth token" });
 
-    // Supabase server client (service role)
     const { createClient } = await import("@supabase/supabase-js");
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey   = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) {
-      return res.status(500).json({ ok: false, error: "Missing Supabase env vars" });
-    }
+    const supabaseUrl =
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) return res.status(500).json({ ok: false, error: "Missing Supabase env vars" });
+
     const admin = createClient(supabaseUrl, serviceKey);
 
     // Verify the user from the JWT
     const { data: gu, error: gErr } = await admin.auth.getUser(token);
-    if (gErr || !gu?.user?.id) {
-      return res.status(401).json({ ok: false, error: "Invalid user token" });
-    }
+    if (gErr || !gu?.user?.id) return res.status(401).json({ ok: false, error: "Invalid user token" });
     const userId = gu.user.id;
 
-    // Parse payload
     const { url, token: nsToken, api_secret } = req.body || {};
-    if (!url || !/^https?:\/\//i.test(url)) {
-      return res.status(400).json({ ok: false, error: "Valid Nightscout URL required" });
-    }
+    if (!url || !/^https?:\/\//i.test(url)) return res.status(400).json({ ok: false, error: "Valid Nightscout URL required" });
 
-    // Upsert connection
+    // Upsert the connection for this user
     const { error: upErr } = await admin
       .from("nightscout_connections")
       .upsert(
