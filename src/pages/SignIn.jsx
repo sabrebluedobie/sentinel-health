@@ -30,60 +30,31 @@ export default function SignIn() {
     if (error) setMsg(error.message);
   }
 
-  return (
-    <>
-      <TopNav showTabs={false} />
-      <main className="min-h-[calc(100vh-56px)] grid place-items-center bg-slate-100 px-4">
-        <div className="card w-full max-w-md">
-          <div className="mb-1 flex items-center gap-2">
-            <img src="/logo.png" alt="Sentinel Health" className="h-7 w-auto" />
-            <span className="text-sm text-slate-500">Sentinel Health</span>
-          </div>
-          <h1 className="mb-1 text-2xl font-semibold">Sign into Sentinel Health</h1>
-          <p className="mb-4 text-slate-500">Welcome back</p>
-
-
-          <div className="my-4 text-center text-sm text-slate-400">or</div>
-
-          <form onSubmit={onSubmit} className="space-y-3">
-            <div>
-              <label className="label" htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                className="input mt-1"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                className="input mt-1"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" disabled={busy} className="btn-primary w-full py-2 rounded-xl">
-              {busy ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
-
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <div className="space-x-2">
-              <Link to="/sign-up" className="text-blue-600 hover:underline">Create account</Link>
-              <Link to="/reset-password" className="text-blue-600 hover:underline">Forgot password?</Link>
-            </div>
-            <Link to="/" className="text-slate-500 hover:underline">Go home</Link>
-          </div>
-
-          {msg && <div className="mt-3 text-sm text-red-600">{msg}</div>}
+  // src/pages/SignIn.jsx (essentials only)
+return (
+  <div className="app-shell grid place-items-center p-6">
+    <div className="w-full max-w-md card">
+      <div className="mb-6 flex items-center gap-3">
+        <img src="/logo.png" alt="Sentinel Health" className="logo-img" />
+        <div>
+          <h1 className="text-lg font-semibold">Sign in to Sentinel Health</h1>
+          <p className="text-sm text-zinc-500">Welcome back</p>
         </div>
-      </main>
-    </>
-  );
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label className="label">Email</label>
+          <input className="input mt-1" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Password</label>
+          <input className="input mt-1" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
+        </div>
+        {msg && <p className="text-sm text-red-600">{msg}</p>}
+        <button className="btn-primary w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      </form>
+    </div>
+  </div>
+);
 }
