@@ -1,53 +1,36 @@
-// src/components/AuthContext.jsx
-import React, { createContext, useEffect, useState, useContext } from "react";
-import supabase from "@/lib/supabase";
+import React, { createContext, useEffect, useState } from 'react';
+import supabase from '@/lib/supabase';
 
-export const AuthContext = createContext({
-  session: null,
-  user: null,
-  loading: true,
-});
+export const AuthContext = createContext({ user: null, loading: true });
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount: get current session, then subscribe to changes
   useEffect(() => {
-    let alive = true;
+    let mounted = true;
 
-    (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!alive) return;
-      if (error) {
-        console.error("[Auth] getSession error:", error);
-      }
-      setSession(data?.session ?? null);
+    // 1) get current session once
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
       setUser(data?.session?.user ?? null);
-      setLoading(false);
-    })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
       setLoading(false);
     });
 
+    // 2) stay in sync
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
     return () => {
-      alive = false;
+      mounted = false;
       sub?.subscription?.unsubscribe?.();
     };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, loading }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-// SINGLE hook export (remove any duplicates)
-export function useAuth() {
-  return useContext(AuthContext);
 }
