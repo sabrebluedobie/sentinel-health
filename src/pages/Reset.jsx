@@ -1,34 +1,26 @@
 import React, { useState } from "react";
 import supabase from "@/lib/supabase";
 
-export default function Reset(){
-  const [email,setEmail] = useState("");
-  const [msg,setMsg] = useState(""); const [ok,setOk] = useState(""); const [busy,setBusy] = useState(false);
+export default function Reset() {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
 
-  async function onSubmit(e){
-    e.preventDefault(); setBusy(true); setMsg(""); setOk("");
+  async function send(e){
+    e.preventDefault();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset`
+      redirectTo: `${window.location.origin}/sign-in`,
     });
-    setBusy(false);
-    if(error){ setMsg(error.message || "Could not send reset email"); return; }
-    setOk("Check your email for the reset link.");
+    setMsg(error ? error.message : "Check your email for a reset link.");
   }
 
   return (
-    <div className="app-shell flex items-center justify-center p-6">
-      <div className="card w-full max-w-md">
-        <h1 className="text-xl font-semibold text-center">Reset your password</h1>
-        <form onSubmit={onSubmit} className="space-y-4 mt-4">
-          <div>
-            <label className="label">Email</label>
-            <input className="input mt-1" type="email" required value={email} onChange={e=>setEmail(e.target.value)} />
-          </div>
-          {msg && <p className="text-sm text-red-600">{msg}</p>}
-          {ok  && <p className="text-sm text-emerald-600">{ok}</p>}
-          <button className="btn-primary w-full" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
-        </form>
-      </div>
-    </div>
+    <main className="min-h-screen grid place-items-center p-6">
+      <form onSubmit={send} className="card w-full max-w-md">
+        <h1 className="h1 mb-2">Reset password</h1>
+        <input className="input mb-3" type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} required />
+        <button className="btn primary w-full" type="submit">Send reset link</button>
+        {msg ? <p className="mt-2 text-sm text-slate-600">{msg}</p> : null}
+      </form>
+    </main>
   );
-}x
+}

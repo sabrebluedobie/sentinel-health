@@ -1,32 +1,85 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
-import ProtectedRoute from "@/components/ProtectedRoute.jsx";
-import SignIn from "@/pages/SignIn.jsx";
-import SignUp from "@/pages/SignUp.jsx";
-import Reset from "@/pages/Reset.jsx";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-const Dashboard   = React.lazy(() => import("@/pages/Dashboard.jsx"));
-const LogGlucose  = React.lazy(() => import("@/pages/LogGlucose.jsx"));
-const LogSleep    = React.lazy(() => import("@/pages/LogSleep.jsx"));
-const LogMigraine = React.lazy(() => import("@/pages/LogMigraine.jsx"));
+import { useAuth } from "@/components/AuthContext.jsx";
+import ProtectedRoute from "@/components/ProtectedRoute.jsx";
+import Layout from "@/layout";
+
+import SignIn from "@/pages/SignIn.jsx";
+import Dashboard from "@/pages/Dashboard.jsx";
+import LogGlucose from "@/pages/LogGlucose.jsx";
+import LogSleep from "@/pages/LogSleep.jsx";
+import LogMigraine from "@/pages/LogMigraine.jsx";
+import Settings from "@/pages/Settings.jsx";
+import NotFound from "@/pages/NotFound.jsx";
 
 export default function App() {
+  const { user } = useAuth();
+
   return (
-    <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-      <Routes>
-        {/* Auth routes (unprotected) */}
-        <Route path="/sign-in" element={<SignIn />} />
-        <Route path="/sign-up" element={<SignUp />} />
-        <Route path="/reset"   element={<Reset />} />
+    <Routes>
+      {/* Public */}
+      <Route
+        path="/sign-in"
+        element={user ? <Navigate to="/app" replace /> : <SignIn />}
+      />
 
-        {/* App routes (protected) */}
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/log-glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
-        <Route path="/log-sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
-        <Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
+      {/* Private (inside Layout) */}
+      <Route
+        path="/app"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-        <Route path="*" element={<div className="p-6">Not found</div>} />
-      </Routes>
-    </React.Suspense>
+      <Route
+        path="/log-glucose"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <LogGlucose />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/log-sleep"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <LogSleep />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/log-migraine"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <LogMigraine />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Default / 404 */}
+      <Route path="/" element={<Navigate to={user ? "/app" : "/sign-in"} replace />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
