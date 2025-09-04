@@ -1,47 +1,32 @@
-import React, { useContext } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthContext } from "@/components/AuthContext";
-import Dashboard from "@/pages/Dashboard.jsx";
-import Settings from "@/pages/Settings.jsx";
-import Education from "@/components/Education.jsx";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "@/components/ProtectedRoute.jsx";
+import SignIn from "@/pages/SignIn.jsx";
+import SignUp from "@/pages/SignUp.jsx";
+import Reset from "@/pages/Reset.jsx";
 
-function Protected({ children }) {
-  const { user, loading } = useContext(AuthContext);
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (!user) return <Navigate to="/sign-in" replace />;
-  return children;
-}
+const Dashboard   = React.lazy(() => import("@/pages/Dashboard.jsx"));
+const LogGlucose  = React.lazy(() => import("@/pages/LogGlucose.jsx"));
+const LogSleep    = React.lazy(() => import("@/pages/LogSleep.jsx"));
+const LogMigraine = React.lazy(() => import("@/pages/LogMigraine.jsx"));
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route
-        path="/dashboard"
-        element={
-          <Protected>
-            <Dashboard />
-          </Protected>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <Protected>
-            <Settings />
-          </Protected>
-        }
-      />
-      <Route
-        path="/education"
-        element={
-          <Protected>
-            <Education />
-          </Protected>
-        }
-      />
-      {/* keep your existing auth/other routes */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+      {/* Public auth routes */}
+      <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/reset"   element={<Reset />} />
+
+        {/* Private app routes */}
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/log-glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
+        <Route path="/log-sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
+        <Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
+
+        <Route path="*" element={<SignIn />} />
+      </Routes>
+    </React.Suspense>
   );
 }
