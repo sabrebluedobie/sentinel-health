@@ -1,21 +1,58 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import ErrorBoundary from "@/components/ErrorBoundary.jsx";
+// src/main.jsx (essentials only)
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/AuthContext.jsx";
-import "./index.css";
-import App from "./App.jsx";
+import ProtectedRoute from "@/components/ProtectedRoute.jsx";
+import App from "@/pages/App.jsx";
+import SignIn from "@/pages/SignIn.jsx";
+import LogMigraine from "@/pages/LogMigraine.jsx";
+import LogGlucose from "@/pages/LogGlucose.jsx";
+import LogSleep from "@/pages/LogSleep.jsx";
+import "./index.css"
 
-// Surface runtime errors to the console (and boundary)
-window.addEventListener("error", (e) => console.error("[window.onerror]", e.error || e.message));
-window.addEventListener("unhandledrejection", (e) => console.error("[unhandledrejection]", e.reason));
-
-ReactDOM.createRoot(document.getElementById("root")).render(
+createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <ErrorBoundary>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <Routes>
+        {/* public routes */}
+        <Route path="/sign-in" element={<SignIn />} />
+
+        {/* private routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/log-migraine"
+          element={
+            <ProtectedRoute>
+              <LogMigraine />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/log-glucose"
+          element={
+            <ProtectedRoute>
+              <LogGlucose />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/log-sleep"
+          element={
+            <ProtectedRoute>
+              <LogSleep />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* catch-all */}
+        <Route path="*" element={<SignIn />} />
+      </Routes>
+    </AuthProvider>
   </BrowserRouter>
 );
