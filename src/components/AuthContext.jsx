@@ -1,23 +1,39 @@
-import React, { createContext, useEffect, useState } from "react";
+// src/components/AuthContext.jsx
+import React, { createContext, useContext, useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
-export const AuthContext = createContext({ user: null, loading: true });
+const AuthContext = createContext({ user: null, loading: true });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount: load current session once
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data?.session?.user ?? null);
-      setLoading(false);
-    });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+    (async () => {
+      try {
+        if (!supabase) {
+          console.warn("[Auth] Supabase not configured");
+          if (mounted) setLoading(false);
+          return;
+        }
+        const { data } = await supabase.auth.getSession();
+        if (mounted) {
+          setUser(data?.session?.user ?? null);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("[Auth] getSession error", e);
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    // Subscribe to auth changes
+    const { data: sub } = supabase?.auth.onAuthStateChange?.((_, session) => {
       setUser(session?.user ?? null);
-    });
+    }) ?? { data: null };
 
     return () => {
       mounted = false;
@@ -25,9 +41,10 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = { user, loading };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
 }
