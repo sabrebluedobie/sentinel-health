@@ -37,12 +37,13 @@ export default function LogGlucose() {
     }
 
     const payload = {
-  user_id: user.id,                         // retried away if column missing
+  user_id: user.id,
   created_at: iso,
   value: value === "" ? null : Number(value),
   unit: unit || "mg/dL",
-  source: "manual",                         // required by NOT NULL
-  raw: notes ? { notes } : null             // jsonb (optional)
+  source: "manual",
+  type: "glucose",              // <— add this
+  raw: notes ? { notes } : null
 };
 
     const { error: upErr } = await insertHealthReading(payload);
