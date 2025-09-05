@@ -1,93 +1,137 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import supabase from "@/lib/supabase";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid
+} from "recharts";
+import { useDailyMetrics, useMigraineCorrelations } from "@/hooks/useDailyMetrics";
 
 export default function Dashboard() {
-  const [glucose, setGlucose] = useState([]);
-  const [migraines, setMigraines] = useState([]);
-  const [sleep, setSleep] = useState([]);
+  const [range, setRange] = useState(30); // 7 / 30 / 90 / 120+
+  const { rows, loading } = useDailyMetrics(range);
+  const corr = useMigraineCorrelations(rows);
 
-  useEffect(() => {
-    (async () => {
-      // last 14 days
-      const since = new Date(Date.now() - 14*24*3600*1000).toISOString();
-
-      const g = await supabase.from("glucose_readings")
-        .select("device_time,value_mgdl").gte("device_time", since).order("device_time", { ascending: true });
-      setGlucose(g.data ?? []);
-
-      const m = await supabase.from("migraine_unified")
-        .select("started_at,pain").gte("started_at", since).order("started_at", { ascending: true });
-      setMigraines(m.data ?? []);
-
-      const s = await supabase.from("sleep_data")
-        .select("start_time,end_time,efficiency").gte("start_time", since).order("start_time", { ascending: true });
-      setSleep(s.data ?? []);
-    })();
-  }, []);
-
-  const avgGlucose14 = useMemo(() => {
-    if (!glucose.length) return null;
-    const sum = glucose.reduce((a, d) => a + Number(d.value_mgdl || 0), 0);
-    return Math.round(sum / glucose.length);
-  }, [glucose]);
-
-  const avgSleepHrs14 = useMemo(() => {
-    if (!sleep.length) return null;
-    const hrs = sleep.map(s => (new Date(s.end_time) - new Date(s.start_time)) / 3600000);
-    return (hrs.reduce((a,b)=>a+b,0) / hrs.length).toFixed(1);
-  }, [sleep]);
+  const data = useMemo(() => {
+    return (rows ?? []).map(r => ({
+      day: new Date(r.day).toLocaleDateString(),
+      pain: Number(r.avg_pain ?? 0),
+      migraines: Number(r.migraine_count ?? 0),
+      glucose: Number(r.avg_glucose ?? 0),
+      sleep: Number(r.sleep_hours ?? 0),
+    }));
+  }, [rows]);
 
   return (
     <div className="space-y-6">
-      {/* Header + Quick Actions */}
+      {/* Range selector */}
       <div className="card">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <div className="font-medium">Range</div>
           <div className="flex gap-2">
-            <Link to="/log-glucose" className="btn-ghost whitespace-nowrap"><span>📊</span><span>Log Glucose</span></Link>
-            <Link to="/log-migraine" className="btn-ghost whitespace-nowrap"><span>🙂</span><span>Log Migraine</span></Link>
-            <Link to="/log-sleep" className="btn-ghost whitespace-nowrap"><span>😴</span><span>Log Sleep</span></Link>
+            {[7, 30, 90].map(d => (
+              <button
+                key={d}
+                onClick={() => setRange(d)}
+                className={`btn-ghost text-sm ${range === d ? "ring-2 ring-brand-600" : ""}`}
+              >
+                {d}d
+              </button>
+            ))}
+            <button
+              onClick={() => setRange(120)}
+              className={`btn-ghost text-sm ${range === 120 ? "ring-2 ring-brand-600" : ""}`}
+            >
+              120d+
+            </button>
+          </div>
+          <div className="ml-auto text-sm text-zinc-500">
+            {loading ? "Loading…" : `${data.length} days`}
           </div>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card"><div className="text-sm text-zinc-500">Avg Glucose (14d)</div><div className="text-2xl font-semibold">{avgGlucose14 ?? "—"}{avgGlucose14 ? " mg/dL" : ""}</div></div>
-        <div className="card"><div className="text-sm text-zinc-500">Avg Sleep (14d)</div><div className="text-2xl font-semibold">{avgSleepHrs14 ?? "—"}{avgSleepHrs14 ? " h" : ""}</div></div>
-        <div className="card"><div className="text-sm text-zinc-500">Migraine Episodes (14d)</div><div className="text-2xl font-semibold">{migraines.length}</div></div>
+      {/* Quick actions */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link to="/log-glucose" className="card-link">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📊</span>
+            <div>
+              <div className="text-lg font-semibold">Log Glucose</div>
+              <div className="text-sm text-zinc-600">Manual mg/dL reading</div>
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/log-sleep" className="card-link">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">😴</span>
+            <div>
+              <div className="text-lg font-semibold">Log Sleep</div>
+              <div className="text-sm text-zinc-600">Record last night</div>
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/log-migraine" className="card-link">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🙂</span>
+            <div>
+              <div className="text-lg font-semibold">Log Migraine</div>
+              <div className="text-sm text-zinc-600">Pain 0–10 + notes</div>
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card">
-          <div className="mb-2 font-medium">Glucose trend</div>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={glucose.map(d=>({ t: new Date(d.device_time).toLocaleDateString(), v: Number(d.value_mgdl) }))}>
+      {/* Charts row */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="card lg:col-span-2">
+          <div className="mb-2 font-medium">Glucose ↔ Pain ({range}d)</div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="t" />
-              <YAxis domain={[0, 'auto']} />
+              <XAxis dataKey="day" />
+              <YAxis yAxisId="left" domain={[0, "auto"]} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 10]} />
               <Tooltip />
-              <Line type="monotone" dataKey="v" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="glucose" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="pain" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card">
-          <div className="mb-2 font-medium">Migraine pain (0–10)</div>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={migraines.map(d=>({ t: new Date(d.started_at).toLocaleDateString(), v: Number(d.pain) || 0 }))}>
+          <div className="font-semibold mb-2">Insights (beta)</div>
+          <ul className="text-sm space-y-1">
+            <li>Glucose vs pain: <b>{fmt(corr.pain_vs_glucose)}</b></li>
+            <li>Sleep vs pain: <b>{fmt(corr.pain_vs_sleep)}</b></li>
+            <li>Yday glucose → pain: <b>{fmt(corr.pain_vs_glucose_lag1)}</b></li>
+            <li>Yday sleep → pain: <b>{fmt(corr.pain_vs_sleep_lag1)}</b></li>
+          </ul>
+          <p className="text-xs text-zinc-500 mt-2">
+            Correlation −1..1 (|0.5|≈moderate). Lag = yesterday’s value vs today’s pain.
+          </p>
+        </div>
+
+        <div className="card lg:col-span-3">
+          <div className="mb-2 font-medium">Sleep ↔ Pain ({range}d)</div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="t" />
-              <YAxis domain={[0, 10]} />
+              <XAxis dataKey="day" />
+              <YAxis yAxisId="left" domain={[0, "auto"]} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 10]} />
               <Tooltip />
-              <Line type="monotone" dataKey="v" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="sleep" strokeWidth={2} dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="pain" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
     </div>
   );
+}
+
+function fmt(v) {
+  return v === null || Number.isNaN(v) ? "—" : Number(v).toFixed(2);
 }

@@ -1,37 +1,89 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
 
 export default function LogSleep() {
-  const [form, setForm] = useState({ start_time: "", end_time: "", efficiency: "" });
-  const [msg, setMsg] = useState("");
+  const [start_time, setStart] = useState("");
+  const [end_time, setEnd] = useState("");
+  const [efficiency, setEff] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState({ kind: "", text: "" });
 
-  async function save(e) {
+  async function onSubmit(e) {
     e.preventDefault();
-    setMsg("");
-    const { error } = await supabase.from("sleep_data").insert([{
-      start_time: form.start_time ? new Date(form.start_time).toISOString() : null,
-      end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
-      efficiency: form.efficiency !== "" ? Number(form.efficiency) : null,
-    }]);
-    setMsg(error ? error.message : "Saved ✓");
+    setMsg({}); setBusy(true);
+
+    if (!start_time || !end_time) {
+      setBusy(false);
+      setMsg({ kind: "error", text: "Start and End are required." });
+      return;
+    }
+    const payload = {
+      start_time: new Date(start_time).toISOString(),
+      end_time: new Date(end_time).toISOString(),
+      efficiency: efficiency === "" ? null : Number(efficiency),
+    };
+    const { error } = await supabase.from("sleep_data").insert([payload]);
+    setBusy(false);
+    setMsg(error ? { kind: "error", text: error.message } : { kind: "ok", text: "Saved ✓" });
   }
 
   return (
-    <div className="app-shell container-page">
-      <div className="card max-w-xl mx-auto">
-        <h1 className="text-xl font-semibold mb-4">Log Sleep</h1>
-        <form onSubmit={save} className="space-y-3">
-          <label className="label">Start</label>
-          <input type="datetime-local" className="input" value={form.start_time}
-            onChange={e=>setForm(v=>({...v, start_time: e.target.value}))} />
-          <label className="label">End</label>
-          <input type="datetime-local" className="input" value={form.end_time}
-            onChange={e=>setForm(v=>({...v, end_time: e.target.value}))} />
-          <label className="label">Efficiency (%)</label>
-          <input type="number" min="0" max="100" className="input" value={form.efficiency}
-            onChange={e=>setForm(v=>({...v, efficiency: e.target.value}))} />
-          {msg && <div className="text-sm text-emerald-600">{msg}</div>}
-          <button className="btn-primary" type="submit">Save</button>
+    <div className="max-w-xl mx-auto">
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-semibold">Log Sleep</h1>
+          <Link to="/" className="btn-ghost no-underline text-sm">← Back</Link>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="label">Start</label>
+            <input
+              type="datetime-local"
+              className="input"
+              value={start_time}
+              onChange={(e) => setStart(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">End</label>
+            <input
+              type="datetime-local"
+              className="input"
+              value={end_time}
+              onChange={(e) => setEnd(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Efficiency (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="input"
+              value={efficiency}
+              onChange={(e) => setEff(e.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+
+          {!!msg.text && (
+            <div className={`text-sm ${msg.kind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+              {msg.text}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button disabled={busy} className="btn-primary" type="submit">
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <Link to="/" className="btn-ghost no-underline">Cancel</Link>
+          </div>
         </form>
       </div>
     </div>
