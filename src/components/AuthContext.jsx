@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
-const Ctx = createContext({ user: null, loading: true });
+const AuthContext = createContext({ user: null, loading: true });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -11,9 +11,9 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     (async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (mounted) {
-        setUser(data?.session?.user ?? null);
+        setUser(session?.user ?? null);
         setLoading(false);
       }
     })();
@@ -24,13 +24,10 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe();
+      sub?.subscription?.unsubscribe?.();
     };
   }, []);
 
-  return <Ctx.Provider value={{ user, loading }}>{children}</Ctx.Provider>;
+  return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  return useContext(Ctx);
-}
+export const useAuth = () => useContext(AuthContext);
