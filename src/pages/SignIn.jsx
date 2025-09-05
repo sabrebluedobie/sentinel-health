@@ -8,9 +8,9 @@ export default function SignIn() {
   const nav = useNavigate();
   const loc = useLocation();
 
-  // sanitize the "from" target so it can't be an auth page (which would bounce)
-  const rawFrom = loc.state?.from?.pathname || "/";
-  const from = AUTH_ROUTES.has(rawFrom) ? "/" : rawFrom;
+  // sanitize the "from" path so we never loop to another auth page
+  const rawFrom = loc.state?.from?.pathname || "/app";
+  const from = AUTH_ROUTES.has(rawFrom) ? "/app" : rawFrom;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,12 +21,6 @@ export default function SignIn() {
     e.preventDefault();
     setBusy(true); setMsg("");
 
-    if (!supabase) {
-      setBusy(false);
-      setMsg("Supabase not configured. Check VITE_SUPABASE_URL/ANON_KEY.");
-      return;
-    }
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -35,25 +29,29 @@ export default function SignIn() {
     setBusy(false);
 
     if (error) {
-      if (/Invalid login credentials/i.test(error.message)) setMsg("Incorrect email or password.");
-      else if (/Email not confirmed/i.test(error.message)) setMsg("Please confirm your email, then try again.");
-      else setMsg(error.message || "Sign-in failed.");
+      setMsg(error.message || "Sign-in failed");
       return;
     }
 
-    if (data?.user) nav(from, { replace: true }); // navigate once, on success only
+    if (data?.user) {
+      // ✅ go back to the original target (e.g., /log-migraine)
+      nav(from, { replace: true });
+    }
   }
 
   return (
     <div className="app-shell flex items-center justify-center p-6">
-      <div className="w-full max-w-md card">
+      <div className="card w-full max-w-md">
         <div className="mb-6 text-center">
-          <img src="/logo.png" alt="Sentinel Health" className="mx-auto h-12 w-auto" />
-          <h1 className="mt-4 text-xl font-semibold">Sign in to Sentinel Health</h1>
-          <p className="mt-1 text-sm text-zinc-500">Welcome back</p>
+          <h1 className="text-xl font-semibold">Sign in to Sentinel Health</h1>
+          {loc.state?.from?.pathname && (
+            <p className="mt-1 text-xs text-zinc-500">
+              You’ll be returned to <code className="px-1 rounded bg-zinc-100">{from}</code> after login.
+            </p>
+          )}
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4" autoComplete="on">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">Email</label>
             <input className="input mt-1" type="email" value={email}
@@ -66,6 +64,7 @@ export default function SignIn() {
           </div>
 
           {msg && <p className="text-sm text-red-600">{msg}</p>}
+
           <button className="btn-primary w-full" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
