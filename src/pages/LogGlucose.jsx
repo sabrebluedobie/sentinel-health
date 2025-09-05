@@ -1,7 +1,46 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
+// Accepts value from <input type="datetime-local"> and returns ISO (tz-aware).
+function localDatetimeToISO(local) {
+  // Example input: "2025-09-05T17:28"
+  if (!local) return null;
+  const [d, t] = local.split("T");
+  if (!d || !t) return null;
+  const [y, m, day] = d.split("-").map(Number);
+  const [hh, mm] = t.split(":").map(Number);
+  // Interpret as local time, then convert to real ISO
+  const dt = new Date(y, m - 1, day, hh ?? 0, mm ?? 0, 0, 0);
+  return dt.toISOString();
+}
+async function handleSave(e) {
+  e.preventDefault();
+  try {
+    const { user } = await supabase.auth.getUser().then(r => r.data);
+    if (!user) throw new Error("AUTH_REQUIRED");
 
+    const iso = localDatetimeToISO(dateTime); // dateTime = state bound to the datetime-local input
+
+    const payload = {
+      user_id: user.id,
+      start_time: iso,                       // <-- REQUIRED
+      created_at: iso,                       // optional but fine to keep
+      value: value === "" ? null : Number(value),
+      unit: unit || "mg/dL",
+      source: "manual",
+      type: "glucose",
+      raw: notes ? { notes } : null,
+    };
+
+    const { error } = await supabase.from("health_readings").insert(payload);
+    if (error) throw error;
+
+    // success → navigate back
+    navigate("/glucose");
+  } catch (err) {
+    setError(err.message ?? String(err));
+  }
+}
 export default function LogGlucose() {
   const navigate = useNavigate();
   const [when, setWhen] = useState("");
