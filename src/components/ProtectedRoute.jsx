@@ -1,15 +1,14 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "./AuthContext.jsx";
-
-const AUTH_PATHS = new Set(["/sign-in", "/sign-up", "/reset"]);
+import { useAuth } from "./AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const { user, ready } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (!ready) return <div className="p-6 text-sm text-zinc-500">Loading…</div>;
-  if (!user && !AUTH_PATHS.has(location.pathname)) {
+  if (loading) return null; // or a spinner
+  if (!user) {
+    // keep where they were going so we can return them post-login
     return <Navigate to="/sign-in" replace state={{ from: location }} />;
   }
   return children;
