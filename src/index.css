@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Components / design tokens */
 @layer components {
   .app-shell { @apply min-h-screen; }
   .container-page { @apply mx-auto max-w-7xl p-6; }
@@ -16,7 +15,5 @@
   .input { @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600; }
 
   .logo-img { @apply h-8 w-auto; }
-
-  /* clickable card link */
   .card-link { @apply card block no-underline text-inherit hover:ring-zinc-300 transition; }
 }
