@@ -1,83 +1,35 @@
 import React, { useState } from "react";
 import supabase from "@/lib/supabase";
 
-async function getUid() {
-  const { data } = await supabase.auth.getSession();
-  return data?.session?.user?.id || null;
-}
-
-async function saveGlucose({ value_mgdl, time, note }) {
-  // Save to Supabase if you want to keep a local copy
-  await supabase.from("glucose_readings").insert([{ value_mgdl, time, note }]);
-
-  // Forward to Nightscout
-  await fetch("/api/nightscout/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      kind: "glucose",
-      value_mgdl,
-      time,
-      reading_type: "sgv",
-      note,
-    }),
-  });
-}
-
 export default function LogGlucose() {
-  const [value, setValue] = useState("");
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ device_time: "", value_mgdl: "" });
   const [msg, setMsg] = useState("");
 
-  async function submit(e) {
+  async function save(e) {
     e.preventDefault();
     setMsg("");
-
-    const uid = await getUid();
-    if (!uid) return setMsg("Not signed in.");
-
-    const mgdl = Number(value);
-    if (!Number.isFinite(mgdl) || mgdl < 20 || mgdl > 600) {
-      return setMsg("Please enter a glucose value between 20 and 600 mg/dL.");
-    }
-
-    setSaving(true);
-    const { error } = await supabase.from("glucose_readings").insert({
-      user_id: uid,
-      device_time: new Date().toISOString(),
-      value_mgdl: mgdl,
-      trend: null,
-      source: "manual",
-      note: note || null,
-      created_at: new Date().toISOString(),
-    });
-    setSaving(false);
-
-    if (error) return setMsg(`Save failed: ${error.message}`);
-    setValue(""); setNote("");
-    setMsg("Saved ✓");
+    const { error } = await supabase.from("glucose_readings").insert([{
+      device_time: form.device_time ? new Date(form.device_time).toISOString() : null,
+      value_mgdl: form.value_mgdl !== "" ? Number(form.value_mgdl) : null,
+    }]);
+    setMsg(error ? error.message : "Saved ✓");
   }
 
   return (
-    <main className="center-wrap">
-      <form className="card" onSubmit={submit}>
-        <img src="/assets/logo.png" alt="Sentinel Health" className="logo" />
-        <h1 className="h1">Log Glucose</h1>
-
-        <label className="label">Value (mg/dL)</label>
-        <input className="input" type="number" min="20" max="600" value={value} onChange={e=>setValue(e.target.value)} required />
-
-        <label className="label">Note (optional)</label>
-        <input className="input" type="text" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g., after lunch" />
-
-        <div className="row">
-          <button className="btn" type="button" onClick={()=>{ setValue(""); setNote(""); }}>Clear</button>
-          <button className="btn primary" disabled={saving} type="submit">{saving ? "Saving…" : "Save"}</button>
-        </div>
-
-        <div className="label" style={{ color: msg.startsWith("Saved") ? "green" : "crimson" }}>{msg}</div>
-      </form>
-    </main>
+    <div className="app-shell container-page">
+      <div className="card max-w-xl mx-auto">
+        <h1 className="text-xl font-semibold mb-4">Log Glucose</h1>
+        <form onSubmit={save} className="space-y-3">
+          <label className="label">Time</label>
+          <input type="datetime-local" className="input" value={form.device_time}
+            onChange={e=>setForm(v=>({...v, device_time: e.target.value}))} />
+          <label className="label">Value (mg/dL)</label>
+          <input type="number" min="20" max="600" className="input" value={form.value_mgdl}
+            onChange={e=>setForm(v=>({...v, value_mgdl: e.target.value}))} />
+          {msg && <div className="text-sm text-emerald-600">{msg}</div>}
+          <button className="btn-primary" type="submit">Save</button>
+        </form>
+      </div>
+    </div>
   );
 }
