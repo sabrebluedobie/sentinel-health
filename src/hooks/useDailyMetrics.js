@@ -1,62 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
-// choose the fastest table by range (wrapper views over matviews)
-function metricsTableForDays(days) {
-  if (days <= 7)  return "dm7";
-  if (days <= 30) return "dm30";
-  if (days <= 90) return "dm90";
-  return "daily_metrics";
-}
-
-export function useDailyMetrics(days = 30) {
+export default function useDailyMetrics(rangeDays = 30) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    async function run() {
       setLoading(true);
-      const table = metricsTableForDays(days);
-      const sinceIso = new Date(Date.now() - days*24*3600*1000).toISOString();
-      const q = table.startsWith("dm")
-        ? supabase.from(table).select("*").order("day", { ascending: true })
-        : supabase.from(table).select("*").gte("day", sinceIso).order("day", { ascending: true });
-      const { data, error } = await q;
-      if (!error) setRows(data ?? []);
-      setLoading(false);
-    })();
-  }, [days]);
+      try {
+        // Try materialized views if you created them; else fallback to raw aggregations
+        // Attempt 1: daily_metrics_{range}
+        const view = rangeDays <= 7 ? "daily_metrics_7"
+                   : rangeDays <= 30 ? "daily_metrics_30"
+                   : rangeDays <= 90 ? "daily_metrics_90"
+                   : "daily_metrics_all";
+        let { data, error } = await supabase.from(view).select("*").order("day", { ascending: true });
+        if (error) {
+          // Fallback: compute simple per-day aggregates from base tables
+          const { data: g } = await supabase.rpc("dm_glucose_simple", { days: rangeDays }).catch(()=>({data:[]}));
+          const { data: s } = await supabase.rpc("dm_sleep_simple", { days: rangeDays }).catch(()=>({data:[]}));
+          const { data: m } = await supabase.rpc("dm_migraine_simple", { days: rangeDays }).catch(()=>({data:[]}));
+          const byDay = new Map();
+          (g||[]).forEach(r => byDay.set(r.day, { day: r.day, avg_glucose: r.avg_glucose }));
+          (s||[]).forEach(r => Object.assign(byDay.get(r.day) ??= { day: r.day }, { sleep_hours: r.sleep_hours }));
+          (m||[]).forEach(r => Object.assign(byDay.get(r.day) ??= { day: r.day }, { avg_pain: r.avg_pain, migraine_count: r.migraine_count }));
+          data = Array.from(byDay.values()).sort((a,b)=>a.day.localeCompare(b.day));
+        }
+        if (!cancelled) setRows(data ?? []);
+      } catch {
+        if (!cancelled) setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [rangeDays]);
 
   return { rows, loading };
-}
-
-// simple Pearson + lag
-const pearson = (xa, ya) => {
-  const n = Math.min(xa.length, ya.length);
-  const x=[], y=[];
-  for (let i=0;i<n;i++){
-    const a = Number(xa[i]), b = Number(ya[i]);
-    if (Number.isFinite(a) && Number.isFinite(b)) { x.push(a); y.push(b); }
-  }
-  const m=x.length;
-  if (m<3) return null;
-  const mx = x.reduce((a,b)=>a+b,0)/m, my = y.reduce((a,b)=>a+b,0)/m;
-  let num=0, dx=0, dy=0;
-  for (let i=0;i<m;i++){ const vx=x[i]-mx, vy=y[i]-my; num+=vx*vy; dx+=vx*vx; dy+=vy*vy; }
-  const den = Math.sqrt(dx*dy);
-  return den ? +(num/den).toFixed(2) : null;
-};
-const lag1 = arr => arr.map((_,i)=> i>0 ? arr[i-1] : NaN);
-
-export function useMigraineCorrelations(rows) {
-  const pain = rows.map(r => Number(r.avg_pain ?? r.migraine_count ?? 0));
-  const glucose = rows.map(r => Number(r.avg_glucose ?? NaN));
-  const sleepH = rows.map(r => Number(r.sleep_hours ?? NaN));
-
-  return useMemo(()=>({
-    pain_vs_glucose: pearson(pain, glucose),
-    pain_vs_sleep:   pearson(pain, sleepH),
-    pain_vs_glucose_lag1: pearson(pain, lag1(glucose)),
-    pain_vs_sleep_lag1:   pearson(pain, lag1(sleepH)),
-  }), [rows]);
 }

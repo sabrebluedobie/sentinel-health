@@ -1,16 +1,16 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/components/AuthContext.jsx";
+import { useAuth } from "./AuthContext.jsx";
 
-const AUTH = new Set(["/sign-in", "/sign-up", "/reset"]);
+const AUTH_PATHS = new Set(["/sign-in", "/sign-up", "/reset"]);
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-  const loc = useLocation();
+  const { user, ready } = useAuth();
+  const location = useLocation();
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (!user && !AUTH.has(loc.pathname)) {
-    return <Navigate to="/sign-in" replace state={{ from: loc }} />;
+  if (!ready) return <div className="p-6 text-sm text-zinc-500">Loading…</div>;
+  if (!user && !AUTH_PATHS.has(location.pathname)) {
+    return <Navigate to="/sign-in" replace state={{ from: location }} />;
   }
   return children;
 }

@@ -1,48 +1,44 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid
 } from "recharts";
-import { useDailyMetrics, useMigraineCorrelations } from "@/hooks/useDailyMetrics";
+import useDailyMetrics from "@/hooks/useDailyMetrics";
+import useMigraineCorrelations from "@/hooks/useMigraineCorrelations";
 
 export default function Dashboard() {
-  const [range, setRange] = useState(30); // 7 / 30 / 90 / 120+
-  const { rows, loading } = useDailyMetrics(range);
-  const corr = useMigraineCorrelations(rows);
+  const [range, setRange] = useState(30);
 
-  const data = useMemo(() => {
-    return (rows ?? []).map(r => ({
-      day: new Date(r.day).toLocaleDateString(),
-      pain: Number(r.avg_pain ?? 0),
-      migraines: Number(r.migraine_count ?? 0),
-      glucose: Number(r.avg_glucose ?? 0),
-      sleep: Number(r.sleep_hours ?? 0),
-    }));
-  }, [rows]);
+  const dm = (typeof useDailyMetrics === "function" && useDailyMetrics(range)) || { rows: [], loading: false, error: null };
+  const rows = dm?.rows ?? [];
+  const loading = dm?.loading ?? false;
+
+  const corr = (typeof useMigraineCorrelations === "function" && useMigraineCorrelations(rows)) || {
+    pain_vs_glucose: null, pain_vs_sleep: null, pain_vs_glucose_lag1: null, pain_vs_sleep_lag1: null
+  };
+
+  const data = useMemo(
+    () => rows.map(r => ({
+      day: new Date(r.day ?? r.date ?? r.started_at ?? Date.now()).toLocaleDateString(),
+      pain: Number(r.avg_pain ?? r.pain ?? 0),
+      migraines: Number(r.migraine_count ?? r.count ?? 0),
+      glucose: Number(r.avg_glucose ?? r.glucose ?? 0),
+      sleep: Number(r.sleep_hours ?? r.total_sleep_hours ?? 0),
+    })),
+    [rows]
+  );
 
   return (
     <div className="space-y-6">
-      {/* Range selector */}
       <div className="card">
         <div className="flex items-center gap-3">
           <div className="font-medium">Range</div>
           <div className="flex gap-2">
-            {[7, 30, 90].map(d => (
-              <button
-                key={d}
-                onClick={() => setRange(d)}
-                className={`btn-ghost text-sm ${range === d ? "ring-2 ring-brand-600" : ""}`}
-              >
-                {d}d
-              </button>
+            {[7,30,90].map(d=>(
+              <button key={d} onClick={()=>setRange(d)} className={`btn-ghost text-sm ${range===d?"ring-2 ring-blue-600":""}`}>{d}d</button>
             ))}
-            <button
-              onClick={() => setRange(120)}
-              className={`btn-ghost text-sm ${range === 120 ? "ring-2 ring-brand-600" : ""}`}
-            >
-              120d+
-            </button>
+            <button onClick={()=>setRange(120)} className={`btn-ghost text-sm ${range===120?"ring-2 ring-blue-600":""}`}>120d+</button>
           </div>
           <div className="ml-auto text-sm text-zinc-500">
             {loading ? "Loading…" : `${data.length} days`}
@@ -50,7 +46,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className="grid gap-4 md:grid-cols-3">
         <Link to="/log-glucose" className="card-link">
           <div className="flex items-center gap-3">
@@ -61,7 +56,6 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
-
         <Link to="/log-sleep" className="card-link">
           <div className="flex items-center gap-3">
             <span className="text-2xl">😴</span>
@@ -71,7 +65,6 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
-
         <Link to="/log-migraine" className="card-link">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🙂</span>
@@ -83,7 +76,6 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Charts row */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="card lg:col-span-2">
           <div className="mb-2 font-medium">Glucose ↔ Pain ({range}d)</div>
@@ -108,9 +100,7 @@ export default function Dashboard() {
             <li>Yday glucose → pain: <b>{fmt(corr.pain_vs_glucose_lag1)}</b></li>
             <li>Yday sleep → pain: <b>{fmt(corr.pain_vs_sleep_lag1)}</b></li>
           </ul>
-          <p className="text-xs text-zinc-500 mt-2">
-            Correlation −1..1 (|0.5|≈moderate). Lag = yesterday’s value vs today’s pain.
-          </p>
+          <p className="text-xs text-zinc-500 mt-2">Correlation −1..1 (|0.5|≈moderate).</p>
         </div>
 
         <div className="card lg:col-span-3">
