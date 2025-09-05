@@ -1,31 +1,22 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* optional theme tokens */
-@theme {
-  --color-brand-700: #1F5085;
-  --color-brand-600: #2B6AA8;
-  --color-brand-500: #4C8FCC;
-  --radius-xl2: 1rem;
-  --shadow-soft: 0 8px 24px rgba(0,0,0,.08);
-}
-
+/* Components / design tokens */
 @layer components {
   .app-shell { @apply min-h-screen; }
   .container-page { @apply mx-auto max-w-7xl p-6; }
-  .card { @apply bg-white rounded-[var(--radius-xl2)] shadow-[var(--shadow-soft)] ring-1 ring-black/5 p-6; }
+
+  .card { @apply bg-white rounded-xl shadow-[0_8px_24px_rgba(0,0,0,.08)] ring-1 ring-black/5 p-6; }
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium disabled:opacity-60; }
-  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-primary { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
   .btn-ghost { @apply btn bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50; }
+
   .label { @apply block text-sm font-medium text-zinc-700; }
-  .input { @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600; }
+  .input { @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600; }
+
   .logo-img { @apply h-8 w-auto; }
-}
 
-@layer components {
-  /* …(your existing .card, .btn, etc.)… */
-
-  /* clickable card */
-  .card-link {
-    @apply card block no-underline text-inherit hover:ring-zinc-300 transition;
-  }
+  /* clickable card link */
+  .card-link { @apply card block no-underline text-inherit hover:ring-zinc-300 transition; }
 }
