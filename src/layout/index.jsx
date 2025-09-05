@@ -16,7 +16,9 @@ export default function Layout({ children }) {
     <div className="app-shell">
       <header className="sticky top-0 bg-white/90 backdrop-blur z-10 border-b">
         <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-3">
-          <img src="/logo.png" alt="Sentinel Health" className="h-8 w-auto" />
+           <div className="text-lg font-semibold tracking-wide">Sentrya</div>
+{/* OR */}
+<img src="/logo.svg" alt="Sentrya" className="h-7 w-auto" />
           <nav className="flex gap-2 text-sm">
             <Link className="btn-ghost" to="/">Dashboard</Link>
             <Link className="btn-ghost" to="/log-glucose">Glucose</Link>
