@@ -2,18 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* base font + page bg so you can see Tailwind immediately */
+@layer base {
+  html { @apply h-full bg-zinc-50 text-zinc-900; }
+  body, #root { @apply min-h-screen; }
+}
+
+/* simple card + button styles used across app */
 @layer components {
-  .app-shell { @apply min-h-screen; }
-  .container-page { @apply mx-auto max-w-7xl p-6; }
-
-  .card { @apply bg-white rounded-xl shadow-[0_8px_24px_rgba(0,0,0,.08)] ring-1 ring-black/5 p-6; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium disabled:opacity-60; }
-  .btn-primary { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
-  .btn-ghost { @apply btn bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50; }
-
+  .card { @apply bg-white rounded-xl shadow-sm ring-1 ring-black/5; }
+  .btn  { @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 active:bg-zinc-100; }
+  .btn-primary { @apply bg-indigo-600 text-white ring-0 hover:bg-indigo-500 active:bg-indigo-700; }
+  .input { @apply w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500; }
   .label { @apply block text-sm font-medium text-zinc-700; }
-  .input { @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600; }
-
-  .logo-img { @apply h-8 w-auto; }
-  .card-link { @apply card block no-underline text-inherit hover:ring-zinc-300 transition; }
 }
