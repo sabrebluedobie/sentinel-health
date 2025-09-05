@@ -37,12 +37,13 @@ export default function LogGlucose() {
     }
 
     const payload = {
-      user_id: user.id,                 // retried away if column missing
-      created_at: iso,                  // timestamptz
-      value: value === "" ? null : Number(value),
-      unit: unit || "mg/dL",
-      raw: notes ? { source: "manual", notes } : { source: "manual" }, // jsonb
-    };
+  user_id: user.id,                         // retried away if column missing
+  created_at: iso,
+  value: value === "" ? null : Number(value),
+  unit: unit || "mg/dL",
+  source: "manual",                         // required by NOT NULL
+  raw: notes ? { notes } : null             // jsonb (optional)
+};
 
     const { error: upErr } = await insertHealthReading(payload);
     setBusy(false);

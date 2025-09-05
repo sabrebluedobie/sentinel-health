@@ -51,17 +51,17 @@ export default function LogMigraine() {
     }
 
     const payload = {
-      // if your table has default auth.uid(), user_id can be omitted.
-      user_id: user.id,
-      date: dateIso,
-      pain_level: pain_num,
-      duration_hours: dur_num,
-      symptoms: symptomsArr,
-      triggers: triggersArr,
-      medication_taken: medicationTaken || null,
-      medication_effective: medicationEffective,
-      notes: notes || null,
-    };
+  user_id: user.id,                         // retried away if column missing
+  date: dateIso,
+  pain_level: pain_num,
+  duration_hours: dur_num,
+  symptoms: symptomsArr,                    // text[]
+  triggers: triggersArr,                    // text[]
+  medication_taken: medicationTaken || null,
+  medication_effective: !!medicationEffective,
+  source: "manual",
+  notes: notes || null
+};
 
     const { error: insertErr } = await supabase
       .from("migraine_episodes")
