@@ -7,7 +7,7 @@ const supabase = createClient(supabaseUrl, supabaseAnon, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storage: window.localStorage, // ensure browser persistence on iPad/Safari
+    storage: window.localStorage,
   },
 });
 
