@@ -3,10 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const url  = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-let supabase;
+let sb;
 if (typeof window !== "undefined") {
-  // one browser-wide instance + persistent session/cookies
-  supabase = window.__sb ??= createClient(url, anon, {
+  sb = window.__sb ??= createClient(url, anon, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -15,9 +14,9 @@ if (typeof window !== "undefined") {
     },
   });
 } else {
-  supabase = createClient(url, anon, {
+  sb = createClient(url, anon, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
 }
 
-export default supabase;
+export default sb;

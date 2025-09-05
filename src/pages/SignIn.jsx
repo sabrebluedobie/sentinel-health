@@ -2,15 +2,13 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import supabase from "@/lib/supabase";
 
-const AUTH_ROUTES = new Set(["/sign-in", "/sign-up", "/reset"]);
+const AUTH = new Set(["/sign-in", "/sign-up", "/reset"]);
 
 export default function SignIn() {
   const nav = useNavigate();
   const loc = useLocation();
-
-  // sanitize the "from" path so we never loop to another auth page
   const rawFrom = loc.state?.from?.pathname || "/app";
-  const from = AUTH_ROUTES.has(rawFrom) ? "/app" : rawFrom;
+  const from = AUTH.has(rawFrom) ? "/app" : rawFrom;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,59 +20,35 @@ export default function SignIn() {
     setBusy(true); setMsg("");
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+      email: email.trim(), password
     });
 
     setBusy(false);
-
-    if (error) {
-      setMsg(error.message || "Sign-in failed");
-      return;
-    }
-
-    if (data?.user) {
-      // ✅ go back to the original target (e.g., /log-migraine)
-      nav(from, { replace: true });
-    }
+    if (error) { setMsg(error.message || "Sign-in failed"); return; }
+    if (data?.user) nav(from, { replace: true });
   }
 
   return (
-    <div className="app-shell flex items-center justify-center p-6">
-      <div className="card w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold">Sign in to Sentinel Health</h1>
-          {loc.state?.from?.pathname && (
-            <p className="mt-1 text-xs text-zinc-500">
-              You’ll be returned to <code className="px-1 rounded bg-zinc-100">{from}</code> after login.
-            </p>
-          )}
-        </div>
+    <main className="min-h-screen grid place-items-center p-6">
+      <form onSubmit={onSubmit} className="card w-full max-w-md">
+        <h1 className="text-xl font-semibold text-center">Sign in</h1>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="label">Email</label>
-            <input className="input mt-1" type="email" value={email}
-                   onChange={(e)=>setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <label className="label">Password</label>
-            <input className="input mt-1" type="password" value={password}
-                   onChange={(e)=>setPassword(e.target.value)} required />
-          </div>
+        <label className="label mt-4">Email</label>
+        <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
 
-          {msg && <p className="text-sm text-red-600">{msg}</p>}
+        <label className="label mt-3">Password</label>
+        <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
 
-          <button className="btn-primary w-full" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
+        {msg && <p className="mt-2 text-sm text-red-600">{msg}</p>}
 
-          <p className="mt-2 text-center text-xs text-zinc-500">
-            <Link to="/sign-up" className="underline">Create an account</Link> ·{" "}
-            <Link to="/reset" className="underline">Forgot password?</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <button className="btn-primary w-full mt-4" disabled={busy}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+
+        <p className="mt-3 text-center text-xs text-zinc-500">
+          <Link to="/reset" className="underline">Forgot password?</Link>
+        </p>
+      </form>
+    </main>
   );
 }
