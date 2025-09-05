@@ -13,7 +13,7 @@ export default function LogSleep() {
     const s = new Date(isoStart).getTime();
     const e = new Date(isoEnd).getTime();
     if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return null;
-    return Math.round(((e - s) / 36e5) * 100) / 100; // hours, 2 decimals
+    return Math.round(((e - s) / 36e5) * 100) / 100; // 2 decimals
   }
 
   async function onSubmit(e) {
@@ -82,4 +82,33 @@ export default function LogSleep() {
             />
           </div>
 
-         
+          <div>
+            <label className="label">Efficiency (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="input"
+              value={efficiency}
+              onChange={(e) => setEff(e.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+
+          {!!msg.text && (
+            <div className={`text-sm ${msg.kind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+              {msg.text}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button disabled={busy} className="btn-primary" type="submit">
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <Link to="/" className="btn-ghost no-underline">Cancel</Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
