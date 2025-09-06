@@ -1,7 +1,32 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
+import DebugOverlay from '../components/DebugOverlay'; // adjust path
 
+export default function SleepLogPage() {
+  // whatever you already have:
+  // const { data: sleep } = useSleepQuery();
+  // const [form, setForm] = useState(...)
+
+  const formState = { /* duration, quality, notes, errors, loading, etc. */ };
+
+  return (
+    <>
+      <DebugOverlay
+        data={{
+          route: 'SleepLogPage',
+          sleepData: /* sleep */ undefined,
+          formState,
+          env: {
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'n/a',
+            width: typeof window !== 'undefined' ? window.innerWidth : 'n/a',
+          },
+        }}
+      />
+      {/* ...your existing page/form... */}
+    </>
+  );
+}
 export default function LogSleep() {
   const navigate = useNavigate();
 
