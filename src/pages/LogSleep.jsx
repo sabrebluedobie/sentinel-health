@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
 import DebugOverlay from '../components/DebugOverlay'; // adjust path
 
-export default function SleepLogPage() {
+export function SleepLogPage() {
   // whatever you already have:
   // const { data: sleep } = useSleepQuery();
   // const [form, setForm] = useState(...)
