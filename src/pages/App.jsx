@@ -2,6 +2,9 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute.jsx";
 import SignIn from "@/pages/SignIn.jsx";
+import NightscoutSettings from "@/pages/NightscoutSettings.jsx";
+// Add this route:
+<Route path="/nightscout-settings" element={<ProtectedRoute><Layout><NightscoutSettings /></Layout></ProtectedRoute>} />
 
 // Your existing pages
 import Dashboard from "@/pages/Dashboard.jsx";
