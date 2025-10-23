@@ -3,4 +3,11 @@
     { "source": "/api/(.*)", "destination": "/api/router.js" },
     { "source": "/(.*)", "destination": "/" }
   ]
+
+}
+{
+  "crons": [{
+    "path": "/api/sync-nightscout",
+    "schedule": "*/15 * * * *"
+  }]
 }
