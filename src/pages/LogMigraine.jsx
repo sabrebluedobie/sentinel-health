@@ -30,9 +30,17 @@ export default function LogMigraine() {
     setBusy(true);
     setError("");
 
+    // Validate date is provided
+    if (!date || date.trim() === "") {
+      setBusy(false);
+      setError("Please select a start time.");
+      return;
+    }
+
     // Convert datetime-local (no tz) to ISO string
-    // We’ll treat it as local time and send as ISO — Postgres timestamptz will store with timezone.
-    const dateIso = date ? new Date(date).toISOString() : null;
+    const dateIso = new Date(date).toISOString();
+    console.log('Debug - Date input:', date);
+    console.log('Debug - Date ISO:', dateIso);
 
     // optional numerics -> null when empty
     const pain_num = painLevel === "" ? null : Number(painLevel);
@@ -51,17 +59,19 @@ export default function LogMigraine() {
     }
 
     const payload = {
-  user_id: user.id,
-  started_at: dateIso,                      // matches DB column name
-  pain: pain_num,                           // matches DB column name
-  duration_hours: dur_num,
-  symptoms: symptomsArr,                    // text[]
-  triggers: triggersArr,                    // text[]
-  medication_taken: medicationTaken || null,
-  medication_effective: !!medicationEffective,
-  source: "manual",
-  notes: notes || null
-};
+      user_id: user.id,
+      started_at: dateIso,
+      pain: pain_num,
+      duration_hours: dur_num,
+      symptoms: symptomsArr,
+      triggers: triggersArr,
+      medication_taken: medicationTaken || null,
+      medication_effective: !!medicationEffective,
+      source: "manual",
+      notes: notes || null
+    };
+
+    console.log('Debug - Payload:', payload);
 
     const { error: insertErr } = await supabase
       .from("migraine_episodes")
@@ -70,6 +80,7 @@ export default function LogMigraine() {
     setBusy(false);
 
     if (insertErr) {
+      console.error('Debug - Insert error:', insertErr);
       setError(insertErr.message);
       return;
     }
