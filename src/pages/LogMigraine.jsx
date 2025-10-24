@@ -51,9 +51,9 @@ export default function LogMigraine() {
     }
 
     const payload = {
-  user_id: user.id,                         // retried away if column missing
-  date: dateIso,
-  pain_level: pain_num,
+  user_id: user.id,
+  started_at: dateIso,                      // matches DB column name
+  pain: pain_num,                           // matches DB column name
   duration_hours: dur_num,
   symptoms: symptomsArr,                    // text[]
   triggers: triggersArr,                    // text[]
