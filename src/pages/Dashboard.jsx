@@ -33,6 +33,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header with navigation */}
+      <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 p-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-zinc-900">Sentrya Dashboard</h1>
+          <div className="flex gap-3">
+            <Link to="/education" className="px-4 py-2 text-sm font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors">
+              📚 Education
+            </Link>
+            <Link to="/settings" className="px-4 py-2 text-sm font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors">
+              ⚙️ Settings
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Range + quick actions */}
       <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 p-5">
         <div className="flex items-center gap-3">
