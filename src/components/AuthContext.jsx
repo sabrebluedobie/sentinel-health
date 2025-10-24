@@ -14,19 +14,24 @@ export function AuthProvider({ children }) {
 
     async function bootstrap() {
       try {
+        console.log('🔍 Checking for existing session...');
         const { data, error } = await supabase.auth.getSession();
+        console.log('📦 Session data:', data);
+        console.log('👤 User:', data?.session?.user);
         if (!mounted) return;
         if (error) console.warn("getSession error:", error);
         setSession(data?.session ?? null);
         setUser(data?.session?.user ?? null);
       } finally {
+        console.log('✅ Loading complete, loading=false');
         setLoading(false);
       }
     }
     bootstrap();
 
     // 2) Stay in sync with future auth changes (sign in/out, token refresh)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log('🔔 Auth state changed:', event, newSession?.user?.email || 'no user');
       setSession(newSession);
       setUser(newSession?.user ?? null);
     });
