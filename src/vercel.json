@@ -1,5 +1,10 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }],
+  "rewrites": [
+    { 
+      "source": "/((?!.*\\.).*)", 
+      "destination": "/" 
+    }
+  ],
   "crons": [
     { "path": "/api/sync-nightscout", "schedule": "0 9 * * 1" }
   ]
