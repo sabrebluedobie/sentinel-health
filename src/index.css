@@ -1,14 +1,1 @@
 @import "tailwindcss";
-
-@layer base {
-  html { @apply h-full bg-zinc-50 text-zinc-900; }
-  body, #root { @apply min-h-screen; }
-}
-
-@layer components {
-  .card { @apply bg-white rounded-xl shadow-sm ring-1 ring-black/5; }
-  .btn { @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 active:bg-zinc-100; }
-  .btn-primary { @apply bg-indigo-600 text-white ring-0 hover:bg-indigo-500 active:bg-indigo-700; }
-  .input { @apply w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500; }
-  .label { @apply block text-sm font-medium text-zinc-700; }
-}
