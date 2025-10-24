@@ -105,14 +105,6 @@ export default function LogSleep() {
     navigate("/dashboard");
   }
 
-const payload = {
-  user_id: user.id,                         // retried away if column missing
-  started_at: new Date(start).toISOString(),
-  ended_at: new Date(end).toISOString(),
-  efficiency: efficiency === "" ? null : Number(efficiency),
-  source: "manual",
-  notes: notes || null                      // if your table lacks notes, keep your retry-without-notes logic
-};
   return (
     <div className="min-h-screen bg-zinc-50 py-8 px-4">
       <div className="mx-auto w-full max-w-xl">
