@@ -33,9 +33,9 @@ export default function App() {
 
           {/* Private app routes */}
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/log-glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
-          <Route path="/log-sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
-          <Route path="/log-migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
+          <Route path="/glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
+          <Route path="/sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
+          <Route path="/migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
           <Route path="/education"    element={<ProtectedRoute><Education /></ProtectedRoute>} />
           <Route path="/settings"     element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 

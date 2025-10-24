@@ -17,7 +17,7 @@ export default function Protected({ children }) {
       setChecked(true);
     })();
     return () => { mounted = false; };
-  }, [location.pathname]);
+  }, []); // FIXED: Removed location.pathname dependency
 
   if (!checked) {
     return (
