@@ -61,7 +61,7 @@ export default function LogMigraine() {
     const payload = {
       user_id: user.id,
       started_at: dateIso,
-      pain: pain_num,
+      pain_level: pain_num,
       duration_hours: dur_num,
       symptoms: symptomsArr,
       triggers: triggersArr,
