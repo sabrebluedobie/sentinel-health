@@ -40,9 +40,9 @@ export default function SignIn() {
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
-          <img src="/logo-shield.svg" alt="Sentrya" className="h-12 w-12 mb-3" />
+          <img src="/migraine-icon.png" alt="Sentrya Migraine Tracker" className="h-20 w-auto mb-3" />
           <div className="text-2xl font-semibold tracking-tight text-zinc-900">Sentrya</div>
-          <div className="text-xs uppercase tracking-widest text-zinc-500">Whole Health</div>
+          <div className="text-xs uppercase tracking-widest text-zinc-500">Migraine Tracker</div>
         </div>
 
         <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 p-6">
@@ -98,7 +98,7 @@ export default function SignIn() {
         </div>
 
         <p className="mt-6 text-center text-xs text-zinc-500">
-          By continuing you agree to Sentrya’s Terms & Privacy.
+          By continuing you agree to Sentrya's Terms & Privacy.
         </p>
       </div>
     </div>
