@@ -1,16 +1,3 @@
-// src/pages/Settings.jsx (wired to /api)
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import supabase from "@/lib/supabase";
-
-export default function Settings() {
-  const [url, setUrl] = useState("");
-  const [token, setToken] = useState(""); // optional Nightscout token
-  const [apiSecret, setApiSecret] = useState(""); // optional API secret
-  const [msg, setMsg] = useState("");
-  const [kind, setKind] = useState("info"); // 'ok' | 'err' | 'info'
-  const [busy, setBusy] = useState(false);
-
 import React, { useState } from 'react';
 import { Settings, Database, Heart, Moon, Droplets, User } from 'lucide-react';
 
@@ -209,4 +196,47 @@ const HealthAppSettings = () => {
               </div>
             </div>
 
-            
+            {/* Samsung Health */}
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
+                    <Heart className="text-white" size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900">Samsung Health</h3>
+                    <p className="text-sm text-gray-500">Sync with Samsung devices</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-500 mr-3">Disconnected</span>
+                  <button className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors">
+                    Connect
+                  </button>
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>Connect to sync activity, sleep, and health data from Samsung devices.</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Data Management Section */}
+      <div className="mt-12 pt-8 border-t border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Data Management</h2>
+        <div className="space-y-4">
+          <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Export All Data
+          </button>
+          <button className="text-red-600 hover:text-red-700 font-medium text-sm block">
+            Delete All Data
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default HealthAppSettings;
