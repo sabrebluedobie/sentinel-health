@@ -9,7 +9,7 @@ export async function insertPainLog(payload) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("User must be authenticated");
 
-  // Create pain_log entry
+  // Create pain_logs entry
   const painLogData = {
     user_id: user.id,
     timestamp: payload.timestamp || new Date().toISOString(),
@@ -28,7 +28,7 @@ export async function insertPainLog(payload) {
   };
 
   const { data: painLogEntry, error: painLogError } = await supabase
-    .from("pain_log")
+    .from("pain_logs")
     .insert([painLogData])
     .select()
     .single();
@@ -39,7 +39,7 @@ export async function insertPainLog(payload) {
   if (payload.is_migraine_event && payload.migraine_details) {
     const migraineData = {
       user_id: user.id,
-      pain_log_id: painLogEntry.id, // Link back to pain_log
+      pain_logs_id: painLogEntry.id, // Link back to pain_logs
       started_at: payload.timestamp || new Date().toISOString(),
       pain: payload.migraine_details.head_pain_level || payload.overall_pain_level,
       pain_level: payload.migraine_details.head_pain_level || payload.overall_pain_level,
@@ -70,7 +70,7 @@ export async function insertPainLog(payload) {
  */
 export async function fetchPainLogs({ userId, startDate, endDate, isMigraineOnly = false }) {
   let query = supabase
-    .from("pain_log")
+    .from("pain_logs")
     .select("*")
     .eq("user_id", userId)
     .order("timestamp", { ascending: false });
@@ -95,10 +95,10 @@ export async function fetchPainLogs({ userId, startDate, endDate, isMigraineOnly
  */
 export async function fetchPainLogsWithMigraines(userId) {
   const { data, error } = await supabase
-    .from("pain_log")
+    .from("pain_logs")
     .select(`
       *,
-      migraine_episodes!pain_log_id(*)
+      migraine_episodes!pain_logs_id(*)
     `)
     .eq("user_id", userId)
     .order("timestamp", { ascending: false });
