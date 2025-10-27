@@ -82,8 +82,8 @@ export default function LogSleep() {
 
     const payload = {
       user_id: user.id,                         // retried away if not present
-      started_at: new Date(start).toISOString(),
-      ended_at: new Date(end).toISOString(),
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
       total_sleep_hours: Number(total.toFixed(2)), // NOT NULL column
       efficiency: efficiency === "" ? null : Number(efficiency),
       notes: notes || null,                      // keep if you added a notes column; else harmlessly ignored by retry logic if absent
