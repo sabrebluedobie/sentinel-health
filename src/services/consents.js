@@ -1,6 +1,6 @@
 // Sentinel Starter Kit — 2025-08-22T19:28:17.351757Z
 
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 export async function getDisclaimerConsent(userId){
   if(!userId) return null;
   const { data, error } = await supabase.from("user_consents")

@@ -1,7 +1,7 @@
 // src/components/modals/EducationModal.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../common/Modal.jsx";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { REFERENCES, FALLBACK_TOPICS } from "../../data/migraineEducation.js";
 
 function Badge({ text, color }) {

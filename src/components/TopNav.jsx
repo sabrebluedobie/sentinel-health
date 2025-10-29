@@ -1,7 +1,7 @@
 // src/components/TopNav.jsx
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export default function TopNav({ showTabs = true }) {
   const navigate = useNavigate();

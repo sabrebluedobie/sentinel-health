@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import supabase from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 const DISCLAIMER_VERSION = "v1";
 const DISCLAIMER_TYPE = "medical_disclaimer";

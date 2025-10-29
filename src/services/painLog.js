@@ -1,5 +1,5 @@
 // src/services/painLog.js
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Insert a comprehensive pain log entry

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Database, Heart, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useNightscout } from '../hooks/useNightscout';
-import supabase from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');

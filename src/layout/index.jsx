@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthContext.jsx";
 import { ToastContainer, useToastManager } from "@/components/Toast";
 

@@ -1,7 +1,7 @@
 // src/components/Header.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthContext";
 
 const LOGO_PATH = import.meta.env.VITE_APP_LOGO || "/logo.png";

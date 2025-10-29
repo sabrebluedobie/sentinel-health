@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export default function useDailyMetrics(rangeDays = 30, refreshKey = 0) {
   const [rows, setRows] = useState([]);

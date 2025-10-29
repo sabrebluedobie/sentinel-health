@@ -1,5 +1,5 @@
 // src/services/sleep.js
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Expects payload with:

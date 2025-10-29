@@ -1,4 +1,4 @@
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 const TABLES = {
   glucose: "glucose_readings",
