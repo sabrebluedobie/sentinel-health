@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import supabase from "@/lib/supabase";
+import { useNightscout } from "../hooks/useNightscout";
+
 // Accepts value from <input type="datetime-local"> and returns ISO (tz-aware).
 function localDatetimeToISO(local) {
   // Example input: "2025-09-05T17:28"
@@ -13,40 +15,17 @@ function localDatetimeToISO(local) {
   const dt = new Date(y, m - 1, day, hh ?? 0, mm ?? 0, 0, 0);
   return dt.toISOString();
 }
-async function handleSave(e) {
-  e.preventDefault();
-  try {
-    const { user } = await supabase.auth.getUser().then(r => r.data);
-    if (!user) throw new Error("AUTH_REQUIRED");
 
-    const iso = localDatetimeToISO(dateTime); // dateTime = state bound to the datetime-local input
-
-    const payload = {
-      user_id: user.id,
-      start_time: iso,                       // <-- REQUIRED
-      created_at: iso,                       // optional but fine to keep
-      value: value === "" ? null : Number(value),
-      unit: unit || "mg/dL",
-      source: "manual",
-      type: "glucose",
-      raw: notes ? { notes } : null,
-    };
-
-    const { error } = await supabase.from("health_readings").insert(payload);
-    if (error) throw error;
-
-    // success → navigate back
-    navigate("/glucose");
-  } catch (err) {
-    setError(err.message ?? String(err));
-  }
-}
 export default function LogGlucose() {
   const navigate = useNavigate();
+  const { saveGlucose } = useNightscout();
+  
   const [when, setWhen] = useState("");
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState("mg/dL");
+  const [readingType, setReadingType] = useState("sgv"); // sgv = CGM, mbg = finger stick
   const [notes, setNotes] = useState("");
+  const [syncToNightscout, setSyncToNightscout] = useState(true);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -76,22 +55,50 @@ export default function LogGlucose() {
     }
 
     const payload = {
-  user_id: user.id,
-  created_at: iso,
-  value: value === "" ? null : Number(value),
-  unit: unit || "mg/dL",
-  source: "manual",
-  type: "glucose",              // <— add this
-  raw: notes ? { notes } : null
-};
+      user_id: user.id,
+      created_at: iso,
+      value: value === "" ? null : Number(value),
+      unit: unit || "mg/dL",
+      source: "manual",
+      type: "glucose",
+      raw: notes ? { notes } : null
+    };
 
+    // Save to Supabase first
     const { error: upErr } = await insertHealthReading(payload);
-    setBusy(false);
-
+    
     if (upErr) {
+      setBusy(false);
       setError(upErr.message);
       return;
     }
+
+    // If Nightscout sync is enabled, sync there too
+    if (syncToNightscout) {
+      try {
+        const glucoseValue = Number(value);
+        
+        // Convert mmol/L to mg/dL if needed (Nightscout prefers mg/dL)
+        const valueMgdl = unit === "mmol/L" 
+          ? Math.round(glucoseValue * 18) 
+          : glucoseValue;
+
+        await saveGlucose({
+          value_mgdl: valueMgdl,
+          time: iso,
+          reading_type: readingType,
+          note: notes || undefined
+        });
+        
+        // Don't fail the whole operation if Nightscout sync fails
+        // The user still has their data in Sentrya
+      } catch (nsError) {
+        console.warn("Nightscout sync failed:", nsError);
+        // Optionally show a warning but don't block navigation
+      }
+    }
+
+    setBusy(false);
     navigate("/");
   }
 
@@ -138,13 +145,27 @@ export default function LogGlucose() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Unit</label>
-                <input
-                  type="text"
+                <select
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-600"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                />
+                >
+                  <option value="mg/dL">mg/dL</option>
+                  <option value="mmol/L">mmol/L</option>
+                </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Reading Type</label>
+              <select
+                className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-600"
+                value={readingType}
+                onChange={(e) => setReadingType(e.target.value)}
+              >
+                <option value="sgv">CGM Reading</option>
+                <option value="mbg">Finger Stick</option>
+              </select>
             </div>
 
             <div>
@@ -156,6 +177,26 @@ export default function LogGlucose() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Before lunch, felt dizzy, etc."
               />
+            </div>
+
+            {/* Nightscout Sync Toggle */}
+            <div className="bg-blue-50 p-4 rounded-md">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={syncToNightscout}
+                  onChange={(e) => setSyncToNightscout(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                />
+                <span className="ml-3 text-sm text-gray-700">
+                  Also sync to Nightscout
+                </span>
+              </label>
+              <p className="text-xs text-gray-600 mt-1 ml-7">
+                {syncToNightscout 
+                  ? "This reading will be saved to both Sentrya and Nightscout" 
+                  : "This reading will only be saved to Sentrya"}
+              </p>
             </div>
 
             {error && <div className="text-sm text-red-600">{error}</div>}

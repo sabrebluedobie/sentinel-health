@@ -1,8 +1,74 @@
-import React, { useState } from 'react';
-import { Settings, Database, Heart, Moon, Droplets, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Database, Heart, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { useNightscout } from '../hooks/useNightscout';
+import supabase from '../lib/supabase';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const { loading, error, testConnection, syncEntries } = useNightscout();
+  
+  // Nightscout state
+  const [connectionStatus, setConnectionStatus] = useState(null); // 'success', 'error', null
+  const [testMessage, setTestMessage] = useState('');
+  const [isConfigured, setIsConfigured] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+
+  // Check if Nightscout is configured
+  useEffect(() => {
+    checkNightscoutConfig();
+  }, []);
+
+  async function checkNightscoutConfig() {
+    // We can't see the env vars from frontend, but we can test the connection
+    // to see if it's configured
+    setTestMessage('Checking configuration...');
+    const result = await testConnection();
+    
+    if (result.ok) {
+      setIsConfigured(true);
+      setConnectionStatus('success');
+      setTestMessage('Nightscout is configured and connected');
+    } else {
+      setIsConfigured(false);
+      setConnectionStatus('error');
+      setTestMessage('Nightscout not configured. Add environment variables in Vercel.');
+    }
+  }
+
+  async function handleTestConnection() {
+    setConnectionStatus(null);
+    setTestMessage('Testing connection...');
+    
+    const result = await testConnection();
+    
+    if (result.ok) {
+      setConnectionStatus('success');
+      setTestMessage(`✓ Connected successfully! Server: ${result.data?.name || 'Nightscout'}`);
+      setIsConfigured(true);
+    } else {
+      setConnectionStatus('error');
+      setTestMessage(`✗ Connection failed: ${result.error}`);
+      setIsConfigured(false);
+    }
+  }
+
+  async function handleSyncNow() {
+    setSyncLoading(true);
+    setTestMessage('Syncing from Nightscout...');
+    
+    try {
+      const entries = await syncEntries(100);
+      setLastSync(new Date());
+      setTestMessage(`✓ Synced ${entries.length} entries from Nightscout`);
+      setConnectionStatus('success');
+    } catch (err) {
+      setTestMessage(`✗ Sync failed: ${err.message}`);
+      setConnectionStatus('error');
+    } finally {
+      setSyncLoading(false);
+    }
+  }
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -100,47 +166,96 @@ const HealthAppSettings = () => {
                 Sync your glucose data with your Nightscout instance for comprehensive tracking.
               </p>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nightscout URL</label>
-                  <input 
-                    type="url" 
-                    placeholder="https://your-site.herokuapp.com"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">API Secret</label>
-                  <input 
-                    type="password" 
-                    placeholder="Your API secret"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex space-x-4">
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
-                    Test Connection
-                  </button>
-                  <button className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
-                    Save & Connect
-                  </button>
-                </div>
+              {/* Configuration Instructions */}
+              <div className="bg-white p-4 rounded-md mb-4 text-sm text-gray-700">
+                <p className="font-medium mb-2">Configuration Required:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Go to your Vercel project dashboard</li>
+                  <li>Navigate to Settings → Environment Variables</li>
+                  <li>Add <code className="bg-gray-100 px-1 py-0.5 rounded">NIGHTSCOUT_URL</code> (e.g., https://your-site.herokuapp.com)</li>
+                  <li>Add <code className="bg-gray-100 px-1 py-0.5 rounded">NIGHTSCOUT_API_SECRET</code> (your API secret)</li>
+                  <li>Redeploy your app or test the connection below</li>
+                </ol>
               </div>
+
+              {/* Connection Status */}
+              {testMessage && (
+                <div className={`p-4 rounded-md mb-4 flex items-center ${
+                  connectionStatus === 'success' ? 'bg-green-50 text-green-800' :
+                  connectionStatus === 'error' ? 'bg-red-50 text-red-800' :
+                  'bg-gray-50 text-gray-800'
+                }`}>
+                  {loading ? (
+                    <Loader className="animate-spin mr-2" size={20} />
+                  ) : connectionStatus === 'success' ? (
+                    <CheckCircle className="mr-2" size={20} />
+                  ) : connectionStatus === 'error' ? (
+                    <XCircle className="mr-2" size={20} />
+                  ) : null}
+                  <span className="text-sm">{testMessage}</span>
+                </div>
+              )}
+              
+              <div className="flex space-x-4">
+                <button 
+                  onClick={handleTestConnection}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  {loading ? (
+                    <>
+                      <Loader className="animate-spin mr-2" size={16} />
+                      Testing...
+                    </>
+                  ) : (
+                    'Test Connection'
+                  )}
+                </button>
+                
+                {isConfigured && (
+                  <button 
+                    onClick={handleSyncNow}
+                    disabled={syncLoading}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {syncLoading ? (
+                      <>
+                        <Loader className="animate-spin mr-2" size={16} />
+                        Syncing...
+                      </>
+                    ) : (
+                      'Sync Now'
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {lastSync && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Last sync: {lastSync.toLocaleString()}
+                </p>
+              )}
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-4">Sync Settings</h3>
-              <div className="space-y-4">
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" defaultChecked />
-                  <span className="ml-3 text-sm text-gray-700">Auto-sync glucose readings</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" />
-                  <span className="ml-3 text-sm text-gray-700">Sync historical data</span>
-                </label>
+            {isConfigured && (
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-4">Sync Settings</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" defaultChecked />
+                    <span className="ml-3 text-sm text-gray-700">Auto-sync glucose readings to Nightscout</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" />
+                    <span className="ml-3 text-sm text-gray-700">Send migraine episodes to Nightscout as treatments</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" />
+                    <span className="ml-3 text-sm text-gray-700">Import historical data from Nightscout</span>
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -161,8 +276,8 @@ const HealthAppSettings = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-3">Disconnected</span>
-                  <button className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors">
+                  <span className="text-sm text-gray-500 mr-3">Coming Soon</span>
+                  <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed">
                     Connect
                   </button>
                 </div>
@@ -185,38 +300,14 @@ const HealthAppSettings = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm text-green-600 mr-3">Connected</span>
-                  <button className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors">
-                    Disconnect
-                  </button>
-                </div>
-              </div>
-              <div className="text-sm text-gray-600">
-                <p>Currently syncing: Steps, Sleep, Heart Rate</p>
-              </div>
-            </div>
-
-            {/* Samsung Health */}
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
-                    <Heart className="text-white" size={16} />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Samsung Health</h3>
-                    <p className="text-sm text-gray-500">Sync with Samsung devices</p>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-3">Disconnected</span>
-                  <button className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors">
+                  <span className="text-sm text-gray-500 mr-3">Coming Soon</span>
+                  <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed">
                     Connect
                   </button>
                 </div>
               </div>
               <div className="text-sm text-gray-600">
-                <p>Connect to sync activity, sleep, and health data from Samsung devices.</p>
+                <p>Future integration: Steps, Sleep, Heart Rate</p>
               </div>
             </div>
           </div>
