@@ -30,7 +30,7 @@ export default function TopNav({ showTabs = true }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70 overflow-visible">
+    <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <img src="/migraine-icon.png" alt="Sentrya Migraine Tracker" className="h-8 w-auto" />
@@ -41,28 +41,28 @@ export default function TopNav({ showTabs = true }) {
         </div>
 
         {showTabs && (
-          <nav className="ml-auto flex items-center gap-4 w-full overflow-x-auto overflow-y-visible">
-            <ul className="flex shrink-0 items-center gap-2">
+          <nav className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto">
               {tabs.map((t) => (
-                <li key={t.to} className="shrink-0">
-                  <NavLink
-                    to={t.to}
-                    end={t.to === "/"}
-                    className={({ isActive }) =>
-                      `inline-block rounded-xl border px-3 py-1.5 text-sm transition ${
-                        isActive
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "border-slate-200 text-slate-700 hover:bg-slate-100"
-                      }`
-                    }
-                  >
-                    {t.label}
-                  </NavLink>
-                </li>
+                <NavLink
+                  key={t.to}
+                  to={t.to}
+                  end={t.to === "/"}
+                  className={({ isActive }) =>
+                    `inline-block shrink-0 rounded-xl border px-3 py-1.5 text-sm transition ${
+                      isActive
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`
+                  }
+                >
+                  {t.label}
+                </NavLink>
               ))}
+            </div>
               
-              {/* Track Health Dropdown */}
-              <li className="relative shrink-0">
+            {/* Track Health Dropdown - outside overflow container */}
+            <div className="relative shrink-0">
                 <button
                   onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
                   onBlur={() => setTimeout(() => setIsHealthDropdownOpen(false), 150)}
@@ -79,7 +79,7 @@ export default function TopNav({ showTabs = true }) {
                 </button>
                 
                 {isHealthDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
+                  <div className="absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-xl z-[100]">
                     <ul className="py-1">
                       {healthOptions.map((option) => (
                         <li key={option.to}>
@@ -101,8 +101,7 @@ export default function TopNav({ showTabs = true }) {
                     </ul>
                   </div>
                 )}
-              </li>
-            </ul>
+            </div>
             
             <button
               onClick={handleSignOut}
