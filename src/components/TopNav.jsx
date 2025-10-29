@@ -1,18 +1,27 @@
 // src/components/TopNav.jsx
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import supabase from "@/lib/supabase";
 
 export default function TopNav({ showTabs = true }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isHealthDropdownOpen, setIsHealthDropdownOpen] = useState(false);
+  
+  const healthTrackingPages = ['/glucose', '/sleep', '/migraine', '/pain'];
+  const isHealthPageActive = healthTrackingPages.includes(location.pathname);
   
   const tabs = [
     { to: "/", label: "Dashboard" },
+    { to: "/settings", label: "Settings" },
+    { to: "/education", label: "Education" },
+  ];
+  
+  const healthOptions = [
     { to: "/glucose", label: "Glucose" },
     { to: "/sleep", label: "Sleep" },
     { to: "/migraine", label: "Migraine" },
     { to: "/pain", label: "Pain" },
-    { to: "/settings", label: "Settings" },
-    { to: "/education", label: "Education" },
   ];
 
   async function handleSignOut() {
