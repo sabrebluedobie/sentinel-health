@@ -1,40 +1,165 @@
 // api/nightscout/save.js
+import crypto from 'crypto';
+
+/**
+ * Save data to Nightscout (glucose readings, migraines, notes)
+ * POST /api/nightscout/save
+ * 
+ * Body formats:
+ * Glucose: { kind: 'glucose', value_mgdl, time, reading_type, trend?, note? }
+ * Migraine: { kind: 'migraine', start_time, end_time?, severity?, triggers?, meds_taken?, notes? }
+ * Note: { kind: 'note', title?, notes, start_time? }
+ */
 export default async function handler(req, res) {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
   try {
-    if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+    const nightscoutUrl = process.env.NIGHTSCOUT_URL;
+    const apiSecret = process.env.NIGHTSCOUT_API_SECRET;
 
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ ok: false, error: "No auth token" });
+    // Validate environment variables
+    if (!nightscoutUrl || !apiSecret) {
+      return res.status(500).json({ 
+        ok: false, 
+        error: 'Nightscout not configured' 
+      });
+    }
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabaseUrl =
-      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) return res.status(500).json({ ok: false, error: "Missing Supabase env vars" });
+    // Hash the API secret
+    const hashedSecret = crypto
+      .createHash('sha1')
+      .update(apiSecret)
+      .digest('hex');
 
-    const admin = createClient(supabaseUrl, serviceKey);
+    const { kind, ...data } = req.body;
 
-    // Verify the user from the JWT
-    const { data: gu, error: gErr } = await admin.auth.getUser(token);
-    if (gErr || !gu?.user?.id) return res.status(401).json({ ok: false, error: "Invalid user token" });
-    const userId = gu.user.id;
+    if (!kind) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Missing "kind" field (glucose, migraine, or note)' 
+      });
+    }
 
-    const { url, token: nsToken, api_secret } = req.body || {};
-    if (!url || !/^https?:\/\//i.test(url)) return res.status(400).json({ ok: false, error: "Valid Nightscout URL required" });
+    let endpoint, payload;
 
-    // Upsert the connection for this user
-    const { error: upErr } = await admin
-      .from("nightscout_connections")
-      .upsert(
-        { user_id: userId, url: url.trim(), token: nsToken || null, api_secret: api_secret || null, updated_at: new Date().toISOString() },
-        { onConflict: "user_id" }
-      );
+    switch (kind) {
+      case 'glucose': {
+        // Save glucose reading to /api/v1/entries
+        endpoint = '/api/v1/entries';
+        
+        const { value_mgdl, time, reading_type, trend, note } = data;
+        
+        if (!value_mgdl || !time) {
+          return res.status(400).json({ 
+            ok: false, 
+            error: 'Missing required fields: value_mgdl, time' 
+          });
+        }
 
-    if (upErr) throw upErr;
-    return res.status(200).json({ ok: true });
-  } catch (e) {
-    console.error("[nightscout/save]", e);
-    return res.status(500).json({ ok: false, error: "Server error" });
+        payload = {
+          type: reading_type || 'sgv', // sgv = CGM, mbg = finger stick
+          sgv: value_mgdl,
+          date: new Date(time).getTime(),
+          dateString: new Date(time).toISOString(),
+          direction: trend || 'Flat',
+          device: 'Sentrya',
+          ...(note && { notes: note })
+        };
+        break;
+      }
+
+      case 'migraine': {
+        // Save migraine as treatment to /api/v1/treatments
+        endpoint = '/api/v1/treatments';
+        
+        const { start_time, end_time, severity, triggers, meds_taken, notes } = data;
+        
+        if (!start_time) {
+          return res.status(400).json({ 
+            ok: false, 
+            error: 'Missing required field: start_time' 
+          });
+        }
+
+        const duration = end_time 
+          ? Math.round((new Date(end_time) - new Date(start_time)) / 60000) // minutes
+          : undefined;
+
+        let notesText = `Migraine${severity ? ` (Severity: ${severity}/10)` : ''}`;
+        if (triggers) notesText += `\nTriggers: ${triggers}`;
+        if (meds_taken) notesText += `\nMeds: ${meds_taken}`;
+        if (notes) notesText += `\n${notes}`;
+
+        payload = {
+          eventType: 'Migraine',
+          created_at: new Date(start_time).toISOString(),
+          notes: notesText,
+          ...(duration && { duration }),
+          enteredBy: 'Sentrya'
+        };
+        break;
+      }
+
+      case 'note': {
+        // Save general note as treatment
+        endpoint = '/api/v1/treatments';
+        
+        const { title, notes, start_time } = data;
+        
+        if (!notes) {
+          return res.status(400).json({ 
+            ok: false, 
+            error: 'Missing required field: notes' 
+          });
+        }
+
+        payload = {
+          eventType: 'Note',
+          created_at: new Date(start_time || Date.now()).toISOString(),
+          notes: title ? `${title}\n${notes}` : notes,
+          enteredBy: 'Sentrya'
+        };
+        break;
+      }
+
+      default:
+        return res.status(400).json({ 
+          ok: false, 
+          error: `Unknown kind: ${kind}. Use glucose, migraine, or note` 
+        });
+    }
+
+    // Send to Nightscout
+    const response = await fetch(`${nightscoutUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'API-SECRET': hashedSecret,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Nightscout error ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    return res.status(200).json({
+      ok: true,
+      message: `${kind} saved to Nightscout`,
+      id: result._id || result.id
+    });
+
+  } catch (error) {
+    console.error('Nightscout save error:', error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || 'Failed to save to Nightscout'
+    });
   }
 }
