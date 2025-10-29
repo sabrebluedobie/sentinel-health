@@ -10,8 +10,14 @@ import ChartCard from "@/components/ChartCard.jsx";
 
 export default function Dashboard() {
   const [range, setRange] = useState(30);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const dm = (typeof useDailyMetrics === "function" && useDailyMetrics(range)) || { rows: [], loading: false, error: null };
+  // Function to trigger a refresh after logging data
+  const handleDataLogged = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const dm = (typeof useDailyMetrics === "function" && useDailyMetrics(range, refreshKey)) || { rows: [], loading: false, error: null };
   const rows = dm?.rows ?? [];
   const loading = dm?.loading ?? false;
 
@@ -52,18 +58,22 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Link to="/log-glucose" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <Link to="/glucose" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
             <div className="text-sm font-medium">Log Glucose</div>
             <div className="text-xs text-zinc-500">Manual mg/dL reading</div>
           </Link>
-          <Link to="/log-sleep" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
+          <Link to="/sleep" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
             <div className="text-sm font-medium">Log Sleep</div>
             <div className="text-xs text-zinc-500">Record last night</div>
           </Link>
-          <Link to="/log-migraine" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
+          <Link to="/migraine" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
             <div className="text-sm font-medium">Log Migraine</div>
             <div className="text-xs text-zinc-500">Pain 0–10 + notes</div>
+          </Link>
+          <Link to="/pain" className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50">
+            <div className="text-sm font-medium">Log Pain</div>
+            <div className="text-xs text-zinc-500">General pain tracking</div>
           </Link>
         </div>
       </div>

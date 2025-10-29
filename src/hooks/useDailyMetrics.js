@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase";
 
-export default function useDailyMetrics(rangeDays = 30) {
+export default function useDailyMetrics(rangeDays = 30, refreshKey = 0) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +23,7 @@ export default function useDailyMetrics(rangeDays = 30) {
           .select("*")
           .order("day", { ascending: true });
 
-        // Fallback to simple RPCs/aggregations if the views/tables aren’t there yet
+        // Fallback to simple RPCs/aggregations if the views/tables aren't there yet
         if (error) {
           let g = [], s = [], m = [];
           try { ({ data: g = [] } = await supabase.rpc("dm_glucose_simple", { days: rangeDays })); } catch {}
@@ -63,7 +63,7 @@ export default function useDailyMetrics(rangeDays = 30) {
 
     run();
     return () => { cancelled = true; };
-  }, [rangeDays]);
+  }, [rangeDays, refreshKey]);
 
   return { rows, loading };
 }

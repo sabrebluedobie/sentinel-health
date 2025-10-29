@@ -10,6 +10,7 @@ export default function TopNav({ showTabs = true }) {
     { to: "/glucose", label: "Glucose" },
     { to: "/sleep", label: "Sleep" },
     { to: "/migraine", label: "Migraine" },
+    { to: "/pain", label: "Pain" },
     { to: "/settings", label: "Settings" },
     { to: "/education", label: "Education" },
   ];

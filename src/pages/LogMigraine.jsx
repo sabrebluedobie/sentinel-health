@@ -85,7 +85,7 @@ export default function LogMigraine() {
       return;
     }
 
-    navigate("/dashboard");
+    navigate("/");
   }
 
   return (
@@ -93,7 +93,7 @@ export default function LogMigraine() {
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-4">
           <Link
-            to="/dashboard"
+            to="/"
             className="inline-flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900"
           >
             ← Back
@@ -231,7 +231,7 @@ export default function LogMigraine() {
                 {busy ? "Saving…" : "Save"}
               </button>
               <Link
-                to="/dashboard"
+                to="/"
                 className="inline-flex items-center justify-center rounded-md border border-zinc-300 px-4 py-2.5 text-zinc-700 hover:bg-zinc-50"
               >
                 Cancel

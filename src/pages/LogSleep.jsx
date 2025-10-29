@@ -102,14 +102,14 @@ export default function LogSleep() {
       setError(insErr.message);
       return;
     }
-    navigate("/dashboard");
+    navigate("/");
   }
 
   return (
     <div className="min-h-screen bg-zinc-50 py-8 px-4">
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-4">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900">
             ← Back
           </Link>
         </div>
@@ -195,7 +195,7 @@ export default function LogSleep() {
               >
                 {busy ? "Saving…" : "Save"}
               </button>
-              <Link to="/dashboard" className="inline-flex items-center justify-center rounded-md border border-zinc-300 px-4 py-2.5 text-zinc-700 hover:bg-zinc-50">
+              <Link to="/" className="inline-flex items-center justify-center rounded-md border border-zinc-300 px-4 py-2.5 text-zinc-700 hover:bg-zinc-50">
                 Cancel
               </Link>
             </div>
