@@ -10,6 +10,7 @@ const Dashboard   = React.lazy(() => import("@/pages/Dashboard.jsx"));
 const LogGlucose  = React.lazy(() => import("@/pages/LogGlucose.jsx"));
 const LogSleep    = React.lazy(() => import("@/pages/LogSleep.jsx"));
 const LogMigraine = React.lazy(() => import("@/pages/LogMigraine.jsx"));
+const LogPain     = React.lazy(() => import("@/pages/LogPain.jsx"));
 const Education   = React.lazy(() => import("@/pages/Education.jsx"));
 const Settings    = React.lazy(() => import("@/pages/Settings.jsx"));
 
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
           <Route path="/sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
           <Route path="/migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />
+          <Route path="/pain"     element={<ProtectedRoute><LogPain /></ProtectedRoute>} />
           <Route path="/education"    element={<ProtectedRoute><Education /></ProtectedRoute>} />
           <Route path="/settings"     element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 

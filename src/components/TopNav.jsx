@@ -60,6 +60,48 @@ export default function TopNav({ showTabs = true }) {
                   </NavLink>
                 </li>
               ))}
+              
+              {/* Track Health Dropdown */}
+              <li className="relative shrink-0">
+                <button
+                  onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
+                  onBlur={() => setTimeout(() => setIsHealthDropdownOpen(false), 150)}
+                  className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm transition ${
+                    isHealthPageActive
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  Track Health
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {isHealthDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
+                    <ul className="py-1">
+                      {healthOptions.map((option) => (
+                        <li key={option.to}>
+                          <NavLink
+                            to={option.to}
+                            className={({ isActive }) =>
+                              `block px-4 py-2 text-sm transition ${
+                                isActive
+                                  ? "bg-slate-100 text-slate-900 font-medium"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`
+                            }
+                            onClick={() => setIsHealthDropdownOpen(false)}
+                          >
+                            Log {option.label}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </li>
             </ul>
             
             <button
