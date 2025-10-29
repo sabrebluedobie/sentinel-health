@@ -25,10 +25,11 @@ export default function useDailyMetrics(rangeDays = 30, refreshKey = 0) {
 
         // Fallback to simple RPCs/aggregations if the views/tables aren't there yet
         if (error) {
-          let g = [], s = [], m = [];
+          let g = [], s = [], m = [], p = [];
           try { ({ data: g = [] } = await supabase.rpc("dm_glucose_simple", { days: rangeDays })); } catch {}
           try { ({ data: s = [] } = await supabase.rpc("dm_sleep_simple",   { days: rangeDays })); } catch {}
           try { ({ data: m = [] } = await supabase.rpc("dm_migraine_simple",{ days: rangeDays })); } catch {}
+          try { ({ data: p = [] } = await supabase.rpc("dm_pain_simple",{ days: rangeDays })); } catch {}
 
           const byDay = new Map();
 
@@ -46,6 +47,17 @@ export default function useDailyMetrics(rangeDays = 30, refreshKey = 0) {
             let d = byDay.get(r.day);
             if (!d) { d = { day: r.day }; byDay.set(r.day, d); }
             Object.assign(d, { avg_pain: r.avg_pain, migraine_count: r.migraine_count });
+          });
+
+          (p || []).forEach(r => {
+            let d = byDay.get(r.day);
+            if (!d) { d = { day: r.day }; byDay.set(r.day, d); }
+            // If we already have pain from migraines, average them together
+            if (d.avg_pain !== undefined) {
+              d.avg_pain = (d.avg_pain + r.avg_pain) / 2;
+            } else {
+              Object.assign(d, { avg_pain: r.avg_pain });
+            }
           });
 
           data = Array.from(byDay.values()).sort((a, b) =>
