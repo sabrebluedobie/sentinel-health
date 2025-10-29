@@ -1,5 +1,11 @@
 // api/nightscout/sync.js
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 /**
  * Sync/pull recent entries from Nightscout
@@ -14,16 +20,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    const nightscoutUrl = process.env.NIGHTSCOUT_URL;
-    const apiSecret = process.env.NIGHTSCOUT_API_SECRET;
+    // Get user from authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
 
-    // Validate environment variables
-    if (!nightscoutUrl || !apiSecret) {
-      return res.status(500).json({ 
+    const token = authHeader.substring(7);
+    
+    // Verify the token and get user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return res.status(401).json({ ok: false, error: 'Invalid token' });
+    }
+
+    // Get user's Nightscout connection
+    const { data: connection, error: connError } = await supabase
+      .from('nightscout_connections')
+      .select('nightscout_url, api_secret, is_active')
+      .eq('user_id', user.id)
+      .single();
+
+    if (connError || !connection) {
+      return res.status(404).json({ 
         ok: false, 
         error: 'Nightscout not configured' 
       });
     }
+
+    if (!connection.is_active) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Nightscout connection is disabled' 
+      });
+    }
+
+    const nightscoutUrl = connection.nightscout_url;
+    const apiSecret = connection.api_secret;
 
     // Hash the API secret
     const hashedSecret = crypto
