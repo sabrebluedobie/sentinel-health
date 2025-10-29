@@ -30,7 +30,7 @@ export default function TopNav({ showTabs = true }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+    <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70 overflow-visible">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <img src="/migraine-icon.png" alt="Sentrya Migraine Tracker" className="h-8 w-auto" />
@@ -41,7 +41,7 @@ export default function TopNav({ showTabs = true }) {
         </div>
 
         {showTabs && (
-          <nav className="ml-auto flex items-center gap-4 w-full overflow-x-auto">
+          <nav className="ml-auto flex items-center gap-4 w-full overflow-x-auto overflow-y-visible">
             <ul className="flex shrink-0 items-center gap-2">
               {tabs.map((t) => (
                 <li key={t.to} className="shrink-0">
@@ -79,7 +79,7 @@ export default function TopNav({ showTabs = true }) {
                 </button>
                 
                 {isHealthDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
+                  <div className="absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
                     <ul className="py-1">
                       {healthOptions.map((option) => (
                         <li key={option.to}>

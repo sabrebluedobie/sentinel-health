@@ -14,7 +14,7 @@ export default function SignIn() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       }
     });
   }, [navigate]);
@@ -32,7 +32,7 @@ export default function SignIn() {
       return;
     }
 
-    const from = location.state?.from?.pathname || "/dashboard";
+    const from = location.state?.from?.pathname || "/";
     navigate(from, { replace: true });
   }
 
