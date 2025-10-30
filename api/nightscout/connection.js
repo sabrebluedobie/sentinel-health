@@ -79,19 +79,45 @@ export default async function handler(req, res) {
     // Encrypt the API secret for storage
     const encryptedSecret = encrypt(api_secret);
 
-    // Save to database (upsert to handle updates)
-    const { data, error: dbError } = await supabase
+    // Check if connection already exists
+    const { data: existing } = await supabase
       .from('nightscout_connections')
-      .upsert({
-        user_id: user_id,
-        nightscout_url: cleanUrl,
-        encrypted_api_secret: encryptedSecret,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
-      .select()
+      .select('id')
+      .eq('user_id', user_id)
       .single();
+
+    let data, dbError;
+
+    if (existing) {
+      // Update existing connection
+      const result = await supabase
+        .from('nightscout_connections')
+        .update({
+          nightscout_url: cleanUrl,
+          encrypted_api_secret: encryptedSecret,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user_id)
+        .select()
+        .single();
+      
+      data = result.data;
+      dbError = result.error;
+    } else {
+      // Insert new connection
+      const result = await supabase
+        .from('nightscout_connections')
+        .insert({
+          user_id: user_id,
+          nightscout_url: cleanUrl,
+          encrypted_api_secret: encryptedSecret
+        })
+        .select()
+        .single();
+      
+      data = result.data;
+      dbError = result.error;
+    }
 
     if (dbError) {
       console.error('Database error:', dbError);
