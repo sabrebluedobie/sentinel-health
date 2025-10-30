@@ -1,95 +1,70 @@
-// api/nightscout/test.js
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Test Nightscout connection using user's stored credentials
- * GET /api/nightscout/test
- */
 export default async function handler(req, res) {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
-    // Get user from authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    // Get credentials from environment variables (your testing)
+    // OR from request body (user's credentials)
+    let nightscoutUrl, apiSecret;
+
+    if (req.method === 'POST' && req.body) {
+      nightscoutUrl = req.body.nightscout_url;
+      apiSecret = req.body.api_secret;
+    } else {
+      nightscoutUrl = process.env.VITE_NIGHTSCOUT_URL;
+      apiSecret = process.env.VITE_NIGHTSCOUT_API_SECRET;
     }
 
-    const token = authHeader.substring(7);
-    
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return res.status(401).json({ ok: false, error: 'Invalid token' });
-    }
-
-    // Get user's Nightscout connection
-    const { data: connection, error: connError } = await supabase
-      .from('nightscout_connections')
-      .select('nightscout_url, api_secret, is_active')
-      .eq('user_id', user.id)
-      .single();
-
-    if (connError || !connection) {
-      return res.status(404).json({ 
-        ok: false, 
-        error: 'Nightscout not configured. Add your credentials in Settings.' 
-      });
-    }
-
-    if (!connection.is_active) {
+    if (!nightscoutUrl || !apiSecret) {
       return res.status(400).json({ 
-        ok: false, 
-        error: 'Nightscout connection is disabled' 
+        ok: false,
+        error: 'Nightscout not configured' 
       });
     }
 
-    const nightscoutUrl = connection.nightscout_url;
-    const apiSecret = connection.api_secret;
-
-    // Hash the API secret (Nightscout requires SHA1 hash)
+    // Hash the API secret
     const hashedSecret = crypto
       .createHash('sha1')
       .update(apiSecret)
       .digest('hex');
 
-    // Test connection to Nightscout status endpoint
+    // Test connection
     const response = await fetch(`${nightscoutUrl}/api/v1/status`, {
       headers: {
         'API-SECRET': hashedSecret,
-        'Content-Type': 'application/json'
+        'Accept': 'application/json'
       }
     });
 
     if (!response.ok) {
-      throw new Error(`Nightscout returned ${response.status}: ${response.statusText}`);
+      return res.status(401).json({ 
+        ok: false,
+        error: 'Connection test failed'
+      });
     }
 
-    const data = await response.json();
+    const status = await response.json();
 
-    return res.status(200).json({
+    return res.status(200).json({ 
       ok: true,
-      message: 'Nightscout connection successful',
-      version: data.version || 'unknown',
-      serverTime: data.serverTime,
-      status: data.status
+      version: status.version,
+      serverName: status.name || 'Nightscout',
+      data: status
     });
 
   } catch (error) {
     console.error('Nightscout test error:', error);
-    return res.status(500).json({
+    return res.status(500).json({ 
       ok: false,
-      error: error.message || 'Failed to connect to Nightscout'
+      error: 'Test failed',
+      details: error.message 
     });
   }
 }

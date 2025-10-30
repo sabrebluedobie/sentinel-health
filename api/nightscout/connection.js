@@ -1,9 +1,6 @@
-// api/nightscout/connection.js
-const fetch = require('node-fetch');
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -13,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
   try {
@@ -26,7 +23,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Hash the API secret (Nightscout uses SHA1)
+    // Hash the API secret with SHA1
     const hashedSecret = crypto
       .createHash('sha1')
       .update(api_secret)

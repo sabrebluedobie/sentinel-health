@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/nightscout/:path*", "destination": "/api/nightscout/:path*" },
     { "source": "/api/(.*)", "destination": "/api/router.js" },
     { "source": "/(.*)", "destination": "/" }
   ]

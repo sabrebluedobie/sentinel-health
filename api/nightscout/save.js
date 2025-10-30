@@ -1,199 +1,103 @@
-// api/nightscout/save.js
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Save data to Nightscout (glucose readings, migraines, notes)
- * POST /api/nightscout/save
- * 
- * Body formats:
- * Glucose: { kind: 'glucose', value_mgdl, time, reading_type, trend?, note? }
- * Migraine: { kind: 'migraine', start_time, end_time?, severity?, triggers?, meds_taken?, notes? }
- * Note: { kind: 'note', title?, notes, start_time? }
- */
 export default async function handler(req, res) {
-  // Only allow POST requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
   try {
-    // Get user from authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
+    const { kind, nightscout_url, api_secret, ...data } = req.body;
 
-    const token = authHeader.substring(7);
-    
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return res.status(401).json({ ok: false, error: 'Invalid token' });
-    }
+    // Use env vars if not provided
+    const nsUrl = nightscout_url || process.env.VITE_NIGHTSCOUT_URL;
+    const nsSecret = api_secret || process.env.VITE_NIGHTSCOUT_API_SECRET;
 
-    // Get user's Nightscout connection
-    const { data: connection, error: connError } = await supabase
-      .from('nightscout_connections')
-      .select('nightscout_url, api_secret, is_active')
-      .eq('user_id', user.id)
-      .single();
-
-    if (connError || !connection) {
-      return res.status(404).json({ 
-        ok: false, 
-        error: 'Nightscout not configured' 
-      });
-    }
-
-    if (!connection.is_active) {
+    if (!nsUrl || !nsSecret) {
       return res.status(400).json({ 
-        ok: false, 
-        error: 'Nightscout connection is disabled' 
+        ok: false,
+        error: 'Missing Nightscout credentials' 
       });
     }
-
-    const nightscoutUrl = connection.nightscout_url;
-    const apiSecret = connection.api_secret;
 
     // Hash the API secret
     const hashedSecret = crypto
       .createHash('sha1')
-      .update(apiSecret)
+      .update(nsSecret)
       .digest('hex');
 
-    const { kind, ...data } = req.body;
+    let treatment = {};
 
-    if (!kind) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Missing "kind" field (glucose, migraine, or note)' 
-      });
+    // Format based on kind
+    if (kind === 'glucose') {
+      treatment = {
+        type: 'sgv',
+        sgv: data.value_mgdl,
+        date: new Date(data.time).getTime(),
+        dateString: new Date(data.time).toISOString(),
+        device: 'Sentinel Health',
+        notes: data.note || ''
+      };
+    } else if (kind === 'migraine') {
+      treatment = {
+        eventType: 'Note',
+        created_at: new Date(data.start_time).toISOString(),
+        notes: `Migraine - Severity: ${data.severity || 'N/A'}`,
+        duration: data.end_time ? Math.round((new Date(data.end_time) - new Date(data.start_time)) / 60000) : null,
+        enteredBy: 'Sentinel Health'
+      };
+      if (data.triggers) treatment.notes += `\nTriggers: ${data.triggers}`;
+      if (data.meds_taken) treatment.notes += `\nMeds: ${data.meds_taken}`;
+    } else if (kind === 'note') {
+      treatment = {
+        eventType: 'Note',
+        created_at: data.start_time ? new Date(data.start_time).toISOString() : new Date().toISOString(),
+        notes: data.notes || '',
+        enteredBy: 'Sentinel Health'
+      };
     }
 
-    let endpoint, payload;
-
-    switch (kind) {
-      case 'glucose': {
-        // Save glucose reading to /api/v1/entries
-        endpoint = '/api/v1/entries';
-        
-        const { value_mgdl, time, reading_type, trend, note } = data;
-        
-        if (!value_mgdl || !time) {
-          return res.status(400).json({ 
-            ok: false, 
-            error: 'Missing required fields: value_mgdl, time' 
-          });
-        }
-
-        payload = {
-          type: reading_type || 'sgv', // sgv = CGM, mbg = finger stick
-          sgv: value_mgdl,
-          date: new Date(time).getTime(),
-          dateString: new Date(time).toISOString(),
-          direction: trend || 'Flat',
-          device: 'Sentrya',
-          ...(note && { notes: note })
-        };
-        break;
-      }
-
-      case 'migraine': {
-        // Save migraine as treatment to /api/v1/treatments
-        endpoint = '/api/v1/treatments';
-        
-        const { start_time, end_time, severity, triggers, meds_taken, notes } = data;
-        
-        if (!start_time) {
-          return res.status(400).json({ 
-            ok: false, 
-            error: 'Missing required field: start_time' 
-          });
-        }
-
-        const duration = end_time 
-          ? Math.round((new Date(end_time) - new Date(start_time)) / 60000) // minutes
-          : undefined;
-
-        let notesText = `Migraine${severity ? ` (Severity: ${severity}/10)` : ''}`;
-        if (triggers) notesText += `\nTriggers: ${triggers}`;
-        if (meds_taken) notesText += `\nMeds: ${meds_taken}`;
-        if (notes) notesText += `\n${notes}`;
-
-        payload = {
-          eventType: 'Migraine',
-          created_at: new Date(start_time).toISOString(),
-          notes: notesText,
-          ...(duration && { duration }),
-          enteredBy: 'Sentrya'
-        };
-        break;
-      }
-
-      case 'note': {
-        // Save general note as treatment
-        endpoint = '/api/v1/treatments';
-        
-        const { title, notes, start_time } = data;
-        
-        if (!notes) {
-          return res.status(400).json({ 
-            ok: false, 
-            error: 'Missing required field: notes' 
-          });
-        }
-
-        payload = {
-          eventType: 'Note',
-          created_at: new Date(start_time || Date.now()).toISOString(),
-          notes: title ? `${title}\n${notes}` : notes,
-          enteredBy: 'Sentrya'
-        };
-        break;
-      }
-
-      default:
-        return res.status(400).json({ 
-          ok: false, 
-          error: `Unknown kind: ${kind}. Use glucose, migraine, or note` 
-        });
-    }
-
-    // Send to Nightscout
-    const response = await fetch(`${nightscoutUrl}${endpoint}`, {
+    // Save to Nightscout
+    const response = await fetch(`${nsUrl}/api/v1/treatments`, {
       method: 'POST',
       headers: {
         'API-SECRET': hashedSecret,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify([treatment])
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Nightscout error ${response.status}: ${errorText}`);
+      return res.status(response.status).json({ 
+        ok: false,
+        error: 'Failed to save to Nightscout',
+        details: errorText
+      });
     }
 
     const result = await response.json();
 
-    return res.status(200).json({
+    return res.status(200).json({ 
       ok: true,
-      message: `${kind} saved to Nightscout`,
-      id: result._id || result.id
+      saved: result.length || 1,
+      data: result
     });
 
   } catch (error) {
     console.error('Nightscout save error:', error);
-    return res.status(500).json({
+    return res.status(500).json({ 
       ok: false,
-      error: error.message || 'Failed to save to Nightscout'
+      error: 'Save failed',
+      details: error.message 
     });
   }
 }

@@ -1,114 +1,64 @@
-// api/nightscout/sync.js
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Sync/pull recent entries from Nightscout
- * GET /api/nightscout/sync?count=50
- * 
- * Returns recent glucose entries from Nightscout
- */
 export default async function handler(req, res) {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
-    // Get user from authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-
-    const token = authHeader.substring(7);
+    const count = parseInt(req.query.count) || 50;
     
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return res.status(401).json({ ok: false, error: 'Invalid token' });
-    }
+    // Get credentials
+    const nsUrl = process.env.VITE_NIGHTSCOUT_URL;
+    const nsSecret = process.env.VITE_NIGHTSCOUT_API_SECRET;
 
-    // Get user's Nightscout connection
-    const { data: connection, error: connError } = await supabase
-      .from('nightscout_connections')
-      .select('nightscout_url, api_secret, is_active')
-      .eq('user_id', user.id)
-      .single();
-
-    if (connError || !connection) {
-      return res.status(404).json({ 
-        ok: false, 
+    if (!nsUrl || !nsSecret) {
+      return res.status(400).json({ 
+        ok: false,
         error: 'Nightscout not configured' 
       });
     }
 
-    if (!connection.is_active) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Nightscout connection is disabled' 
-      });
-    }
-
-    const nightscoutUrl = connection.nightscout_url;
-    const apiSecret = connection.api_secret;
-
     // Hash the API secret
     const hashedSecret = crypto
       .createHash('sha1')
-      .update(apiSecret)
+      .update(nsSecret)
       .digest('hex');
 
-    // Get count from query params (default: 50, max: 1000)
-    const count = Math.min(parseInt(req.query.count) || 50, 1000);
-
-    // Fetch entries from Nightscout
-    const response = await fetch(
-      `${nightscoutUrl}/api/v1/entries.json?count=${count}`,
-      {
-        headers: {
-          'API-SECRET': hashedSecret,
-          'Content-Type': 'application/json'
-        }
+    // Fetch treatments from Nightscout
+    const response = await fetch(`${nsUrl}/api/v1/treatments?count=${count}`, {
+      headers: {
+        'API-SECRET': hashedSecret,
+        'Accept': 'application/json'
       }
-    );
+    });
 
     if (!response.ok) {
-      throw new Error(`Nightscout returned ${response.status}: ${response.statusText}`);
+      return res.status(response.status).json({ 
+        ok: false,
+        error: 'Failed to fetch from Nightscout',
+        details: await response.text()
+      });
     }
 
-    const entries = await response.json();
+    const treatments = await response.json();
 
-    // Transform Nightscout entries to Sentrya format
-    const transformed = entries.map(entry => ({
-      // Nightscout uses Unix timestamp (ms)
-      time: new Date(entry.date).toISOString(),
-      value_mgdl: entry.sgv || entry.mbg,
-      reading_type: entry.type === 'mbg' ? 'fingerstick' : 'cgm',
-      trend: entry.direction || null,
-      note: entry.notes || null,
-      device: entry.device || 'Nightscout',
-      nightscout_id: entry._id
-    }));
-
-    return res.status(200).json({
+    return res.status(200).json({ 
       ok: true,
-      message: `Synced ${transformed.length} entries from Nightscout`,
-      count: transformed.length,
-      data: transformed
+      data: treatments,
+      count: treatments.length
     });
 
   } catch (error) {
     console.error('Nightscout sync error:', error);
-    return res.status(500).json({
+    return res.status(500).json({ 
       ok: false,
-      error: error.message || 'Failed to sync from Nightscout'
+      error: 'Sync failed',
+      details: error.message 
     });
   }
 }
