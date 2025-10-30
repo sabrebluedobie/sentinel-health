@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Database, Heart, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useNightscout } from '../hooks/useNightscout';
 import { supabase } from '../lib/supabase';
+import NightscoutSettings from '../components/NightscoutSettings';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -156,6 +157,8 @@ const HealthAppSettings = () => {
         {activeTab === 'nightscout' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Nightscout Pro Integration</h2>
+
+            <NightscoutSettings />
             
             <div className="bg-blue-50 p-6 rounded-lg">
               <div className="flex items-center mb-4">
