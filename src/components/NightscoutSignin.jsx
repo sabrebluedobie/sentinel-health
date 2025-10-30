@@ -19,31 +19,11 @@ export default function NightscoutSignin() {
       if (user) {
         setUserId(user.id);
         setEmail(user.email || "");
-        checkExistingConnection(user.id);
+        // Removed checkExistingConnection call to avoid 406 RLS errors
+        // User can manually test connection after page loads
       }
     });
   }, []);
-
-  async function checkExistingConnection(uid) {
-    try {
-      // Check if user already has a Nightscout connection
-      const { data, error } = await supabase
-        .from('nightscout_connections')
-        .select('nightscout_url')
-        .eq('user_id', uid)
-        .single();
-
-      if (data && !error) {
-        setIsConnected(true);
-        setNightscoutUrl(data.nightscout_url);
-        setStatus("✓ Nightscout connected");
-        setStatusType("success");
-      }
-    } catch (e) {
-      // No connection found, that's okay
-      console.log("No existing connection");
-    }
-  }
 
   async function handleConnect(e) {
     e.preventDefault();
