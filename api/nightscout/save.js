@@ -1,123 +1,102 @@
-import { createClient } from '@supabase/supabase-js';
-
-// CORS headers
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import crypto from 'crypto';
 
 export default async function handler(req, res) {
-  // Handle CORS preflight
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method === 'OPTIONS') {
-    return res.status(200).setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-      .setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-      .json({});
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
   try {
-    const { user_id, entry_type, data } = req.body;
+    const { kind, nightscout_url, api_secret, ...data } = req.body;
 
-    if (!user_id || !entry_type || !data) {
+    // Use env vars if not provided
+    const nsUrl = nightscout_url || process.env.VITE_NIGHTSCOUT_URL;
+    const nsSecret = api_secret || process.env.VITE_NIGHTSCOUT_API_SECRET;
+
+    if (!nsUrl || !nsSecret) {
       return res.status(400).json({ 
-        error: 'Missing required fields: user_id, entry_type, data' 
+        ok: false,
+        error: 'Missing Nightscout credentials' 
       });
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
+    // Hash the API secret
+    const hashedSecret = crypto
+      .createHash('sha1')
+      .update(nsSecret)
+      .digest('hex');
 
-    // Get user's Nightscout connection
-    const { data: connection, error: connectionError } = await supabase
-      .from('nightscout_connections')
-      .select('nightscout_url, api_secret')
-      .eq('user_id', user_id)
-      .single();
+    let treatment = {};
 
-    if (connectionError || !connection) {
-      return res.status(404).json({ 
-        error: 'No Nightscout connection found for this user' 
-      });
-    }
-
-    // Prepare the entry based on type
-    let endpoint = '';
-    let payload = {};
-
-    if (entry_type === 'glucose') {
-      // Save glucose reading as an entry
-      endpoint = '/api/v1/entries.json';
-      payload = {
+    // Format based on kind
+    if (kind === 'glucose') {
+      treatment = {
         type: 'sgv',
-        sgv: data.glucose_value,
-        date: new Date(data.timestamp).getTime(),
-        dateString: new Date(data.timestamp).toISOString(),
-        direction: data.direction || 'Flat',
-        device: 'Sentrya',
+        sgv: data.value_mgdl,
+        date: new Date(data.time).getTime(),
+        dateString: new Date(data.time).toISOString(),
+        device: 'Sentinel Health',
+        notes: data.note || ''
       };
-    } else if (entry_type === 'migraine') {
-      // Save migraine as a treatment/note
-      endpoint = '/api/v1/treatments.json';
-      payload = {
+    } else if (kind === 'migraine') {
+      treatment = {
         eventType: 'Note',
-        notes: `Migraine: ${data.severity} severity${data.notes ? ' - ' + data.notes : ''}`,
-        created_at: new Date(data.timestamp).toISOString(),
-        enteredBy: 'Sentrya',
+        created_at: new Date(data.start_time).toISOString(),
+        notes: `Migraine - Severity: ${data.severity || 'N/A'}`,
+        duration: data.end_time ? Math.round((new Date(data.end_time) - new Date(data.start_time)) / 60000) : null,
+        enteredBy: 'Sentinel Health'
       };
-    } else if (entry_type === 'note') {
-      // Save general health note
-      endpoint = '/api/v1/treatments.json';
-      payload = {
+      if (data.triggers) treatment.notes += `\nTriggers: ${data.triggers}`;
+      if (data.meds_taken) treatment.notes += `\nMeds: ${data.meds_taken}`;
+    } else if (kind === 'note') {
+      treatment = {
         eventType: 'Note',
-        notes: data.notes || data.content,
-        created_at: new Date(data.timestamp || new Date()).toISOString(),
-        enteredBy: 'Sentrya',
+        created_at: data.start_time ? new Date(data.start_time).toISOString() : new Date().toISOString(),
+        notes: data.notes || '',
+        enteredBy: 'Sentinel Health'
       };
-    } else {
-      return res.status(400).json({ 
-        error: 'Invalid entry_type. Must be: glucose, migraine, or note' 
-      });
     }
 
-    // Send to Nightscout - api_secret is already hashed in database
-    const nsUrl = `${connection.nightscout_url}${endpoint}`;
-    const response = await fetch(nsUrl, {
+    // Save to Nightscout
+    const response = await fetch(`${nsUrl}/api/v1/treatments`, {
       method: 'POST',
       headers: {
+        'API-SECRET': hashedSecret,
         'Content-Type': 'application/json',
-        'API-SECRET': connection.api_secret, // Already hashed
+        'Accept': 'application/json'
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify([treatment])
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       return res.status(response.status).json({ 
-        error: `Nightscout API error: ${response.status} ${response.statusText}`,
-        details: errorText 
+        ok: false,
+        error: 'Failed to save to Nightscout',
+        details: errorText
       });
     }
 
     const result = await response.json();
 
     return res.status(200).json({ 
-      success: true,
-      message: `${entry_type} saved to Nightscout successfully`,
-      nightscout_response: result 
+      ok: true,
+      saved: result.length || 1,
+      data: result
     });
 
   } catch (error) {
-    console.error('Error saving to Nightscout:', error);
+    console.error('Nightscout save error:', error);
     return res.status(500).json({ 
-      error: 'Internal server error',
+      ok: false,
+      error: 'Save failed',
       details: error.message 
     });
   }
