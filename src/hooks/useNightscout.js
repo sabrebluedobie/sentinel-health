@@ -11,7 +11,7 @@ export function useNightscout() {
   const [error, setError] = useState(null);
 
   /**
-   * Get user's Nightscout connection settings
+   * Get user's Nightscout connection settings from Supabase directly
    * @returns {Promise<{ok: boolean, connected: boolean, connection?: any, error?: string}>}
    */
   const getConnection = useCallback(async () => {
@@ -19,23 +19,27 @@ export function useNightscout() {
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/nightscout/get-connection', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-      const result = await response.json();
-      
-      if (!result.ok) {
-        throw new Error(result.error || 'Failed to get connection');
+      // Query Supabase directly instead of API route
+      const { data, error: dbError } = await supabase
+        .from('nightscout_connections')
+        .select('nightscout_url, created_at, updated_at')
+        .eq('user_id', user.id)
+        .single();
+
+      if (dbError && dbError.code !== 'PGRST116') {
+        throw dbError;
       }
-      
-      return result;
+
+      return {
+        ok: true,
+        connected: !!data,
+        connection: data || null
+      };
     } catch (err) {
       const message = err.message || 'Failed to get Nightscout connection';
       setError(message);
@@ -57,8 +61,8 @@ export function useNightscout() {
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
@@ -66,18 +70,21 @@ export function useNightscout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ nightscout_url, api_secret })
+        body: JSON.stringify({ 
+          nightscout_url, 
+          api_secret,
+          user_id: user.id
+        })
       });
       
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || result.error) {
         throw new Error(result.error || 'Failed to save connection');
       }
       
-      return result;
+      return { ok: true, connection: result.data };
     } catch (err) {
       const message = err.message || 'Failed to save Nightscout connection';
       setError(message);
@@ -89,30 +96,30 @@ export function useNightscout() {
 
   /**
    * Test Nightscout connection using stored credentials
-   * @returns {Promise<{ok: boolean, version?: string, error?: string}>}
+   * @returns {Promise<{ok: boolean, data?: any, error?: string}>}
    */
   const testConnection = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/nightscout/test', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
+      const response = await fetch(`/api/nightscout/test?user_id=${user.id}`);
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.error || 'Connection test failed');
       }
       
-      return result;
+      return { 
+        ok: true, 
+        data: result.nightscout_status,
+        version: result.nightscout_status?.version 
+      };
     } catch (err) {
       const message = err.message || 'Failed to test Nightscout connection';
       setError(message);
@@ -125,19 +132,18 @@ export function useNightscout() {
   /**
    * Save glucose reading to Nightscout
    * @param {Object} data
-   * @param {number} data.value_mgdl - Glucose value in mg/dL
-   * @param {string} data.time - ISO timestamp
-   * @param {string} data.reading_type - "sgv" (CGM) or "mbg" (finger stick)
-   * @param {string} [data.trend] - Arrow direction (optional)
-   * @param {string} [data.note] - Additional note (optional)
+   * @param {number} data.glucose_value - Glucose value in mg/dL
+   * @param {string} data.timestamp - ISO timestamp
+   * @param {string} [data.direction] - Arrow direction (optional)
+   * @param {string} [data.notes] - Additional note (optional)
    */
   const saveGlucose = useCallback(async (data) => {
     setLoading(true);
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
@@ -145,21 +151,26 @@ export function useNightscout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          kind: 'glucose',
-          ...data
+          user_id: user.id,
+          entry_type: 'glucose',
+          data: {
+            glucose_value: data.glucose_value || data.value_mgdl,
+            timestamp: data.timestamp || data.time,
+            direction: data.direction || data.trend,
+            notes: data.notes || data.note
+          }
         })
       });
       
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || result.error) {
         throw new Error(result.error || 'Failed to save glucose');
       }
       
-      return result;
+      return { ok: true, data: result };
     } catch (err) {
       const message = err.message || 'Failed to save glucose to Nightscout';
       setError(message);
@@ -172,11 +183,8 @@ export function useNightscout() {
   /**
    * Save migraine episode to Nightscout as a Treatment
    * @param {Object} data
-   * @param {string} data.start_time - ISO timestamp
-   * @param {string} [data.end_time] - ISO timestamp (optional)
+   * @param {string} data.timestamp - ISO timestamp
    * @param {number} [data.severity] - 1-10 scale
-   * @param {string} [data.triggers] - Comma-separated triggers
-   * @param {string} [data.meds_taken] - Medications taken
    * @param {string} [data.notes] - Additional notes
    */
   const saveMigraine = useCallback(async (data) => {
@@ -184,8 +192,8 @@ export function useNightscout() {
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
@@ -193,21 +201,25 @@ export function useNightscout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          kind: 'migraine',
-          ...data
+          user_id: user.id,
+          entry_type: 'migraine',
+          data: {
+            timestamp: data.timestamp || data.start_time,
+            severity: data.severity,
+            notes: data.notes
+          }
         })
       });
       
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || result.error) {
         throw new Error(result.error || 'Failed to save migraine');
       }
       
-      return result;
+      return { ok: true, data: result };
     } catch (err) {
       const message = err.message || 'Failed to save migraine to Nightscout';
       setError(message);
@@ -220,17 +232,16 @@ export function useNightscout() {
   /**
    * Save a general note to Nightscout
    * @param {Object} data
-   * @param {string} [data.title] - Note title
    * @param {string} data.notes - Note content
-   * @param {string} [data.start_time] - ISO timestamp (defaults to now)
+   * @param {string} [data.timestamp] - ISO timestamp (defaults to now)
    */
   const saveNote = useCallback(async (data) => {
     setLoading(true);
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
@@ -238,21 +249,24 @@ export function useNightscout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          kind: 'note',
-          ...data
+          user_id: user.id,
+          entry_type: 'note',
+          data: {
+            notes: data.notes,
+            timestamp: data.timestamp || data.start_time || new Date().toISOString()
+          }
         })
       });
       
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || result.error) {
         throw new Error(result.error || 'Failed to save note');
       }
       
-      return result;
+      return { ok: true, data: result };
     } catch (err) {
       const message = err.message || 'Failed to save note to Nightscout';
       setError(message);
@@ -264,34 +278,40 @@ export function useNightscout() {
 
   /**
    * Sync recent entries from Nightscout
-   * @param {number} [count=50] - Number of entries to fetch
+   * @param {number} [days=7] - Number of days to sync
    */
-  const syncEntries = useCallback(async (count = 50) => {
+  const syncEntries = useCallback(async (days = 7) => {
     setLoading(true);
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/nightscout/sync?count=${count}`, {
+      const response = await fetch('/api/nightscout/sync', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          days
+        })
       });
+      
       const result = await response.json();
       
-      if (!result.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.error || 'Sync failed');
       }
       
-      return result.data || [];
+      return result.synced || 0;
     } catch (err) {
       const message = err.message || 'Failed to sync from Nightscout';
       setError(message);
-      return [];
+      throw err;
     } finally {
       setLoading(false);
     }
