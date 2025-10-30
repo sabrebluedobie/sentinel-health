@@ -1,272 +1,296 @@
-// src/components/NightscoutSettings.jsx
-import { useState, useEffect } from 'react';
-import { useNightscout } from '../hooks/useNightscout';
+// src/components/NightscoutSignin.jsx
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Database, CheckCircle, XCircle, Loader } from 'lucide-react';
 
-export default function NightscoutSettings() {
-  const { 
-    loading, 
-    error, 
-    getConnection, 
-    saveConnection, 
-    testConnection 
-  } = useNightscout();
-
-  const [formData, setFormData] = useState({
-    nightscout_url: '',
-    api_secret: ''
-  });
-  const [connectionStatus, setConnectionStatus] = useState(null);
-  const [testResult, setTestResult] = useState(null);
+export default function NightscoutSignin() {
+  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
+  const [nightscoutUrl, setNightscoutUrl] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+  const [status, setStatus] = useState("");
+  const [statusType, setStatusType] = useState(""); // 'success', 'error', 'loading'
   const [isConnected, setIsConnected] = useState(false);
 
-  // Check for existing connection on mount
   useEffect(() => {
-    checkConnection();
+    // Get the logged-in user
+    supabase.auth.getUser().then(({ data }) => {
+      const user = data?.user;
+      if (user) {
+        setUserId(user.id);
+        setEmail(user.email || "");
+        checkExistingConnection(user.id);
+      }
+    });
   }, []);
 
-  const checkConnection = async () => {
-    const result = await getConnection();
-    if (result.ok && result.connected) {
-      setIsConnected(true);
-      setConnectionStatus({
-        type: 'success',
-        message: `Connected to ${result.connection?.nightscout_url || 'Nightscout'}`
-      });
+  async function checkExistingConnection(uid) {
+    try {
+      // Check if user already has a Nightscout connection
+      const { data, error } = await supabase
+        .from('nightscout_connections')
+        .select('nightscout_url')
+        .eq('user_id', uid)
+        .single();
+
+      if (data && !error) {
+        setIsConnected(true);
+        setNightscoutUrl(data.nightscout_url);
+        setStatus("✓ Nightscout connected");
+        setStatusType("success");
+      }
+    } catch (e) {
+      // No connection found, that's okay
+      console.log("No existing connection");
     }
-  };
+  }
 
-  const handleSubmit = async (e) => {
+  async function handleConnect(e) {
     e.preventDefault();
-    setConnectionStatus(null);
-    setTestResult(null);
-
-    if (!formData.nightscout_url || !formData.api_secret) {
-      setConnectionStatus({
-        type: 'error',
-        message: 'Please fill in both fields'
-      });
+    
+    if (!nightscoutUrl || !apiSecret || !userId) {
+      setStatus("Please fill in all fields");
+      setStatusType("error");
       return;
     }
 
-    const result = await saveConnection(formData);
-    
-    if (result.ok) {
-      setIsConnected(true);
-      setConnectionStatus({
-        type: 'success',
-        message: 'Nightscout connection saved successfully!'
-      });
-      // Clear the API secret from form for security
-      setFormData(prev => ({ ...prev, api_secret: '' }));
-    } else {
-      setConnectionStatus({
-        type: 'error',
-        message: result.error || 'Failed to save connection'
-      });
-    }
-  };
+    setStatus("Connecting to Nightscout...");
+    setStatusType("loading");
 
-  const handleTest = async () => {
-    setTestResult(null);
-    const result = await testConnection();
-    
-    if (result.ok) {
-      setTestResult({
-        type: 'success',
-        message: `✓ Connected to Nightscout v${result.version || 'unknown'}`
+    try {
+      const res = await fetch("/api/nightscout/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nightscout_url: nightscoutUrl,
+          api_secret: apiSecret,
+          user_id: userId,
+        }),
       });
-    } else {
-      setTestResult({
-        type: 'error',
-        message: result.error || 'Connection test failed'
-      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Failed to connect to Nightscout");
+      }
+
+      setStatus("✓ Connected successfully! Your credentials are saved and encrypted.");
+      setStatusType("success");
+      setIsConnected(true);
+      setApiSecret(""); // Clear the secret from the form
+
+    } catch (e) {
+      setStatus("✗ Connection failed: " + (e?.message || String(e)));
+      setStatusType("error");
     }
-  };
+  }
+
+  async function handleTestConnection() {
+    if (!userId) {
+      setStatus("Please log in first");
+      setStatusType("error");
+      return;
+    }
+
+    setStatus("Testing connection...");
+    setStatusType("loading");
+
+    try {
+      const res = await fetch(`/api/nightscout/test?user_id=${userId}`);
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Test failed");
+      }
+
+      setStatus(`✓ Connection successful! Server: ${json.nightscout_status?.name || 'Nightscout'} v${json.nightscout_status?.version || '?'}`);
+      setStatusType("success");
+      setIsConnected(true);
+
+    } catch (e) {
+      setStatus("✗ Test failed: " + (e?.message || String(e)));
+      setStatusType("error");
+    }
+  }
+
+  async function handleSync() {
+    if (!userId) {
+      setStatus("Please log in first");
+      setStatusType("error");
+      return;
+    }
+
+    setStatus("Syncing glucose data from Nightscout...");
+    setStatusType("loading");
+
+    try {
+      const res = await fetch("/api/nightscout/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          days: 7, // Last 7 days
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Sync failed");
+      }
+
+      setStatus(`✓ Successfully synced ${json.synced} glucose readings from the last 7 days!`);
+      setStatusType("success");
+
+    } catch (e) {
+      setStatus("✗ Sync failed: " + (e?.message || String(e)));
+      setStatusType("error");
+    }
+  }
 
   return (
-    <div className="nightscout-settings">
-      <h2>Nightscout Integration</h2>
-      
-      {isConnected && (
-        <div className="alert alert-success">
-          <p>✓ Nightscout is connected</p>
-          <button 
-            onClick={handleTest} 
-            disabled={loading}
-            className="btn-secondary"
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center mb-4">
+        <Database className="text-blue-600 mr-3" size={24} />
+        <h2 className="text-xl font-semibold text-gray-900">Nightscout Pro Integration</h2>
+      </div>
+
+      <p className="text-sm text-gray-600 mb-6">
+        Connect your Nightscout instance to sync glucose readings and view correlations with migraines.
+      </p>
+
+      {email && (
+        <div className="text-sm text-gray-500 mb-4">
+          Signed in as <span className="font-medium">{email}</span>
+        </div>
+      )}
+
+      {!isConnected ? (
+        <form onSubmit={handleConnect} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nightscout URL
+            </label>
+            <input
+              type="url"
+              value={nightscoutUrl}
+              onChange={(e) => setNightscoutUrl(e.target.value)}
+              placeholder="e.g., https://your-site.herokuapp.com or https://your-site.vercel.app"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              (e.g., https://your-site.herokuapp.com or https://your-site.nightscoutpro.com)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              API Secret
+            </label>
+            <input
+              type="password"
+              value={apiSecret}
+              onChange={(e) => setApiSecret(e.target.value)}
+              placeholder="Your Nightscout API secret - found in your Nightscout settings"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Your API secret will be encrypted and securely stored
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={statusType === "loading"}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            Test Connection
+            {statusType === "loading" ? (
+              <>
+                <Loader className="animate-spin mr-2" size={16} />
+                Connecting...
+              </>
+            ) : (
+              "Connect Nightscout"
+            )}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-md p-4">
+            <div className="flex items-center text-green-800">
+              <CheckCircle className="mr-2" size={20} />
+              <span className="text-sm font-medium">Connected to: {nightscoutUrl}</span>
+            </div>
+          </div>
+
+          <div className="flex space-x-3">
+            <button
+              onClick={handleTestConnection}
+              disabled={statusType === "loading"}
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {statusType === "loading" ? (
+                <>
+                  <Loader className="animate-spin mr-2" size={16} />
+                  Testing...
+                </>
+              ) : (
+                "Test Connection"
+              )}
+            </button>
+
+            <button
+              onClick={handleSync}
+              disabled={statusType === "loading"}
+              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {statusType === "loading" ? (
+                <>
+                  <Loader className="animate-spin mr-2" size={16} />
+                  Syncing...
+                </>
+              ) : (
+                "Sync Data"
+              )}
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              setIsConnected(false);
+              setNightscoutUrl("");
+              setStatus("");
+            }}
+            className="text-sm text-red-600 hover:text-red-700 font-medium"
+          >
+            Disconnect & Update Connection
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="nightscout-form">
-        <div className="form-group">
-          <label htmlFor="nightscout_url">
-            Nightscout URL
-            <span className="help-text">
-              (e.g., https://your-site.herokuapp.com or https://your-site.vercel.app)
-            </span>
-          </label>
-          <input
-            type="url"
-            id="nightscout_url"
-            value={formData.nightscout_url}
-            onChange={(e) => setFormData(prev => ({ 
-              ...prev, 
-              nightscout_url: e.target.value 
-            }))}
-            placeholder="https://your-nightscout-site.com"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="api_secret">
-            API Secret
-            <span className="help-text">
-              (Your Nightscout API secret - found in your Nightscout settings)
-            </span>
-          </label>
-          <input
-            type="password"
-            id="api_secret"
-            value={formData.api_secret}
-            onChange={(e) => setFormData(prev => ({ 
-              ...prev, 
-              api_secret: e.target.value 
-            }))}
-            placeholder="Enter your API secret"
-            disabled={loading}
-          />
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="btn-primary"
+      {/* Status Message */}
+      {status && (
+        <div
+          className={`mt-4 p-4 rounded-md flex items-center ${
+            statusType === "success"
+              ? "bg-green-50 text-green-800"
+              : statusType === "error"
+              ? "bg-red-50 text-red-800"
+              : "bg-gray-50 text-gray-800"
+          }`}
         >
-          {loading ? 'Connecting...' : isConnected ? 'Update Connection' : 'Connect Nightscout'}
-        </button>
-      </form>
-
-      {connectionStatus && (
-        <div className={`alert alert-${connectionStatus.type}`}>
-          {connectionStatus.message}
+          {statusType === "loading" ? (
+            <Loader className="animate-spin mr-2" size={20} />
+          ) : statusType === "success" ? (
+            <CheckCircle className="mr-2" size={20} />
+          ) : statusType === "error" ? (
+            <XCircle className="mr-2" size={20} />
+          ) : null}
+          <span className="text-sm">{status}</span>
         </div>
       )}
-
-      {testResult && (
-        <div className={`alert alert-${testResult.type}`}>
-          {testResult.message}
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
-
-      <style jsx>{`
-        .nightscout-settings {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-
-        h2 {
-          margin-bottom: 20px;
-        }
-
-        .nightscout-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        label {
-          font-weight: 600;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .help-text {
-          font-size: 0.85rem;
-          font-weight: normal;
-          color: #666;
-        }
-
-        input {
-          padding: 10px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 1rem;
-        }
-
-        input:disabled {
-          background: #f5f5f5;
-          cursor: not-allowed;
-        }
-
-        button {
-          padding: 12px 24px;
-          border: none;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #007bff;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #0056b3;
-        }
-
-        .btn-secondary {
-          background: #6c757d;
-          color: white;
-          margin-top: 10px;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #545b62;
-        }
-
-        button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .alert {
-          padding: 12px;
-          border-radius: 4px;
-          margin-top: 16px;
-        }
-
-        .alert-success {
-          background: #d4edda;
-          color: #155724;
-          border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-          background: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
-        }
-      `}</style>
     </div>
   );
 }
