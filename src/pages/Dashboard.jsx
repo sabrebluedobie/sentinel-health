@@ -7,6 +7,7 @@ import {
 import useDailyMetrics from "@/hooks/useDailyMetrics";
 import useMigraineCorrelations from "@/hooks/useMigraineCorrelations";
 import ChartCard from "@/components/ChartCard.jsx";
+import DetailedGlucoseChart from "@/components/DetailedGlucoseChart";
 
 export default function Dashboard() {
   const [range, setRange] = useState(30);
@@ -78,6 +79,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* NEW: Detailed CGM Chart - Shows all individual readings */}
+      <DetailedGlucoseChart rangeDays={7} />
+
       {/* Three light "box" cards for the logs */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Migraine days */}
@@ -112,8 +116,8 @@ export default function Dashboard() {
           </div>
         </ChartCard>
 
-        {/* Glucose log */}
-        <ChartCard title={`Glucose Log (${range}d)`} subtitle="Average mg/dL per day">
+        {/* Glucose log - DAILY AVERAGES */}
+        <ChartCard title={`Glucose Avg (${range}d)`} subtitle="Average mg/dL per day">
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
