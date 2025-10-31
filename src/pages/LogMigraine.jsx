@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import WeatherWidget from "@/components/WeatherWidget";
 
 function parseCSVToTextArray(input) {
   if (!input || !input.trim()) return [];
@@ -20,6 +21,7 @@ export default function LogMigraine() {
   const [triggers, setTriggers] = useState(""); // csv
   const [medicationTaken, setMedicationTaken] = useState("");
   const [medicationEffective, setMedicationEffective] = useState(false);
+  const [weatherData, setWeatherData] = useState(null);
   const [notes, setNotes] = useState("");
 
   const [busy, setBusy] = useState(false);
@@ -59,17 +61,23 @@ export default function LogMigraine() {
     }
 
     const payload = {
-      user_id: user.id,
-      started_at: dateIso,
-      pain_level: pain_num,
-      duration_hours: dur_num,
-      symptoms: symptomsArr,
-      triggers: triggersArr,
-      medication_taken: medicationTaken || null,
-      medication_effective: !!medicationEffective,
-      source: "manual",
-      notes: notes || null
-    };
+  user_id: user.id,
+  started_at: dateIso,
+  pain_level: pain_num,
+  duration_hours: dur_num,
+  symptoms: symptomsArr,
+  triggers: triggersArr,
+  medication_taken: medicationTaken || null,
+  medication_effective: !!medicationEffective,
+  source: "manual",
+  notes: notes || null,
+  // Include weather data if available
+  weather_temp: weatherData?.temp || null,
+  weather_pressure: weatherData?.pressure || null,
+  weather_humidity: weatherData?.humidity || null,
+  weather_conditions: weatherData?.conditions || null,
+  weather_location: weatherData?.location || null
+};
 
     console.log('Debug - Payload:', payload);
 
@@ -118,6 +126,7 @@ export default function LogMigraine() {
                 onChange={(e) => setDate(e.target.value)}
                 required
               />
+              <WeatherWidget onWeatherData={setWeatherData} />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
