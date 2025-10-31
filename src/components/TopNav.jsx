@@ -1,12 +1,13 @@
 // src/components/TopNav.jsx
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function TopNav({ showTabs = true }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isHealthDropdownOpen, setIsHealthDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const healthTrackingPages = ['/glucose', '/sleep', '/migraine', '/pain'];
   const isHealthPageActive = healthTrackingPages.includes(location.pathname);
@@ -24,6 +25,12 @@ export default function TopNav({ showTabs = true }) {
     { to: "/pain", label: "Pain" },
   ];
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsHealthDropdownOpen(false);
+  }, [location.pathname]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     navigate("/sign-in", { replace: true });
@@ -32,17 +39,19 @@ export default function TopNav({ showTabs = true }) {
   return (
     <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-3 py-2">
+        {/* Logo */}
         <div className="flex min-w-0 items-center gap-2">
           <img src="/migraine-icon.png" alt="Sentrya Migraine Tracker" className="h-8 w-auto" />
-          <div className="truncate text-sm text-slate-600">
+          <div className="hidden sm:block truncate text-sm text-slate-600">
             <span className="font-semibold text-slate-900">Sentrya</span>
             <span className="ml-2">Migraine Tracker</span>
           </div>
         </div>
 
         {showTabs && (
-          <nav className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-2 overflow-x-auto">
+          <>
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex ml-auto items-center gap-2">
               {tabs.map((t) => (
                 <NavLink
                   key={t.to}
@@ -59,10 +68,9 @@ export default function TopNav({ showTabs = true }) {
                   {t.label}
                 </NavLink>
               ))}
-            </div>
               
-            {/* Track Health Dropdown - outside overflow container */}
-            <div className="relative shrink-0">
+              {/* Desktop Track Health Dropdown */}
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
                   onBlur={() => setTimeout(() => setIsHealthDropdownOpen(false), 150)}
@@ -101,17 +109,112 @@ export default function TopNav({ showTabs = true }) {
                     </ul>
                   </div>
                 )}
+              </div>
+              
+              <button
+                onClick={handleSignOut}
+                className="shrink-0 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 transition"
+              >
+                Sign Out
+              </button>
+            </nav>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden ml-auto p-2 text-slate-700 hover:bg-slate-100 rounded-lg transition"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                // X icon
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                // Hamburger icon
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Mobile Menu */}
+      {showTabs && isMobileMenuOpen && (
+        <nav className="lg:hidden border-t bg-white">
+          <div className="mx-auto max-w-6xl px-3 py-3 space-y-1">
+            {/* Main tabs */}
+            {tabs.map((t) => (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                end={t.to === "/"}
+                className={({ isActive }) =>
+                  `block w-full text-left rounded-lg px-4 py-3 text-base transition ${
+                    isActive
+                      ? "bg-slate-900 text-white font-medium"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`
+                }
+              >
+                {t.label}
+              </NavLink>
+            ))}
+            
+            {/* Track Health Section - Mobile Accordion Style */}
+            <div className="border-t pt-2 mt-2">
+              <button
+                onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
+                className={`flex items-center justify-between w-full text-left rounded-lg px-4 py-3 text-base transition ${
+                  isHealthPageActive
+                    ? "bg-slate-900 text-white font-medium"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                <span>Track Health</span>
+                <svg 
+                  className={`h-5 w-5 transition-transform ${isHealthDropdownOpen ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {isHealthDropdownOpen && (
+                <div className="ml-4 mt-1 space-y-1">
+                  {healthOptions.map((option) => (
+                    <NavLink
+                      key={option.to}
+                      to={option.to}
+                      className={({ isActive }) =>
+                        `block w-full text-left rounded-lg px-4 py-2.5 text-sm transition ${
+                          isActive
+                            ? "bg-slate-100 text-slate-900 font-medium"
+                            : "text-slate-600 hover:bg-slate-50"
+                        }`
+                      }
+                    >
+                      Log {option.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
             </div>
             
+            {/* Sign Out */}
             <button
               onClick={handleSignOut}
-              className="shrink-0 ml-auto rounded-xl border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 transition"
+              className="w-full text-left rounded-lg px-4 py-3 text-base text-red-600 hover:bg-red-50 transition border-t mt-2 pt-3"
             >
               Sign Out
             </button>
-          </nav>
-        )}
-      </div>
+          </div>
+        </nav>
+      )}
     </header>
   );
 }
