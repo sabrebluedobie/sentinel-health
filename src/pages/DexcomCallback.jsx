@@ -1,4 +1,4 @@
-// src/pages/DexcomCallback.jsx
+// src/pages/DexcomCallback.jsx v.1.0.0
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';

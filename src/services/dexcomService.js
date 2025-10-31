@@ -1,4 +1,4 @@
-// src/services/dexcomService.js
+// src/services/dexcomService.js v2.0.0
 import axios from 'axios';
 import { db } from '@/db';
 
