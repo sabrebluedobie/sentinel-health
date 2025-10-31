@@ -5,6 +5,7 @@ import SignIn from "@/pages/SignIn.jsx";
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";
 import LogGlucose from "@/pages/LogGlucose.jsx";
+import DexcomCallback from "@/pages/DexcomCallback.jsx";
 
 export const router = createBrowserRouter([
   { path: "/", element: <App /> },
@@ -12,4 +13,5 @@ export const router = createBrowserRouter([
   { path: "/log-migraine", element: <LogMigraine /> },
   { path: "/log-sleep", element: <LogSleep /> },
   { path: "/log-glucose", element: <LogGlucose /> },
+  { path: "/auth/dexcom/callback", element: <DexcomCallback /> },
 ]);
