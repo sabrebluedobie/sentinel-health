@@ -66,20 +66,18 @@ export default async function handler(req, res) {
     console.log('Nightscout connection successful:', statusData.status);
 
     // Connection test passed - now SAVE to database
+    // Using correct column names: url, api_secret (not nightscout_url)
     console.log(`Saving connection for user: ${user_id}`);
     
     const { data: savedConnection, error: saveError } = await supabase
       .from('nightscout_connections')
       .upsert({
         user_id: user_id,
-        nightscout_url: cleanUrl,
+        url: cleanUrl,  // Changed from nightscout_url to url
         api_secret: hashedSecret,
-        status: 'active',
-        last_sync: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'user_id',
-        returning: 'representation'
+        onConflict: 'user_id'
       })
       .select()
       .single();
@@ -99,9 +97,8 @@ export default async function handler(req, res) {
       message: 'Nightscout connection saved successfully',
       data: {
         id: savedConnection.id,
-        nightscout_url: savedConnection.nightscout_url,
-        status: savedConnection.status,
-        last_sync: savedConnection.last_sync
+        url: savedConnection.url,
+        updated_at: savedConnection.updated_at
       }
     });
 
