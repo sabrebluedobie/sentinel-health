@@ -98,15 +98,15 @@ export default async function handler(req, res) {
     }
 
     // Transform entries to match YOUR actual schema
+    // Removing reading_type to avoid constraint violation
     const glucoseReadings = entries.map(entry => ({
       user_id: user_id,
-      value_mgdl: entry.sgv,                    // Using value_mgdl not reading
-      device_time: new Date(entry.dateString || entry.date).toISOString(),  // Using device_time not timestamp
+      value_mgdl: entry.sgv,
+      device_time: new Date(entry.dateString || entry.date).toISOString(),
       source: 'nightscout',
-      reading_type: 'cgm',                      // Marking as CGM data
-      trend: entry.direction || null,           // Arrow direction (up, down, etc)
+      trend: entry.direction || null,
       note: entry.direction ? `Direction: ${entry.direction}` : null,
-      nightscout_id: entry._id                  // For preventing duplicates
+      nightscout_id: entry._id
     }));
 
     // Use upsert to avoid duplicates based on nightscout_id
