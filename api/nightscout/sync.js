@@ -66,7 +66,6 @@ export default async function handler(req, res) {
     // Fetch glucose entries from last 7 days
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const timestamp = sevenDaysAgo.getTime();
 
     const response = await fetch(
       `${nightscoutUrl}/api/v1/entries.json?find[dateString][$gte]=${sevenDaysAgo.toISOString()}&count=1000`,
@@ -98,17 +97,19 @@ export default async function handler(req, res) {
       });
     }
 
-    // Transform and insert entries into glucose_readings table
+    // Transform entries to match YOUR actual schema
     const glucoseReadings = entries.map(entry => ({
       user_id: user_id,
-      reading: entry.sgv,
-      timestamp: new Date(entry.dateString || entry.date).toISOString(),
+      value_mgdl: entry.sgv,                    // Using value_mgdl not reading
+      device_time: new Date(entry.dateString || entry.date).toISOString(),  // Using device_time not timestamp
       source: 'nightscout',
-      notes: entry.direction ? `Direction: ${entry.direction}` : null,
-      nightscout_id: entry._id
+      reading_type: 'cgm',                      // Marking as CGM data
+      trend: entry.direction || null,           // Arrow direction (up, down, etc)
+      note: entry.direction ? `Direction: ${entry.direction}` : null,
+      nightscout_id: entry._id                  // For preventing duplicates
     }));
 
-    // Use upsert to avoid duplicates (based on nightscout_id if you have that column)
+    // Use upsert to avoid duplicates based on nightscout_id
     const { data: insertedData, error: insertError } = await supabase
       .from('glucose_readings')
       .upsert(glucoseReadings, {
