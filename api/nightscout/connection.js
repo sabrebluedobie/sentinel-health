@@ -11,19 +11,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Encryption setup
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'fallback-key-change-in-production-32ch';
-const ALGORITHM = 'aes-256-cbc';
-
-function encrypt(text) {
-  const key = Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -50,101 +37,79 @@ export default async function handler(req, res) {
     // Clean up the URL (remove trailing slash)
     const cleanUrl = nightscout_url.replace(/\/$/, '');
 
-    // Hash the API secret to test the connection
+    // Hash the API secret for storage and testing
     const hashedSecret = crypto
       .createHash('sha1')
       .update(api_secret)
       .digest('hex');
 
-    // Test the Nightscout connection
+    // Test the Nightscout connection first
     console.log(`Testing connection to: ${cleanUrl}/api/v1/status`);
-    const response = await fetch(`${cleanUrl}/api/v1/status`, {
+    
+    const testResponse = await fetch(`${cleanUrl}/api/v1/status`, {
       headers: {
         'API-SECRET': hashedSecret,
         'Accept': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      console.error('Nightscout test failed:', response.status, await response.text());
+    if (!testResponse.ok) {
+      const errorText = await testResponse.text();
+      console.error('Nightscout test failed:', testResponse.status, errorText);
       return res.status(401).json({ 
         success: false,
-        error: 'Invalid Nightscout URL or API Secret. Please check your credentials.' 
+        error: 'Invalid Nightscout URL or API Secret. Please check your credentials.'
       });
     }
 
-    const status = await response.json();
-    console.log('Nightscout connection successful:', status.name, status.version);
+    const statusData = await testResponse.json();
+    console.log('Nightscout connection successful:', statusData.status);
 
-    // Encrypt the API secret for storage
-    const encryptedSecret = encrypt(api_secret);
-
-    // Check if connection already exists
-    const { data: existing } = await supabase
+    // Connection test passed - now SAVE to database
+    console.log(`Saving connection for user: ${user_id}`);
+    
+    const { data: savedConnection, error: saveError } = await supabase
       .from('nightscout_connections')
-      .select('id')
-      .eq('user_id', user_id)
+      .upsert({
+        user_id: user_id,
+        nightscout_url: cleanUrl,
+        api_secret: hashedSecret,
+        status: 'active',
+        last_sync: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id',
+        returning: 'representation'
+      })
+      .select()
       .single();
 
-    let data, dbError;
-
-    if (existing) {
-      // Update existing connection
-      const result = await supabase
-        .from('nightscout_connections')
-        .update({
-          nightscout_url: cleanUrl,
-          encrypted_api_secret: encryptedSecret,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user_id)
-        .select()
-        .single();
-      
-      data = result.data;
-      dbError = result.error;
-    } else {
-      // Insert new connection
-      const result = await supabase
-        .from('nightscout_connections')
-        .insert({
-          user_id: user_id,
-          nightscout_url: cleanUrl,
-          encrypted_api_secret: encryptedSecret
-        })
-        .select()
-        .single();
-      
-      data = result.data;
-      dbError = result.error;
-    }
-
-    if (dbError) {
-      console.error('Database error:', dbError);
+    if (saveError) {
+      console.error('Database save error:', saveError);
       return res.status(500).json({ 
         success: false,
-        error: 'Failed to save connection to database',
-        details: dbError.message 
+        error: `Failed to save connection: ${saveError.message}` 
       });
     }
 
-    console.log('Connection saved to database for user:', user_id);
+    console.log('Connection saved successfully:', savedConnection);
 
     return res.status(200).json({ 
       success: true,
-      connection: {
-        nightscout_url: cleanUrl,
-        server_name: status.name || 'Nightscout',
-        version: status.version
+      message: 'Nightscout connection saved successfully',
+      data: {
+        id: savedConnection.id,
+        nightscout_url: savedConnection.nightscout_url,
+        status: savedConnection.status,
+        last_sync: savedConnection.last_sync
       }
     });
 
   } catch (error) {
-    console.error('Connection error:', error);
+    console.error('Nightscout connection error:', error);
     return res.status(500).json({ 
       success: false,
-      error: 'Connection failed',
-      details: error.message 
+      error: error.message || 'Failed to save Nightscout connection'
     });
   }
 }
