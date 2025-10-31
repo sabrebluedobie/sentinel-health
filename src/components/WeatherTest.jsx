@@ -1,5 +1,5 @@
 // src/components/WeatherTest.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export default function WeatherTest() {
   const [weather, setWeather] = useState(null);
@@ -7,16 +7,13 @@ export default function WeatherTest() {
   const [error, setError] = useState(null);
   const [location, setLocation] = useState('');
 
-  // Visual Crossing API key
   const API_KEY = 'PMBU4ECCRULKU76FPV2324N8S';
 
-  // Fetch weather data for a given location
   const fetchWeather = async (loc) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Visual Crossing Timeline API endpoint
       const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(loc)}/today?unitGroup=us&key=${API_KEY}&include=current&elements=datetime,temp,feelslike,humidity,precip,precipprob,snow,windspeed,windgust,pressure,cloudcover,conditions,icon`;
       
       const response = await fetch(url);
@@ -26,8 +23,6 @@ export default function WeatherTest() {
       }
       
       const data = await response.json();
-      
-      // Extract current conditions
       const current = data.currentConditions;
       
       setWeather({
@@ -36,7 +31,7 @@ export default function WeatherTest() {
         temp: current.temp,
         feelsLike: current.feelslike,
         humidity: current.humidity,
-        pressure: current.pressure, // in millibars (mb)
+        pressure: current.pressure,
         precipProb: current.precipprob,
         precip: current.precip,
         snow: current.snow,
@@ -54,7 +49,6 @@ export default function WeatherTest() {
     }
   };
 
-  // Get user's location automatically using browser geolocation
   const getCurrentLocationWeather = () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser');
@@ -74,7 +68,6 @@ export default function WeatherTest() {
     );
   };
 
-  // Handle manual location search
   const handleSearch = (e) => {
     e.preventDefault();
     if (location.trim()) {
@@ -83,41 +76,22 @@ export default function WeatherTest() {
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: 20 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-        Weather Test
-      </h1>
+    <div className="max-w-2xl mx-auto p-5">
+      <h1 className="text-2xl font-bold mb-5">Weather Test</h1>
 
-      {/* Location Search */}
-      <div style={{ marginBottom: 20 }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+      <div className="mb-5">
+        <form onSubmit={handleSearch} className="flex gap-2 mb-2">
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Enter city, zip, or address"
-            style={{
-              flex: 1,
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: 14
-            }}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
           />
           <button
             type="submit"
             disabled={loading || !location.trim()}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading || !location.trim() ? 0.5 : 1
-            }}
+            className="px-5 py-2 bg-blue-500 text-white rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600"
           >
             Search
           </button>
@@ -126,232 +100,111 @@ export default function WeatherTest() {
         <button
           onClick={getCurrentLocationWeather}
           disabled={loading}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.5 : 1
-          }}
+          className="px-5 py-2 bg-green-500 text-white rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600"
         >
-          📍 Use My Location
+          Use My Location
         </button>
       </div>
 
-      {/* Loading State */}
       {loading && (
-        <div style={{ 
-          padding: 20, 
-          textAlign: 'center', 
-          backgroundColor: '#f3f4f6', 
-          borderRadius: 8 
-        }}>
+        <div className="p-5 text-center bg-gray-100 rounded-lg">
           <p>Loading weather data...</p>
         </div>
       )}
 
-      {/* Error State */}
       {error && (
-        <div style={{ 
-          padding: 20, 
-          backgroundColor: '#fee2e2', 
-          color: '#991b1b', 
-          borderRadius: 8,
-          marginBottom: 20
-        }}>
-          <p style={{ margin: 0, fontWeight: 500 }}>Error:</p>
-          <p style={{ margin: '5px 0 0 0', fontSize: 14 }}>{error}</p>
+        <div className="p-5 bg-red-100 text-red-900 rounded-lg mb-5">
+          <p className="font-medium mb-0">Error:</p>
+          <p className="text-sm mt-1">{error}</p>
         </div>
       )}
 
-      {/* Weather Display */}
       {weather && !loading && (
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: 12, 
-          padding: 20,
-          backgroundColor: 'white'
-        }}>
-          {/* Location & Conditions */}
-          <div style={{ marginBottom: 20, textAlign: 'center' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 5 }}>
-              {weather.location}
-            </h2>
-            <p style={{ fontSize: 16, color: '#6b7280', marginBottom: 10 }}>
-              {weather.conditions}
-            </p>
-            <div style={{ fontSize: 48, fontWeight: 'bold', color: '#1f2937' }}>
+        <div className="border border-gray-200 rounded-xl p-5 bg-white">
+          <div className="mb-5 text-center">
+            <h2 className="text-xl font-semibold mb-1">{weather.location}</h2>
+            <p className="text-base text-gray-600 mb-2">{weather.conditions}</p>
+            <div className="text-5xl font-bold text-gray-900">
               {Math.round(weather.temp)}°F
             </div>
-            <p style={{ fontSize: 14, color: '#9ca3af' }}>
+            <p className="text-sm text-gray-500">
               Feels like {Math.round(weather.feelsLike)}°F
             </p>
           </div>
 
-          {/* Migraine-Critical Data */}
-          <div style={{ 
-            backgroundColor: '#fef3c7', 
-            border: '2px solid #f59e0b',
-            borderRadius: 8, 
-            padding: 15, 
-            marginBottom: 20 
-          }}>
-            <h3 style={{ 
-              fontSize: 14, 
-              fontWeight: 600, 
-              color: '#92400e', 
-              marginBottom: 10,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              🎯 Migraine Factors
+          <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 mb-5">
+            <h3 className="text-sm font-semibold text-yellow-900 mb-2 uppercase tracking-wide">
+              Migraine Factors
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <p style={{ fontSize: 12, color: '#78350f', marginBottom: 2 }}>
-                  Barometric Pressure
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 600, color: '#92400e', margin: 0 }}>
+                <p className="text-xs text-yellow-800 mb-1">Barometric Pressure</p>
+                <p className="text-lg font-semibold text-yellow-900">
                   {weather.pressure} mb
                 </p>
               </div>
               <div>
-                <p style={{ fontSize: 12, color: '#78350f', marginBottom: 2 }}>
-                  Humidity
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 600, color: '#92400e', margin: 0 }}>
+                <p className="text-xs text-yellow-800 mb-1">Humidity</p>
+                <p className="text-lg font-semibold text-yellow-900">
                   {weather.humidity}%
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Additional Weather Data */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: 15 
-          }}>
-            {/* Wind */}
-            <div style={{ 
-              padding: 12, 
-              backgroundColor: '#f9fafb', 
-              borderRadius: 8 
-            }}>
-              <p style={{ 
-                fontSize: 12, 
-                color: '#6b7280', 
-                marginBottom: 4,
-                fontWeight: 500 
-              }}>
-                💨 Wind Speed
-              </p>
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: 0 }}>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600 mb-1 font-medium">Wind Speed</p>
+              <p className="text-base font-semibold text-gray-900">
                 {weather.windSpeed} mph
               </p>
               {weather.windGust > weather.windSpeed && (
-                <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0 0' }}>
+                <p className="text-xs text-gray-500 mt-0.5">
                   Gusts: {weather.windGust} mph
                 </p>
               )}
             </div>
 
-            {/* Cloud Cover */}
-            <div style={{ 
-              padding: 12, 
-              backgroundColor: '#f9fafb', 
-              borderRadius: 8 
-            }}>
-              <p style={{ 
-                fontSize: 12, 
-                color: '#6b7280', 
-                marginBottom: 4,
-                fontWeight: 500 
-              }}>
-                ☁️ Cloud Cover
-              </p>
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: 0 }}>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600 mb-1 font-medium">Cloud Cover</p>
+              <p className="text-base font-semibold text-gray-900">
                 {weather.cloudCover}%
               </p>
             </div>
 
-            {/* Precipitation Probability */}
-            <div style={{ 
-              padding: 12, 
-              backgroundColor: '#f9fafb', 
-              borderRadius: 8 
-            }}>
-              <p style={{ 
-                fontSize: 12, 
-                color: '#6b7280', 
-                marginBottom: 4,
-                fontWeight: 500 
-              }}>
-                🌧️ Precip Chance
-              </p>
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: 0 }}>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600 mb-1 font-medium">Precip Chance</p>
+              <p className="text-base font-semibold text-gray-900">
                 {weather.precipProb}%
               </p>
             </div>
 
-            {/* Actual Precipitation */}
-            <div style={{ 
-              padding: 12, 
-              backgroundColor: '#f9fafb', 
-              borderRadius: 8 
-            }}>
-              <p style={{ 
-                fontSize: 12, 
-                color: '#6b7280', 
-                marginBottom: 4,
-                fontWeight: 500 
-              }}>
-                💧 Precipitation
-              </p>
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#1f2937', margin: 0 }}>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600 mb-1 font-medium">Precipitation</p>
+              <p className="text-base font-semibold text-gray-900">
                 {weather.precip > 0 ? `${weather.precip} in` : 'None'}
               </p>
               {weather.snow > 0 && (
-                <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0 0' }}>
-                  ❄️ Snow: {weather.snow} in
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Snow: {weather.snow} in
                 </p>
               )}
             </div>
           </div>
 
-          {/* Timestamp */}
-          <div style={{ 
-            marginTop: 15, 
-            paddingTop: 15, 
-            borderTop: '1px solid #e5e7eb',
-            textAlign: 'center' 
-          }}>
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
-              Last updated: {weather.datetime}
-            </p>
+          <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+            <p className="text-xs text-gray-500">Last updated: {weather.datetime}</p>
           </div>
         </div>
       )}
 
-      {/* Instructions */}
       {!weather && !loading && !error && (
-        <div style={{ 
-          padding: 20, 
-          backgroundColor: '#f0f9ff', 
-          borderRadius: 8,
-          border: '1px solid #bae6fd'
-        }}>
-          <p style={{ margin: 0, color: '#0c4a6e', fontSize: 14 }}>
-            👆 Search for a location or use your current location to see weather data including barometric pressure - critical for migraine tracking!
+        <div className="p-5 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-900">
+            Search for a location or use your current location to see weather data including barometric pressure - critical for migraine tracking!
           </p>
         </div>
       )}
     </div>
   );
-}
-`
 }

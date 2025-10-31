@@ -8,7 +8,6 @@ export default function WeatherWidget({ onWeatherData }) {
 
   const API_KEY = 'PMBU4ECCRULKU76FPV2324N8S';
 
-  // Fetch weather for current location on mount
   useEffect(() => {
     getCurrentLocationWeather();
   }, []);
@@ -46,7 +45,6 @@ export default function WeatherWidget({ onWeatherData }) {
       setWeather(weatherData);
       setLoading(false);
       
-      // Pass weather data to parent if callback provided
       if (onWeatherData) {
         onWeatherData(weatherData);
       }
@@ -78,7 +76,7 @@ export default function WeatherWidget({ onWeatherData }) {
   if (loading) {
     return (
       <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-        <p className="text-sm text-blue-800">📍 Getting weather data...</p>
+        <p className="text-sm text-blue-800">Getting weather data...</p>
       </div>
     );
   }
@@ -87,7 +85,7 @@ export default function WeatherWidget({ onWeatherData }) {
     return (
       <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
         <p className="text-sm text-yellow-800">
-          ⚠️ Could not fetch weather. {error}
+          Could not fetch weather. {error}
         </p>
         <button
           onClick={getCurrentLocationWeather}
@@ -111,7 +109,7 @@ export default function WeatherWidget({ onWeatherData }) {
             Current Weather
           </h3>
           <p className="text-xs text-zinc-600 mt-0.5">
-            📍 {weather.location}
+            Location: {weather.location}
           </p>
         </div>
         <button
@@ -123,9 +121,8 @@ export default function WeatherWidget({ onWeatherData }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Temperature */}
         <div className="bg-white/60 rounded-md p-2.5">
-          <p className="text-xs text-zinc-600 mb-1">🌡️ Temperature</p>
+          <p className="text-xs text-zinc-600 mb-1">Temperature</p>
           <p className="text-lg font-bold text-zinc-900">
             {Math.round(weather.temp)}°F
           </p>
@@ -134,10 +131,9 @@ export default function WeatherWidget({ onWeatherData }) {
           </p>
         </div>
 
-        {/* Barometric Pressure - HIGHLIGHTED */}
         <div className="bg-amber-100 rounded-md p-2.5 ring-2 ring-amber-300">
           <p className="text-xs text-amber-900 mb-1 font-medium">
-            📊 Pressure
+            Pressure
           </p>
           <p className="text-lg font-bold text-amber-900">
             {weather.pressure} mb
@@ -145,37 +141,32 @@ export default function WeatherWidget({ onWeatherData }) {
           <p className="text-xs text-amber-700">Barometric</p>
         </div>
 
-        {/* Humidity */}
         <div className="bg-white/60 rounded-md p-2.5">
-          <p className="text-xs text-zinc-600 mb-1">💧 Humidity</p>
+          <p className="text-xs text-zinc-600 mb-1">Humidity</p>
           <p className="text-lg font-bold text-zinc-900">
             {weather.humidity}%
           </p>
         </div>
 
-        {/* Conditions */}
         <div className="bg-white/60 rounded-md p-2.5">
-          <p className="text-xs text-zinc-600 mb-1">☁️ Conditions</p>
+          <p className="text-xs text-zinc-600 mb-1">Conditions</p>
           <p className="text-sm font-semibold text-zinc-900">
             {weather.conditions}
           </p>
         </div>
       </div>
 
-      {/* Additional info */}
       <div className="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between text-xs text-zinc-600">
-        <span>💨 Wind: {Math.round(weather.windSpeed)} mph</span>
-        <span>☁️ Clouds: {weather.cloudCover}%</span>
+        <span>Wind: {Math.round(weather.windSpeed)} mph</span>
+        <span>Clouds: {weather.cloudCover}%</span>
         {weather.precipProb > 0 && (
-          <span>🌧️ Rain: {weather.precipProb}%</span>
+          <span>Rain: {weather.precipProb}%</span>
         )}
       </div>
 
       <p className="text-xs text-zinc-500 mt-2 text-center">
-        💡 Weather data automatically saved with this migraine entry
+        Weather data automatically saved with this migraine entry
       </p>
     </div>
   );
-}
-`
 }
