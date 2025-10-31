@@ -1,9 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Database, Heart } from 'lucide-react';
 import NightscoutSettings from '../components/NightscoutSettings';
+import { supabase } from '@/lib/supabase';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const [migraneLoggingMethod, setMigraineLoggingMethod] = useState('manual');
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load user preferences on mount
+  useEffect(() => {
+    loadUserPreferences();
+  }, []);
+
+  const loadUserPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      setUserId(user.id);
+      
+      // Check if user_preferences table exists and load preference
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('migraine_logging_method')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data && data.migraine_logging_method) {
+        setMigraineLoggingMethod(data.migraine_logging_method);
+      }
+    } catch (err) {
+      console.log('Error loading preferences:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateMigraineLoggingMethod = async (method) => {
+    setMigraineLoggingMethod(method);
+    
+    if (!userId) return;
+    
+    try {
+      // Upsert the preference
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: userId,
+          migraine_logging_method: method,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+      
+      if (error) {
+        console.error('Error saving preference:', error);
+      }
+    } catch (err) {
+      console.error('Error updating preference:', err);
+    }
+  };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -47,6 +105,46 @@ const HealthAppSettings = () => {
         {activeTab === 'general' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">General Settings</h2>
+            
+            {/* Migraine Logging Method */}
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 p-6 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-2">Migraine Logging Method</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose how you prefer to log your migraines. Voice mode dims the screen and uses a gentle conversation to collect information.
+              </p>
+              <div className="space-y-3">
+                <label className="flex items-start p-3 bg-white rounded-lg border-2 transition-all cursor-pointer hover:border-purple-300 ${migraneLoggingMethod === 'manual' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}">
+                  <input
+                    type="radio"
+                    name="migraneLoggingMethod"
+                    value="manual"
+                    checked={migraneLoggingMethod === 'manual'}
+                    onChange={(e) => updateMigraineLoggingMethod(e.target.value)}
+                    className="mt-1 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="ml-3">
+                    <div className="font-medium text-gray-900">Manual Entry</div>
+                    <div className="text-sm text-gray-600">Fill out a traditional form with all migraine details</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-start p-3 bg-white rounded-lg border-2 transition-all cursor-pointer hover:border-purple-300 ${migraneLoggingMethod === 'voice' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}">
+                  <input
+                    type="radio"
+                    name="migraneLoggingMethod"
+                    value="voice"
+                    checked={migraneLoggingMethod === 'voice'}
+                    onChange={(e) => updateMigraineLoggingMethod(e.target.value)}
+                    className="mt-1 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="ml-3">
+                    <div className="font-medium text-gray-900">Voice Conversation</div>
+                    <div className="text-sm text-gray-600">Screen dims and a gentle voice guides you through logging</div>
+                    <div className="text-xs text-purple-600 mt-1 font-medium">Migraine-friendly option</div>
+                  </div>
+                </label>
+              </div>
+            </div>
             
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-4">Notifications</h3>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import WeatherWidget from "@/components/WeatherWidget";
 
 function parseCSVToTextArray(input) {
   if (!input || !input.trim()) return [];
@@ -21,6 +22,7 @@ export default function LogMigraine() {
   const [medicationTaken, setMedicationTaken] = useState("");
   const [medicationEffective, setMedicationEffective] = useState(false);
   const [notes, setNotes] = useState("");
+  const [weatherData, setWeatherData] = useState(null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +70,13 @@ export default function LogMigraine() {
       medication_taken: medicationTaken || null,
       medication_effective: !!medicationEffective,
       source: "manual",
-      notes: notes || null
+      notes: notes || null,
+      // Include weather data if available
+      weather_temp: weatherData?.temp || null,
+      weather_pressure: weatherData?.pressure || null,
+      weather_humidity: weatherData?.humidity || null,
+      weather_conditions: weatherData?.conditions || null,
+      weather_location: weatherData?.location || null
     };
 
     console.log('Debug - Payload:', payload);
@@ -107,6 +115,9 @@ export default function LogMigraine() {
           </p>
 
           <form onSubmit={onSubmit} className="space-y-4">
+            {/* Weather Widget */}
+            <WeatherWidget onWeatherData={setWeatherData} />
+
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">
                 Start time
