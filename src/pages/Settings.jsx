@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Database, Heart, Mic, Edit3, Check } from 'lucide-react';
+import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from 'lucide-react';
 import NightscoutSettings from '../components/NightscoutSettings';
+import DexcomSettings from '../components/DexcomSettings';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -27,7 +28,7 @@ const HealthAppSettings = () => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
-    { id: 'nightscout', label: 'Nightscout Pro', icon: Database },
+    { id: 'cgm', label: 'CGM Integration', icon: Activity },
     { id: 'health', label: 'Health Connect', icon: Heart }
   ];
 
@@ -68,7 +69,7 @@ const HealthAppSettings = () => {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">General Settings</h2>
             
-            {/* NEW: Logging Method Section */}
+            {/* Logging Method Section */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-4">Logging Method</h3>
               <p className="text-sm text-gray-600 mb-4">Choose how you want to log your health data</p>
@@ -185,10 +186,21 @@ const HealthAppSettings = () => {
           </div>
         )}
 
-        {activeTab === 'nightscout' && (
+        {activeTab === 'cgm' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Nightscout Pro Integration</h2>
-            <NightscoutSettings />
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">CGM Integration</h2>
+            <p className="text-gray-600 mb-6">
+              Connect your continuous glucose monitor to automatically sync your glucose data.
+            </p>
+            
+            {/* Dexcom Clarity */}
+            <DexcomSettings />
+            
+            {/* Nightscout Pro */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Nightscout Pro</h3>
+              <NightscoutSettings />
+            </div>
           </div>
         )}
 
