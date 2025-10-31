@@ -10,6 +10,8 @@ import {
  *  - showAvg: boolean (default true) – draws a moving average trend line
  *  - avgWindow: integer (default 5)
  *  - yDomain: [min,max] | ['auto','auto']
+ *  - showDots: boolean (default true) - show data point markers
+ *  - dotInterval: integer (default 12) - show dot every Nth point
  */
 export default function LineTile({
   data = [],
@@ -17,6 +19,8 @@ export default function LineTile({
   showAvg = true,
   avgWindow = 5,
   yDomain = ['auto', 'auto'],
+  showDots = true,
+  dotInterval = 12,
 }) {
   const prepared = useMemo(() => {
     if (!Array.isArray(data)) return [];
@@ -40,6 +44,28 @@ export default function LineTile({
 
   const stroke = 'var(--chart-line)';
   const avgStroke = 'var(--chart-accent)';
+
+  // Custom dot renderer to show dots at intervals
+  const renderDot = (props) => {
+    if (!showDots) return null;
+    
+    const { index, cx, cy } = props;
+    
+    // Show dot at intervals (or all dots if data is small)
+    if (prepared.length <= 20 || index % dotInterval === 0) {
+      return (
+        <circle 
+          cx={cx} 
+          cy={cy} 
+          r={4} 
+          fill={stroke}
+          stroke="#fff"
+          strokeWidth={2}
+        />
+      );
+    }
+    return null;
+  };
 
   return (
     <div style={{ width: '100%', height: 220 }}>
@@ -70,7 +96,8 @@ export default function LineTile({
             dataKey="y"
             stroke={stroke}
             strokeWidth={2.5}
-            dot={false}
+            dot={renderDot}
+            activeDot={{ r: 6, fill: stroke, stroke: "#fff", strokeWidth: 2 }}
             isAnimationActive={false}
           />
           {showAvg && (
