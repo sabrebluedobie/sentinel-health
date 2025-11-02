@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from 'lucide-react';
 import NightscoutSettings from '../components/NightscoutSettings';
-import DexcomSettings from '../components/DexcomSettings';
+// TODO: Re-add Dexcom integration later
+// import DexcomSettings from '../components/DexcomSettings';
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -193,8 +194,9 @@ const HealthAppSettings = () => {
               Connect your continuous glucose monitor to automatically sync your glucose data.
             </p>
             
-            {/* Dexcom Clarity */}
+            {/* TODO: Re-add Dexcom Clarity integration
             <DexcomSettings />
+            */}
             
             {/* Nightscout Pro */}
             <div className="mt-8">
