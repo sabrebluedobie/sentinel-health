@@ -3,7 +3,8 @@ import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
 import { GlucoseReading } from "@/entities/GlucoseReading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// TODO: Add back alert component - temporarily commented for deployment
+// import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, Loader2, FileCheck2, AlertCircle } from "lucide-react";
 
 export default function GlucoseImport({ onImportSuccess }) {
