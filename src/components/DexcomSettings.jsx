@@ -8,7 +8,7 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+/*import { Alert, AlertDescription } from '@/components/ui/alert';*/
 import { Loader2, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { dexcomService } from '@/services/dexcomService';
 
@@ -123,7 +123,7 @@ const DexcomSettings = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {error && (
+       {/*{error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -133,7 +133,7 @@ const DexcomSettings = () => {
           <Alert>
             <AlertDescription>{syncStatus}</AlertDescription>
           </Alert>
-        )}
+        )}*/
 
         {isConnected ? (
           <div className="space-y-4">
