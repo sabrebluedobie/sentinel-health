@@ -123,7 +123,8 @@ const DexcomSettings = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-       {/*{error && (
+        {/* TODO: Add back Alert components
+        {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -133,7 +134,8 @@ const DexcomSettings = () => {
           <Alert>
             <AlertDescription>{syncStatus}</AlertDescription>
           </Alert>
-        )}*/
+        )}
+        */}
 
         {isConnected ? (
           <div className="space-y-4">
