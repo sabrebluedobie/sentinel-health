@@ -123,9 +123,12 @@ function formatX(v) {
   // Accept Date, ISO string, or bare label
   const d = (v instanceof Date) ? v : (typeof v === 'string' && !Number.isFinite(+v) ? new Date(v) : null);
   if (d && !isNaN(d.getTime())) {
+    // Format as MM/DD HH:MM for multi-day view
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
     const h = d.getHours().toString().padStart(2, '0');
     const m = d.getMinutes().toString().padStart(2, '0');
-    return `${h}:${m}`;
+    return `${month}/${day} ${h}:${m}`;
   }
   return String(v);
 }
