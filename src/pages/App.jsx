@@ -42,6 +42,9 @@ export default function App() {
           <Route path="*" element={<SignIn />} />
         </Routes>
       </main>
+
+      {/* Dim Mode Control floating button */}
+      {!isAuthPage && <DimModeControl position="bottom-right" />}
     </React.Suspense>
   );
 }
