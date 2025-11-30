@@ -1,0 +1,50 @@
+---
+description: Specification for health-related data flows, processing pipelines, and medical data integrations
+---
+
+
+# health-data-flow
+
+## Core Data Processing Pipelines
+
+1. CGM Data Pipeline (src/components/DetailedGlucoseChart.jsx)
+Importance Score: 85
+- Processes continuous glucose monitoring streams
+- Integrates with multiple CGM data sources
+- Implements time-weighted glucose averaging
+- Handles threshold-based event detection
+- Manages data synchronization with medical systems
+
+2. Sleep Analysis Pipeline (src/pages/LogSleep-hybrid.jsx)
+Importance Score: 90
+- Processes raw sleep stage data
+- Calculates deep sleep percentages (15-25% target)
+- Analyzes REM sleep patterns (20-25% target)
+- Evaluates heart rate variability impacts
+- Monitors SpO2 thresholds for quality adjustments
+
+3. Environmental Data Integration (src/components/WeatherWidget.jsx)
+Importance Score: 75
+- Tracks environmental health triggers
+- Processes barometric pressure changes
+- Monitors humidity level impacts
+- Analyzes temperature fluctuations
+- Correlates weather conditions with health events
+
+## Data Flow Architecture
+
+1. Medical Data Synchronization
+- Bi-directional sync between CGM systems
+- Integration of sleep tracking devices
+- Weather data aggregation pipeline
+- Cross-system health event correlation
+
+2. Health Metric Processing
+- Continuous glucose data stream processing
+- Sleep stage analysis pipeline
+- Environmental factor correlation engine
+- Time-series health data aggregation
+
+$END$
+
+ If you're using this file in context, clearly say in italics in one small line that "Context added by Giga health-data-flow" along with specifying exactly what information was used from this file in a human-friendly way, instead of using kebab-case use normal sentence case.

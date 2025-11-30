@@ -1,0 +1,22 @@
+[
+  {
+    "fileName": "main-overview.mdc",
+    "description": "Complete system overview documenting the migraine tracking system architecture, component relationships, and integration points with external health systems"
+  },
+  {
+    "fileName": "health-correlation-algorithms.mdc",
+    "description": "Detailed documentation of the correlation algorithms for migraine analysis, including sleep quality scoring, glucose impact analysis, and weather correlation calculations"
+  },
+  {
+    "fileName": "data-models-relationships.mdc",
+    "description": "Comprehensive documentation of data models for health metrics (sleep, glucose, migraines), their relationships, and integration with external medical systems like Nightscout and Dexcom"
+  },
+  {
+    "fileName": "medical-classification-system.mdc",
+    "description": "Technical specification of the headache classification system, including symptom mapping, severity calculations, and pattern matching algorithms"
+  },
+  {
+    "fileName": "health-data-flow.mdc",
+    "description": "Documentation of data flow between components, including CGM data processing, sleep analysis pipeline, and weather data integration"
+  }
+]
