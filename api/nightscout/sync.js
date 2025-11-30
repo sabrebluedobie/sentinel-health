@@ -104,7 +104,7 @@ export default async function handler(req, res) {
       value_mgdl: entry.sgv,
       device_time: new Date(entry.
        dateString || entry.date).toISOString(),
-      reading_type: 'cgm', // or 'fingerstick' based on your logic
+      reading_type: 'libre', // or 'fingerstick' based on your logic
       source: 'nightscout',
       trend: entry.direction || null,
       note: entry.direction ? `Direction: ${entry.direction}` : null,
