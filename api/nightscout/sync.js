@@ -100,16 +100,15 @@ export default async function handler(req, res) {
     // Transform entries to match YOUR actual schema
     // Removing reading_type to avoid constraint violation
     const glucoseReadings = entries.map(entry => ({
-      user_id: user_id,
-      value_mgdl: entry.sgv,
-      device_time: new Date(entry.
-       dateString || entry.date).toISOString(),
-      reading_type: 'libre', // or 'fingerstick' based on your logic
-      source: 'nightscout',
-      trend: entry.direction || null,
-      note: entry.direction ? `Direction: ${entry.direction}` : null,
-      nightscout_id: entry._id
-    }));
+  user_id: user_id,
+  value_mgdl: entry.sgv,
+  device_time: new Date(entry.dateString || entry.date).toISOString(),
+  reading_type: 'random',  // ← The only option that makes sense for CGM
+  source: 'nightscout',
+  trend: entry.direction || null,
+  note: entry.direction ? `Direction: ${entry.direction}` : null,
+  nightscout_id: entry._id
+}));
 
     // Use upsert to avoid duplicates based on nightscout_id
     const { data: insertedData, error: insertError } = await supabase
