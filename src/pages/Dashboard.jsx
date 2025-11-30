@@ -8,6 +8,7 @@ import useDailyMetrics from "@/hooks/useDailyMetrics";
 import useMigraineCorrelations from "@/hooks/useMigraineCorrelations";
 import ChartCard from "@/components/ChartCard.jsx";
 import DetailedGlucoseChart from "@/components/DetailedGlucoseChart";
+import { DimModeProvider } from "@/components/DimModeContext.jsx";
 
 export default function Dashboard() {
   const [range, setRange] = useState(30);
@@ -183,3 +184,4 @@ export default function Dashboard() {
 function fmt(v) {
   return v === null || Number.isNaN(v) ? "—" : Number(v).toFixed(2);
 }
+      
