@@ -1,53 +1,66 @@
 ---
-description: Defines data models and relationships for health metrics integration with medical systems
+description: Specifications for health data models, relationships and medical system integrations
 ---
 
 
 # data-models-relationships
 
-Core Data Models:
+## Core Data Models
+Importance Score: 95/100
 
-1. Sleep Metrics Model
-- Deep sleep percentage tracking
-- REM sleep cycle monitoring
-- Sleep quality scoring components
-- Integration with heart rate and SpO2 data points
-Importance Score: 85
+### Health Metrics Models
+1. Glucose Readings
+- Blood glucose level measurements 
+- Source tracking (Nightscout, Dexcom, manual)
+- Reading type classification (SGV, MBG)
+- Temporal metadata and device information
 
-2. Glucose Monitoring Model
-- Integration with Nightscout and Dexcom systems
-- Continuous glucose monitoring data structures
-- Time-series glucose reading storage
-- Event correlation timestamps
-Importance Score: 90
+2. Sleep Records
+- Sleep stage percentages (deep, REM, light)
+- Physiological metrics (HR, HRV, SpO2)
+- Recovery score calculations
+- Sleep quality indicators
 
-3. Migraine Event Model
-- Pain intensity scales
-- Symptom categorization structures
-- Trigger tracking relationships
-- Treatment response logging
-Importance Score: 85
+3. Migraine Events
+- Pain levels and intensity tracking
+- Associated symptoms catalog
+- Trigger correlations
+- Weather condition linkage
 
-Key Relationships:
+## Relationships & Correlations
+Importance Score: 90/100
 
-1. Health Event Correlations
-- Cross-reference between glucose levels and migraine events
-- Sleep quality relationships with pain intensity
-- Weather condition mappings to health events
-Importance Score: 80
+1. Glucose-Migraine Correlation
+- Bidirectional relationship tracking
+- Time-lagged pattern analysis
+- Threshold breach impacts
+- Multi-point correlation scoring
 
-2. Medical System Integration
-- Bidirectional data mapping with Nightscout
-- Dexcom data transformation schemas
-- Health event synchronization structures
-Importance Score: 75
+2. Sleep-Migraine Dependencies
+- Sleep quality impact tracking
+- Recovery score influence
+- Stage distribution effects
+- Temporal onset patterns
 
-Data Flow Architecture:
-- Centralized health event timeline
-- Cross-system event correlation engine
-- Medical data transformation layer
-- External system sync protocols
-Importance Score: 70
+3. Weather-Health Relationships
+- Barometric pressure connections
+- Humidity impact tracking
+- Temperature variation effects
+
+## External System Integration
+Importance Score: 85/100
+
+1. Nightscout Integration
+- Glucose data normalization
+- Event type mapping
+- Metadata transformation
+- Bidirectional sync patterns
+
+2. Dexcom Integration
+- Reading classification
+- Trend analysis structures
+- Device data mapping
+- OAuth data flow models
 
 $END$
 

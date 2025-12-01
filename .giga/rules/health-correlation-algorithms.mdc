@@ -1,51 +1,65 @@
 ---
-description: Handles complex health data correlation algorithms focusing on sleep, glucose, and weather impacts on migraines
+description: Specification for implementing health data correlation and analysis algorithms, particularly for migraine tracking
 ---
 
 
 # health-correlation-algorithms
 
-Core Correlation Components:
+## Core Correlation Components (Score: 95)
 
-1. Sleep-Migraine Correlation Analysis
-Path: src/pages/Dashboard.jsx
-- Processes sleep pattern relationships with migraine occurrence
-- Time-lagged correlation analysis for predictive insights
-- Multi-day pattern recognition for sleep quality impact
-Importance Score: 90
+### Sleep-Migraine Correlation Engine
+- Custom sleep score calculation incorporating:
+  - Sleep stage quality scoring (deep/REM/light percentages)
+  - Physiological metrics integration (HR, HRV, SpO2)
+  - Body battery recovery analysis
+  - Duration optimization checks
 
-2. Glucose Impact Analysis
-Path: src/components/DetailedGlucoseChart.jsx
-- Cross-correlates glucose levels with pain intensity
-- Time-weighted glucose averaging against migraine events
-- Threshold-based glucose event detection
-Importance Score: 85
+### Glucose Impact Analysis
+- Time-series pattern detection between:
+  - Blood glucose fluctuations 
+  - Migraine onset timing
+  - Pain intensity levels
+- Lag analysis for predictive correlations
+- Multi-factor trigger identification
 
-3. Weather Correlation Engine
-Path: src/components/WeatherWidget.jsx
-- Analyzes barometric pressure changes impact on migraines
-- Environmental trigger correlation including:
-  - Pressure delta calculations
-  - Humidity impact assessment
-  - Temperature variation effects
-Importance Score: 75
+### Weather Correlation System
+- Migraine-specific atmospheric parameter tracking
+- Real-time correlation of:
+  - Barometric pressure changes
+  - Humidity levels
+  - Temperature fluctuations
+- Weather-based trigger pattern recognition
 
-4. Sleep Quality Scoring Algorithm
-Path: src/pages/LogSleep-hybrid.jsx
-- Deep sleep percentage analysis (15-25% ideal range)
-- REM sleep percentage evaluation (20-25% ideal)
-- Heart rate variability impact calculations
-- SpO2 threshold quality adjustments
-Importance Score: 80
+## Pattern Recognition Systems (Score: 85)
 
-Key Correlation Rules:
-- Multi-factor pattern recognition across health metrics
-- Time-lagged analysis for predictive correlations
-- Environmental impact weighting system
-- Sleep quality scoring based on medical standards
-- Glucose variation impact assessment
+### Symptom Analysis Engine
+- Structured symptom categorization
+- Multi-factor trigger correlation
+- Medication effectiveness tracking
+- Temporal pattern recognition for:
+  - Migraine onset predictions
+  - Trigger combination effects
+  - Treatment response patterns
 
-The system's core value lies in its ability to identify complex relationships between multiple health factors and migraine occurrences, with particular emphasis on sleep patterns, glucose levels, and environmental conditions.
+### Health Metric Integration
+- Custom CGM data normalization for correlation analysis
+- Sleep quality impact assessment
+- Weather condition integration
+- Unified correlation scoring system
+
+## Data Processing Architecture (Score: 80)
+
+### Time Series Analysis
+- Lag-based correlation detection
+- Pattern window identification
+- Multi-metric temporal alignment
+- Trigger sequence recognition
+
+### Correlation Calculation
+- Weighted impact scoring
+- Multi-factor correlation indices
+- Confidence level assessment
+- Trigger strength quantification
 
 $END$
 

@@ -13,49 +13,56 @@
 - Explain your OBSERVATIONS clearly, then provide REASONING to identify the exact issue. Add console logs when needed to gather more information.
 
 
-## Core Analysis System Architecture
+## Core Business Logic Architecture
 
-The system implements specialized health data analysis focusing on migraine tracking and correlation analysis across multiple health factors.
-
-### Primary Business Components
-
-1. Sleep Quality Analysis
-- Proprietary scoring algorithm incorporating deep sleep ratios (15-25% target)
-- REM sleep percentage analysis (20-25% optimal range)
-- Health factor integration with heart rate variability and SpO2 metrics
+### Sleep Quality Analytics Engine
 Importance Score: 85
+- Custom sleep scoring algorithm incorporating multiple physiological metrics
+- Deep/REM/light sleep stage analysis
+- Body battery recovery calculations
+- Integration with vital signs data (HR, HRV, SpO2)
 
-2. Migraine Correlation Engine
-- Multi-factor correlation analysis system
-- Glucose-to-pain intensity relationship tracking
-- Sleep pattern impact assessment
-- Predictive pattern recognition for migraine onset
+### Migraine Correlation System
 Importance Score: 90
+- Multi-factor analysis engine correlating:
+  - Blood glucose patterns
+  - Sleep quality metrics
+  - Weather conditions
+  - Pain levels
+- Time-lagged correlation detection
+- Predictive pattern recognition
 
-3. Weather Impact Analysis 
-- Environmental trigger tracking system
-- Barometric pressure change correlation
-- Humidity and temperature impact assessment
-- Weather condition pattern matching
-Importance Score: 75
-
-4. Headache Classification System
-- Probabilistic type classification engine
-- Symptom-based categorization framework
-- Severity weighting implementation
-- Clinical pattern matching system
+### Medical Data Integration Hub
 Importance Score: 80
+- CGM data normalization and processing
+- Multiple device source integration
+- Structured symptom categorization
+- Medication effectiveness tracking
+- Weather parameter correlation with symptoms
 
-5. CGM Data Processing
-- Glucose trend analysis engine
-- Time-weighted averaging system
-- Event detection based on threshold analysis
-- Multi-source CGM data integration
-Importance Score: 70
+### Patient Monitoring Workflow
+Importance Score: 75
+- Unified daily health metrics aggregation
+- Real-time vital sign monitoring
+- Medical event classification
+- Symptom pattern detection
+- Treatment response tracking
 
-### Integration Architecture
+## Key Integration Points
 
-The system connects these components through a centralized correlation engine, with the migraine analysis system serving as the primary integration point for health metrics, environmental data, and classification results.
+### Medical Device Data Processing
+Importance Score: 85
+- Custom glucose reading synchronization
+- Medical device API integration
+- Specialized data transformation pipelines
+- Health event metadata handling
+
+### Clinical Analysis Framework
+Importance Score: 80
+- Symptom correlation engine
+- Medical classification systems
+- Treatment effectiveness scoring
+- Patient education content structure
 
 $END$
 

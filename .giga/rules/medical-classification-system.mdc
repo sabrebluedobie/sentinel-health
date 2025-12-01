@@ -1,51 +1,52 @@
 ---
-description: Specifications for medical headache classification, symptom analysis, and severity tracking systems
+description: Medical headache classification and tracking system with symptom mapping and pattern recognition
 ---
 
 
 # medical-classification-system
 
-The headache classification system implements probabilistic medical categorization with the following core components:
+Importance Score: 85/100
 
-1. Symptom-Based Classification
-Path: src/components/HeadacheTypesChart.jsx
-- Implements pattern matching against known headache profiles
-- Symptom weight calculations for classification confidence
-- Multi-factor severity assessment
-Importance Score: 85
+Core Classification Components:
 
-Key Classification Rules:
-- Symptom mapping based on medical standards
-- Severity weighting system for symptoms
-- Pattern matching against established headache profiles
-- Probabilistic type determination
+1. Headache Type Classification
+- Structured categorization system based on:
+  - Primary symptom patterns
+  - Pain characteristics (throbbing, pressure, etc.)
+  - Associated symptoms (nausea, aura, etc.)
+  - Duration patterns
+  - Trigger correlations
 
-2. Symptom Tracking Components:
-Path: src/components/HeadacheTypesChart.jsx
-- Structured recording of symptom characteristics
-- Standardized severity scales
-- Temporal tracking of symptom progression
-Importance Score: 80
+2. Symptom Mapping Engine
+- Multi-dimensional symptom tracking
+  - Location mapping (unilateral, bilateral)
+  - Intensity scoring (1-10 scale)
+  - Associated symptom groups
+  - Progression patterns
+- Symptom-based classification matching
 
-Classification Categories:
-- Migraine with aura
-- Migraine without aura
-- Tension headache
-- Cluster headache
-- Other primary headaches
+3. Pattern Recognition System
+- Temporal analysis of headache episodes
+- Trigger correlation tracking:
+  - Sleep patterns
+  - Weather conditions
+  - Glucose variations
+  - Stress levels
+- Pattern-based classification refinement
 
-The system employs medical pattern recognition to categorize headache events based on:
-- Symptom combinations
-- Pain characteristics
-- Associated symptoms
-- Duration patterns
-- Response to medications
+4. Classification Rules
+- Hierarchical decision tree for headache type determination
+- Primary classification categories:
+  - Migraine (with/without aura)
+  - Tension-type headaches
+  - Cluster headaches
+  - Secondary headaches
+- Sub-classification based on:
+  - Frequency patterns
+  - Symptom combinations
+  - Trigger associations
 
-Each classification includes:
-- Probability scoring
-- Confidence metrics
-- Warning flag triggers
-- Clinical correlation indicators
+The system implements medical-grade headache classification following international headache society guidelines, with custom extensions for pattern recognition and trigger correlation analysis.
 
 $END$
 
