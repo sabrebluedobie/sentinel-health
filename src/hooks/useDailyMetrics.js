@@ -38,10 +38,14 @@ export default function useDailyMetrics(rangeDays = 30, refreshKey = 0) {
           });
 
           (s || []).forEach(r => {
-            let d = byDay.get(r.day);
-            if (!d) { d = { day: r.day }; byDay.set(r.day, d); }
-            Object.assign(d, { sleep_hours: r.sleep_hours });
-          });
+  let d = byDay.get(r.day);
+  if (!d) { d = { day: r.day }; byDay.set(r.day, d); }
+  Object.assign(d, { 
+    sleep_hours: r.sleep_hours,
+    sleep_score: r.avg_sleep_score,
+    body_battery: r.avg_body_battery
+  });
+});
 
           (m || []).forEach(r => {
             let d = byDay.get(r.day);

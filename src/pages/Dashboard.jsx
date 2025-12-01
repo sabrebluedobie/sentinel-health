@@ -29,15 +29,17 @@ export default function Dashboard() {
 
   // Normalize data the charts will use
   const data = useMemo(
-    () => rows.map(r => ({
-      day: new Date(r.day ?? r.date ?? r.started_at ?? Date.now()).toLocaleDateString(),
-      migraine_count: Number(r.migraine_count ?? r.count ?? 0),
-      pain: Number(r.avg_pain ?? r.pain ?? 0),
-      glucose: Number(r.avg_glucose ?? r.glucose ?? 0),
-      sleep: Number(r.sleep_hours ?? r.total_sleep_hours ?? 0),
-    })),
-    [rows]
-  );
+  () => rows.map(r => ({
+    day: new Date(r.day ?? r.date ?? r.started_at ?? Date.now()).toLocaleDateString(),
+    migraine_count: Number(r.migraine_count ?? r.count ?? 0),
+    pain: Number(r.avg_pain ?? r.pain ?? 0),
+    glucose: Number(r.avg_glucose ?? r.glucose ?? 0),
+    sleep: Number(r.sleep_hours ?? r.total_sleep_hours ?? 0),
+    sleep_score: Number(r.sleep_score ?? 0),
+    body_battery: Number(r.body_battery ?? 0),
+  })),
+  [rows]
+);
 
   return (
     <div className="space-y-6">
@@ -84,7 +86,7 @@ export default function Dashboard() {
       <DetailedGlucoseChart rangeDays={7} />
 
       {/* Three light "box" cards for the logs */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-4">
         {/* Migraine days */}
         <ChartCard title={`Migraine Days (${range}d)`} subtitle="Daily count of migraine entries">
           <div className="h-56">
@@ -132,6 +134,23 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         </ChartCard>
+        {/* Sleep Quality Score */}
+<ChartCard title={`Sleep Quality (${range}d)`} subtitle="Sleep score & body battery">
+  <div className="h-56">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="day" />
+        <YAxis domain={[0, 100]} />
+        <Tooltip />
+        {/* Sleep Score - indigo */}
+        <Line type="monotone" dataKey="sleep_score" stroke="#4f46e5" strokeWidth={2} dot={false} activeDot={{ r: 4 }} name="Sleep Score" />
+        {/* Body Battery - green */}
+        <Line type="monotone" dataKey="body_battery" stroke="#16a34a" strokeWidth={2} dot={false} activeDot={{ r: 4 }} name="Body Battery" />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</ChartCard>
       </div>
 
       {/* Combined charts & insights below */}
