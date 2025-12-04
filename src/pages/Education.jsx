@@ -56,6 +56,15 @@ export default function Education() {
               </div>
 
               <div>
+                <h3 className="text-lg font-medium text-zinc-800 mb-2">Silent Migraines (Acephalgic Migraines)</h3>
+                <p className="text-zinc-600">
+                  Silent migraines can be some of the most difficult to recognize because they don’t follow the “standard” presentation most people expect. Instead of the classic throbbing headache, silent migraines show up with neurological symptoms without any pain at all.
+This can include visual disturbances, aura-like flashes or zigzags, numbness, dizziness, speech difficulty, or a wave of fatigue that feels out of nowhere. Because there’s no headache to signal “this is a migraine,” they’re often mistaken for anxiety, eye strain, exhaustion, or even mini-strokes.
+Silent migraines behave like migraines internally — the brain is still going through the same electrical and chemical changes — but they never produce the painful phase.
+That absence of pain is exactly what makes them easy to miss and harder to diagnose, even though the experience can be just as disruptive.
+                </p>
+              </div>
+              <div>
                 <h3 className="text-lg font-medium text-zinc-800 mb-2">Hemiplegic Migraine</h3>
                 <p className="text-zinc-600">
                   A rare type causing temporary weakness or paralysis on one side of the body, along with typical migraine symptoms. 
