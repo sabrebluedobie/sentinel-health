@@ -33,12 +33,24 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log('🔔 Auth state changed:', event, newSession?.user?.email || 'no user');
       
-      // Ignore SIGNED_OUT during token refresh to prevent unnecessary redirects
-      if (event === 'SIGNED_OUT' && newSession === null) {
-        console.log('⏭️ Ignoring SIGNED_OUT (likely token refresh)');
+      // Handle all auth events to keep state in sync
+      // TOKEN_REFRESHED with null session means refresh failed - user needs to re-login
+      if (event === 'TOKEN_REFRESHED' && !newSession) {
+        console.log('❌ Token refresh failed - clearing session');
+        setSession(null);
+        setUser(null);
         return;
       }
       
+      // SIGNED_OUT should always clear the session
+      if (event === 'SIGNED_OUT') {
+        console.log('🚪 User signed out - clearing session');
+        setSession(null);
+        setUser(null);
+        return;
+      }
+      
+      // For all other events, update to the new session
       setSession(newSession);
       setUser(newSession?.user ?? null);
     });

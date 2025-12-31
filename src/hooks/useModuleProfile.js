@@ -91,13 +91,15 @@ export function useModuleProfile(user) {
   }, [user?.id]);
 
   async function persist(next) {
+    console.log('[useModuleProfile] persist called:', { hasUser: !!user?.id, next });
+    
     setProfile(next);
     localStorage.setItem(LS_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 
     if (!user?.id) {
-      console.log('[useModuleProfile] No user.id, skipping Supabase save');
-      return;
+      console.log('[useModuleProfile] No user.id, saved to localStorage only');
+      return; // Settings saved locally, just not to Supabase
     }
 
     console.log('[useModuleProfile] Saving to Supabase:', { user_id: user.id, next });

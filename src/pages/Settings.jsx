@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from "lucide-react";
 import NightscoutSettings from "../components/NightscoutSettings";
-import ModulesSettings from "../pages/settings/ModulesSettings";
+import ModulesSettings from "./settings/ModulesSettings";
 
 const HealthAppSettings = () => {
   const [activeTab, setActiveTab] = useState("general");

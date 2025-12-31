@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createClient } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 
 

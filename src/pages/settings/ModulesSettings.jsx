@@ -1,10 +1,14 @@
 import React, { useState } from "react";
-import useAuth from "@/hooks/useAuth";
+import { useAuth } from "@/components/AuthContext";
 import { useModuleProfile } from "@/hooks/useModuleProfile";
 import { MODULE_KEYS } from "@/lib/modules";
 
 export default function ModulesSettings() {
+  console.log('[ModulesSettings] Component mounting...');
+  
   const { user } = useAuth();
+  console.log('[ModulesSettings] user:', user);
+  
   const {
     profile,
     loading,
@@ -12,6 +16,8 @@ export default function ModulesSettings() {
     setModuleOption,
     setOnboardingComplete, // we'll add this to the hook below
   } = useModuleProfile(user);
+  
+  console.log('[ModulesSettings] profile:', profile, 'loading:', loading);
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -27,17 +33,22 @@ export default function ModulesSettings() {
   }
 
   async function toggleModule(key, enabled) {
+    console.log('[ModulesSettings] toggleModule called:', { key, enabled, currentProfile: profile });
     setSaving(true);
     try {
+      console.log('[ModulesSettings] calling setModuleEnabled...');
       await setModuleEnabled(key, enabled);
+      console.log('[ModulesSettings] setModuleEnabled complete, calling setOnboardingComplete...');
       // if they change modules here, we consider onboarding done
       await setOnboardingComplete(true);
+      console.log('[ModulesSettings] all saves complete!');
       flash("Module settings saved");
     } catch (err) {
       console.error('[ModulesSettings] toggleModule error:', err);
       flash("Error saving: " + (err.message || 'Unknown error'), true);
     } finally {
       setSaving(false);
+      console.log('[ModulesSettings] toggleModule finished');
     }
   }
 
@@ -69,6 +80,26 @@ export default function ModulesSettings() {
   }
 
   if (loading || !profile) return <div className="p-4">Loading…</div>;
+
+  // Show warning if not authenticated
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="font-semibold text-yellow-900 mb-2">Authentication Required</h3>
+          <p className="text-yellow-800 text-sm mb-4">
+            You need to be signed in to save module settings. Settings will only be saved locally until you sign in.
+          </p>
+          <a 
+            href="/sign-in" 
+            className="inline-block px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm font-medium"
+          >
+            Sign In
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
