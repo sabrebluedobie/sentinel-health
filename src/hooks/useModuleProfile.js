@@ -6,11 +6,29 @@ import { supabase } from "@/lib/supabase";
 const LS_KEY = "sentrya:moduleProfile:v1";
 const PROFILE_UPDATED_EVENT = "sentrya:moduleProfileUpdated";
 
+export const DEFAULT_MODULE_PROFILE = {
+  enabled_modules: {
+    glucose: false,   // off by default
+    migraine: true,
+    sleep: true,
+    pain: true,
+    weather: false,
+  },
+  module_options: {
+    glucose: {
+      source: "manual",
+    },
+  },
+  onboarding_complete: false,
+};
+
+
 function isProfileValid(profile) {
   if (!profile || !profile.enabled_modules) return false;
   return MODULE_KEYS.every((key) =>
-    Object.prototype.hasOwnProperty.call(profile.enabled_modules, key)
-  );
+    profile.enabled_modules && key in profile.enabled_modules
+    );
+
 }
 
 export function useModuleProfile(user) {
