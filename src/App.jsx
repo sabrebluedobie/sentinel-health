@@ -18,6 +18,7 @@ const LogMigraine = React.lazy(() => import("@/pages/LogMigraine.jsx"));
 const LogPain     = React.lazy(() => import("@/pages/LogPain.jsx"));
 const Education   = React.lazy(() => import("@/pages/Education.jsx"));
 const Settings    = React.lazy(() => import("@/pages/Settings.jsx"));
+const Reports     = React.lazy(() => import("@/pages/Reports.jsx"));
 
 // ✅ Your onboarding page (you said you added Modules.jsx)
 const ModulesOnboarding = React.lazy(() => import("@/pages/onboarding/Modules.jsx")); 
@@ -164,6 +165,7 @@ export default function App() {
 
           {/* Not gated (or you can gate them too if you want) */}
           <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/settings"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
