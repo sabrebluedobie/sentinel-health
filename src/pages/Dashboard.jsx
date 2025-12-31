@@ -200,8 +200,15 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis domain={[0, "auto"]} />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 12 }}
+                  />
+                  <YAxis 
+                    domain={[0, "auto"]} 
+                    label={{ value: 'Hours', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                  />
                   <Tooltip />
                   <Line
                     type="monotone"
@@ -210,6 +217,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -224,8 +232,15 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis domain={[0, "auto"]} />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 12 }}
+                  />
+                  <YAxis 
+                    domain={[0, "auto"]} 
+                    label={{ value: 'mg/dL', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                  />
                   <Tooltip />
                   <Line
                     type="monotone"
@@ -234,6 +249,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -248,8 +264,15 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis domain={[0, 100]} />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 12 }}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    label={{ value: 'Score (0-100)', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                  />
                   <Tooltip />
                   <Line
                     type="monotone"
@@ -259,6 +282,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
                     dot={false}
                     activeDot={{ r: 4 }}
                     name="Sleep Score"
+                    connectNulls={false}
                   />
                   <Line
                     type="monotone"
@@ -268,6 +292,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
                     dot={false}
                     activeDot={{ r: 4 }}
                     name="Body Battery"
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
