@@ -31,7 +31,15 @@ export default function App() {
           <Route path="/reset"   element={<Reset />} />
 
           {/* Private app routes */}
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Dashboard moduleProfile={profile} moduleProfileLoading={profileLoading} />
+                </ProtectedRoute>
+              }
+              />
+
           <Route path="/glucose"  element={<ProtectedRoute><LogGlucose /></ProtectedRoute>} />
           <Route path="/sleep"    element={<ProtectedRoute><LogSleep /></ProtectedRoute>} />
           <Route path="/migraine" element={<ProtectedRoute><LogMigraine /></ProtectedRoute>} />

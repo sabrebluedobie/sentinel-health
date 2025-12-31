@@ -69,7 +69,8 @@ export default function App() {
   }, []);
 
   // ✅ Pull module profile status (only meaningful when user exists)
-  const { onboardingRequired, loading: profileLoading } = useModuleProfile(user);
+  const { profile, onboardingRequired, loading: profileLoading } = useModuleProfile(user);
+
 
   // ✅ One-time onboarding gate (avoid loops + don’t run on auth pages)
   const shouldForceOnboarding =
@@ -85,7 +86,8 @@ export default function App() {
       {shouldForceOnboarding && <Navigate to="/onboarding/modules" replace />}
 
       {/* Show TopNav only on protected pages + onboarding pages */}
-      {!isAuthPage && <TopNav />}
+      {!isAuthPage && <TopNav moduleProfile={profile} moduleProfileLoading={profileLoading} />}
+
 
       <main className={!isAuthPage ? "mx-auto max-w-6xl p-6" : ""}>
         <Routes>

@@ -3,27 +3,34 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function TopNav({ showTabs = true }) {
+export default function TopNav({ showTabs = true, moduleProfile, moduleProfileLoading }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isHealthDropdownOpen, setIsHealthDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const healthTrackingPages = ['/glucose', '/sleep', '/migraine', '/pain'];
-  const isHealthPageActive = healthTrackingPages.includes(location.pathname);
-  
+  const enabled = moduleProfile?.enabled_modules || {};
+
   const tabs = [
     { to: "/", label: "Dashboard" },
+    { to: "/reports", label: "Reports" },
     { to: "/settings", label: "Settings" },
-    { to: "/education", label: "Education" },
   ];
-  
-  const healthOptions = [
-    { to: "/glucose", label: "Glucose" },
-    { to: "/sleep", label: "Sleep" },
-    { to: "/migraine", label: "Migraine" },
-    { to: "/pain", label: "Pain" },
+
+  const healthOptionsAll = [
+    { to: "/glucose",  label: "Glucose",  moduleKey: "glucose" },
+    { to: "/sleep",    label: "Sleep",    moduleKey: "sleep" },
+    { to: "/migraine", label: "Migraine", moduleKey: "migraine" },
+    { to: "/pain",     label: "Pain",     moduleKey: "pain" },
   ];
+
+  const healthOptions = healthOptionsAll.filter((o) => !!enabled[o.moduleKey]);
+
+  const healthTrackingPages = healthOptions.map((o) => o.to);
+  const isHealthPageActive = healthTrackingPages.includes(location.pathname);
+
+  const showHealthDropdown = !moduleProfileLoading && healthOptions.length > 0;
+
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -70,46 +77,48 @@ export default function TopNav({ showTabs = true }) {
               ))}
               
               {/* Desktop Track Health Dropdown */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
-                  onBlur={() => setTimeout(() => setIsHealthDropdownOpen(false), 150)}
-                  className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm transition ${
-                    isHealthPageActive
-                      ? "bg-slate-900 text-white border-slate-900"
-                      : "border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  Track Health
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {isHealthDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-xl z-[100]">
-                    <ul className="py-1">
-                      {healthOptions.map((option) => (
-                        <li key={option.to}>
-                          <NavLink
-                            to={option.to}
-                            className={({ isActive }) =>
-                              `block px-4 py-2 text-sm transition ${
-                                isActive
-                                  ? "bg-slate-100 text-slate-900 font-medium"
-                                  : "text-slate-700 hover:bg-slate-50"
-                              }`
-                            }
-                            onClick={() => setIsHealthDropdownOpen(false)}
-                          >
-                            Log {option.label}
-                          </NavLink>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              {showHealthDropdown && (
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
+                    onBlur={() => setTimeout(() => setIsHealthDropdownOpen(false), 150)}
+                    className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm transition ${
+                      isHealthPageActive
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    Track Health
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {isHealthDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-xl z-[100]">
+                      <ul className="py-1">
+                        {healthOptions.map((option) => (
+                          <li key={option.to}>
+                            <NavLink
+                              to={option.to}
+                              className={({ isActive }) =>
+                                `block px-4 py-2 text-sm transition ${
+                                  isActive
+                                    ? "bg-slate-100 text-slate-900 font-medium"
+                                    : "text-slate-700 hover:bg-slate-50"
+                                }`
+                              }
+                              onClick={() => setIsHealthDropdownOpen(false)}
+                            >
+                              Log {option.label}
+                            </NavLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <button
                 onClick={handleSignOut}
@@ -164,6 +173,7 @@ export default function TopNav({ showTabs = true }) {
             ))}
             
             {/* Track Health Section - Mobile Accordion Style */}
+            {showHealthDropdown && (
             <div className="border-t pt-2 mt-2">
               <button
                 onClick={() => setIsHealthDropdownOpen(!isHealthDropdownOpen)}
@@ -204,6 +214,7 @@ export default function TopNav({ showTabs = true }) {
                 </div>
               )}
             </div>
+            )}
             
             {/* Sign Out */}
             <button
