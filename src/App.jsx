@@ -27,7 +27,7 @@ function ModuleEnabledGuard({ user, moduleKey, children }) {
   const { profile, onboardingRequired, loading: profileLoading } = useModuleProfile(user);
 
   if (!user) return <Navigate to="/sign-in" replace />;
-  if (loading) return <div className="p-6">Loading…</div>;
+  if (profileLoading) return <div className="p-6">Loading…</div>;
 
   const enabled = !!profile?.enabled_modules?.[moduleKey];
   if (!enabled) return <Navigate to="/settings" replace />; // or "/" if you prefer
