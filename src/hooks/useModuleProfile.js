@@ -158,6 +158,7 @@ export function useModuleProfile(user) {
         ...profile.enabled_modules,
         [key]: enabled,
       },
+      onboarding_complete: true, // Mark onboarding as complete when modules are changed
     };
     await persist(next);
   }
@@ -172,6 +173,7 @@ export function useModuleProfile(user) {
           ...options,
         },
       },
+      onboarding_complete: true, // Mark onboarding as complete when options are changed
     };
     await persist(next);
   }

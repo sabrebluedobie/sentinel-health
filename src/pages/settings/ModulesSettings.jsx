@@ -38,10 +38,9 @@ export default function ModulesSettings() {
     try {
       console.log('[ModulesSettings] calling setModuleEnabled...');
       await setModuleEnabled(key, enabled);
-      console.log('[ModulesSettings] setModuleEnabled complete, calling setOnboardingComplete...');
-      // if they change modules here, we consider onboarding done
-      await setOnboardingComplete(true);
-      console.log('[ModulesSettings] all saves complete!');
+      console.log('[ModulesSettings] setModuleEnabled complete');
+      // Don't call setOnboardingComplete separately - it will use stale state!
+      // The onboarding_complete flag will be set to true in the same transaction
       flash("Module settings saved");
     } catch (err) {
       console.error('[ModulesSettings] toggleModule error:', err);
@@ -56,7 +55,6 @@ export default function ModulesSettings() {
     setSaving(true);
     try {
       await setModuleOption("glucose", { source });
-      await setOnboardingComplete(true);
       flash("Glucose settings saved");
     } catch (err) {
       console.error('[ModulesSettings] updateGlucoseSource error:', err);
