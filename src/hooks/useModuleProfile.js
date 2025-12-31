@@ -1,126 +1,67 @@
-// src/hooks/useModuleProfile.js
-import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_MODULE_PROFILE, MODULE_KEYS } from "@/lib/modules";
-import { supabase } from "@/lib/supabase";
- // adjust if needed
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useModuleProfile } from "@/hooks/useModuleProfile";
+import { MODULE_KEYS } from "@/lib/modules";
+import useAuth from "@/hooks/useAuth";
 
-const LS_KEY = "sentrya:moduleProfile:v1";
+export default function ModuleOnboarding() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-function isProfileValid(profile) {
-  if (!profile || !profile.enabled_modules) return false;
+  const { profile, loading, setModuleEnabled, setModuleOption, markOnboardingComplete } =
+    useModuleProfile(user);
 
-  return MODULE_KEYS.every((key) =>
-    Object.prototype.hasOwnProperty.call(profile.enabled_modules, key)
+  const [saving, setSaving] = React.useState(false);
+
+  async function handleFinish() {
+    setSaving(true);
+    try {
+      await markOnboardingComplete();
+      navigate("/", { replace: true });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading || !profile) return <div className="p-6">Loading…</div>;
+
+  return (
+    <div>
+      <h1>Set up what you want to track</h1>
+
+      {MODULE_KEYS.map((key) => (
+        <div key={key}>
+          <label>
+            <input
+              type="checkbox"
+              checked={!!profile.enabled_modules?.[key]}
+              onChange={(e) => setModuleEnabled(key, e.target.checked)}
+              disabled={saving}
+            />
+            {key}
+          </label>
+
+          {key === "glucose" && !!profile.enabled_modules?.glucose && (
+            <div>
+              <label>
+                Source:
+                <select
+                  value={profile.module_options?.glucose?.source || "manual"}
+                  onChange={(e) => setModuleOption("glucose", { source: e.target.value })}
+                  disabled={saving}
+                >
+                  <option value="manual">Manual</option>
+                  <option value="cgm">CGM</option>
+                </select>
+              </label>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button onClick={handleFinish} disabled={saving}>
+        {saving ? "Saving…" : "Finish setup"}
+      </button>
+    </div>
   );
-}
-
-export function useModuleProfile(user) {
-  const [profile, setProfile] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_MODULE_PROFILE;
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : DEFAULT_MODULE_PROFILE;
-  });
-
-  const [loading, setLoading] = useState(true);
-
-  const onboardingRequired = useMemo(() => {
-    return !profile?.onboarding_complete;
-  }, [profile]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadProfile() {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("user_module_profile")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      if (error || !data || !isProfileValid(data)) {
-        // missing or corrupted → force onboarding
-        await supabase.from("user_module_profile").upsert({
-          user_id: user.id,
-          ...DEFAULT_MODULE_PROFILE,
-        });
-
-        setProfile(DEFAULT_MODULE_PROFILE);
-        localStorage.setItem(LS_KEY, JSON.stringify(DEFAULT_MODULE_PROFILE));
-      } else {
-        setProfile(data);
-        localStorage.setItem(LS_KEY, JSON.stringify(data));
-      }
-
-      setLoading(false);
-    }
-
-    loadProfile();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  async function persist(next) {
-    setProfile(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-
-    if (!user?.id) return;
-
-    await supabase.from("user_module_profile").upsert({
-      user_id: user.id,
-      ...next,
-      updated_at: new Date().toISOString(),
-    });
-  }
-
-  async function setModuleEnabled(key, enabled) {
-    const next = {
-      ...profile,
-      enabled_modules: {
-        ...profile.enabled_modules,
-        [key]: enabled,
-      },
-    };
-    await persist(next);
-  }
-
-  async function setModuleOption(key, options) {
-    const next = {
-      ...profile,
-      module_options: {
-        ...profile.module_options,
-        [key]: {
-          ...(profile.module_options?.[key] || {}),
-          ...options,
-        },
-      },
-    };
-    await persist(next);
-  }
-
-  async function markOnboardingComplete() {
-    const next = {
-      ...profile,
-      onboarding_complete: true,
-    };
-    await persist(next);
-  }
-
-  return {
-    profile,
-    loading,
-    onboardingRequired,
-    setModuleEnabled,
-    setModuleOption,
-    markOnboardingComplete,
-  };
 }
