@@ -94,7 +94,8 @@ export default function LogMedication() {
       .insert([{
         user_id: user.id,
         ...formData,
-        times: JSON.stringify(formData.times),
+        // times is already an array, Supabase will convert to JSONB
+        times: formData.times,
         started_at: new Date().toISOString(),
       }]);
 
@@ -132,9 +133,9 @@ export default function LogMedication() {
   }
 
   function getNextScheduledTime(medication) {
-    if (!medication.times) return null;
+    if (!medication.times || !Array.isArray(medication.times)) return null;
     
-    const times = JSON.parse(medication.times);
+    const times = medication.times; // Already an array from JSONB
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
@@ -230,7 +231,7 @@ export default function LogMedication() {
           <div className="space-y-3">
             {medications.map(med => {
               const taken = hasTakenToday(med.id);
-              const times = med.times ? JSON.parse(med.times) : [];
+              const times = Array.isArray(med.times) ? med.times : []; // Times come as JSONB array
               
               return (
                 <div

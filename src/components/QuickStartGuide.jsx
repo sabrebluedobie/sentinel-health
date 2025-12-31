@@ -9,6 +9,7 @@ export default function QuickStartGuide({ moduleProfile, onDismiss }) {
   const hasSleep = !!enabled.sleep;
   const hasMigraine = !!enabled.migraine;
   const hasPain = !!enabled.pain;
+  const hasMedication = !!enabled.medication;
 
   // Build personalized steps based on enabled modules
   const steps = [
@@ -93,8 +94,19 @@ export default function QuickStartGuide({ moduleProfile, onDismiss }) {
                 </div>
               </li>
             )}
+            {hasMedication && (
+              <li className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <span className="text-indigo-600 text-xl">✓</span>
+                <div>
+                  <strong className="text-indigo-900">Medications:</strong>
+                  <p className="text-sm text-indigo-700 mt-1">
+                    Track doses and monitor adherence for all your medications
+                  </p>
+                </div>
+              </li>
+            )}
           </ul>
-          {!hasMigraine && !hasSleep && !hasGlucose && !hasPain && (
+          {!hasMigraine && !hasSleep && !hasGlucose && !hasPain && !hasMedication && (
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-gray-600 text-sm">
                 You haven't enabled any tracking modules yet. Go to Settings to turn on what you want to track.

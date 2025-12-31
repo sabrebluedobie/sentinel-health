@@ -177,7 +177,7 @@ export default function Reports() {
     
     // Calculate adherence per medication
     const medAdherence = medications.map(med => {
-      const medScheduledTimes = med.times ? JSON.parse(med.times).length : 1;
+      const medScheduledTimes = Array.isArray(med.times) ? med.times.length : 1; // Times come as JSONB array
       const periodDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
       const expectedDoses = medScheduledTimes * periodDays;
       
@@ -666,7 +666,7 @@ export default function Reports() {
                               </td>
                               <td className="px-4 py-3">{med.dosage}</td>
                               <td className="px-4 py-3 text-gray-600">
-                                {med.times ? JSON.parse(med.times).join(', ') : 'As needed'}
+                                {Array.isArray(med.times) ? med.times.join(', ') : 'As needed'}
                               </td>
                               <td className="px-4 py-3 text-gray-600">{med.purpose || '-'}</td>
                               <td className="px-4 py-3">
