@@ -23,7 +23,7 @@ const ModulesOnboarding = React.lazy(() => import("@/pages/onboarding/Modules.js
 // ^ adjust path to wherever you put it (could be "@/pages/Modules.jsx")
 
 function ModuleEnabledGuard({ user, moduleKey, children }) {
-  const { profile, loading } = useModuleProfile(user);
+  const { profile, onboardingRequired, loading: profileLoading } = useModuleProfile(user);
 
   if (!user) return <Navigate to="/sign-in" replace />;
   if (loading) return <div className="p-6">Loading…</div>;
@@ -107,8 +107,15 @@ export default function App() {
           />
 
           {/* Private app routes */}
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard moduleProfile={profile} moduleProfileLoading={profileLoading} />
+              </ProtectedRoute>
+            }
+          />
+          
           {/* Module-gated routes */}
           <Route
             path="/glucose"
