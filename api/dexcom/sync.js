@@ -92,7 +92,7 @@ export default async function handler(req, res) {
       .from('dexcom_connections')
       .select('*')
       .eq('user_id', user_id)
-      .single();
+      .maybeSingle();
 
     if (connError || !connection) {
       return res.status(404).json({ error: 'Dexcom not connected' });

@@ -37,7 +37,7 @@ serve(async (req) => {
       .from('dexcom_connections')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (connError || !connection) {
       throw new Error('No Dexcom connection found. Please connect your Dexcom account first.');

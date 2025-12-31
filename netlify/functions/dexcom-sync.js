@@ -104,7 +104,7 @@ exports.handler = async (event) => {
       .from('dexcom_connections')
       .select('*')
       .eq('user_id', user_id)
-      .single();
+      .maybeSingle();
 
     if (connError || !connection) {
       return {
