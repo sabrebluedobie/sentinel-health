@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+
 
 function useSafeNavigate() {
   const navigate = useNavigate();

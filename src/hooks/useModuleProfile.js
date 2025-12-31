@@ -1,7 +1,8 @@
 // src/hooks/useModuleProfile.js
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MODULE_PROFILE, MODULE_KEYS } from "@/lib/modules";
-import { supabase } from "@/lib/supabaseClient"; // adjust if needed
+import { supabase } from "@/lib/supabase";
+ // adjust if needed
 
 const LS_KEY = "sentrya:moduleProfile:v1";
 

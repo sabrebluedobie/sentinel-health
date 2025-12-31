@@ -6,7 +6,8 @@ import SignIn from "@/pages/SignIn.jsx";
 import SignUp from "@/pages/SignUp.jsx";
 import Reset from "@/pages/Reset.jsx";
 
-import { supabase } from "@/lib/supabaseClient";          // ✅ adjust path if needed
+import { supabase } from "@/lib/supabase";
+          // ✅ adjust path if needed
 import { useModuleProfile } from "@/hooks/useModuleProfile.js"; // ✅ adjust path if needed
 
 const Dashboard   = React.lazy(() => import("@/pages/Dashboard.jsx"));
