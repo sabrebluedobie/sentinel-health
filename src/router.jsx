@@ -1,6 +1,6 @@
 import React from "react";
 import { createBrowserRouter } from "react-router-dom";
-import App from "@/pages/App.jsx";
+import App from "./src/App.jsx";
 import SignIn from "@/pages/SignIn.jsx";
 import LogMigraine from "@/pages/LogMigraine.jsx";
 import LogSleep from "@/pages/LogSleep.jsx";

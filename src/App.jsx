@@ -5,6 +5,7 @@ import TopNav from "@/components/TopNav.jsx";
 import SignIn from "@/pages/SignIn.jsx";
 import SignUp from "@/pages/SignUp.jsx";
 import Reset from "@/pages/Reset.jsx";
+import DimModeControl from '@/components/DimModeControl.jsx';
 
 import { supabase } from "@/lib/supabase";
           // ✅ adjust path if needed
@@ -115,7 +116,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          
+
           {/* Module-gated routes */}
           <Route
             path="/glucose"
