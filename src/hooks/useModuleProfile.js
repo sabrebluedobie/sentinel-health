@@ -1,5 +1,5 @@
 // src/hooks/useModuleProfile.js
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { DEFAULT_MODULE_PROFILE, MODULE_KEYS } from "@/lib/modules";
 import { supabase } from "@/lib/supabase";
 
@@ -23,6 +23,7 @@ export function useModuleProfile(user) {
   });
 
   const [loading, setLoading] = useState(true);
+  const isSavingRef = useRef(false); // Track if we're currently saving to prevent reload
 
   const onboardingRequired = useMemo(() => {
     return !profile?.onboarding_complete;
@@ -47,10 +48,17 @@ export function useModuleProfile(user) {
 
   // Load from Supabase on login
   useEffect(() => {
-    console.log('[useModuleProfile] loadProfile effect triggered, user?.id:', user?.id);
+    console.log('[useModuleProfile] loadProfile effect triggered, user?.id:', user?.id, 'isSaving:', isSavingRef.current);
     
     if (!user?.id) {
       console.log('[useModuleProfile] No user, setting loading=false');
+      setLoading(false);
+      return;
+    }
+
+    // Skip reload if we're currently saving
+    if (isSavingRef.current) {
+      console.log('[useModuleProfile] Skipping loadProfile because we are currently saving');
       setLoading(false);
       return;
     }
@@ -101,27 +109,41 @@ export function useModuleProfile(user) {
   async function persist(next) {
     console.log('[useModuleProfile] persist called:', { hasUser: !!user?.id, next });
     
+    isSavingRef.current = true; // Mark that we're saving
+    
     setProfile(next);
     localStorage.setItem(LS_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 
     if (!user?.id) {
       console.log('[useModuleProfile] No user.id, saved to localStorage only');
+      isSavingRef.current = false;
       return; // Settings saved locally, just not to Supabase
     }
 
     console.log('[useModuleProfile] Saving to Supabase:', { user_id: user.id, next });
-    const { data, error } = await supabase.from("user_module_profile").upsert({
-      user_id: user.id,
-      ...next,
-      updated_at: new Date().toISOString(),
-    });
+    
+    try {
+      const { data, error } = await supabase.from("user_module_profile").upsert({
+        user_id: user.id,
+        ...next,
+        updated_at: new Date().toISOString(),
+      }).select();
 
-    if (error) {
-      console.error('[useModuleProfile] Supabase upsert error:', error);
-      throw error;
+      if (error) {
+        console.error('[useModuleProfile] Supabase upsert error:', error);
+        isSavingRef.current = false;
+        throw error;
+      }
+      console.log('[useModuleProfile] Supabase save successful, returned data:', data);
+      
+      // Verify the save by checking what was actually written
+      if (data && data[0]) {
+        console.log('[useModuleProfile] Verified saved enabled_modules:', data[0].enabled_modules);
+      }
+    } finally {
+      isSavingRef.current = false; // Always clear the saving flag
     }
-    console.log('[useModuleProfile] Supabase save successful:', data);
   }
 
   async function setOnboardingComplete(value) {
