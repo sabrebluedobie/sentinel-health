@@ -1,0 +1,119 @@
+import React, { useState } from "react";
+import useAuth from "@/hooks/useAuth";
+import { useModuleProfile } from "@/hooks/useModuleProfile";
+import { MODULE_KEYS } from "@/lib/modules";
+
+export default function ModulesSettings() {
+  const { user } = useAuth();
+  const {
+    profile,
+    loading,
+    setModuleEnabled,
+    setModuleOption,
+    setOnboardingComplete, // we'll add this to the hook below
+  } = useModuleProfile(user);
+
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  function flash(msg) {
+    setSavedMsg(msg);
+    setTimeout(() => setSavedMsg(""), 1800);
+  }
+
+  async function toggleModule(key, enabled) {
+    setSaving(true);
+    try {
+      await setModuleEnabled(key, enabled);
+      // if they change modules here, we consider onboarding done
+      await setOnboardingComplete(true);
+      flash("Module settings saved");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateGlucoseSource(source) {
+    setSaving(true);
+    try {
+      await setModuleOption("glucose", { source });
+      await setOnboardingComplete(true);
+      flash("Glucose settings saved");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function rerunOnboarding() {
+    setSaving(true);
+    try {
+      await setOnboardingComplete(false);
+      flash("Onboarding will run next time you open the app");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading || !profile) return <div className="p-4">Loading…</div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Modules</h2>
+        <p className="text-gray-600 text-sm">
+          Turn on only what you want to track. Disabled modules disappear from navigation and dashboard.
+        </p>
+      </div>
+
+      {savedMsg && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm text-center">
+          ✓ {savedMsg}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {MODULE_KEYS.map((key) => (
+          <div key={key} className="bg-gray-50 p-6 rounded-lg">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                checked={!!profile.enabled_modules?.[key]}
+                onChange={(e) => toggleModule(key, e.target.checked)}
+                disabled={saving}
+              />
+              <span className="font-medium text-gray-900 capitalize">{key}</span>
+            </label>
+
+            {key === "glucose" && !!profile.enabled_modules?.glucose && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Glucose source
+                </label>
+                <select
+                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  value={profile.module_options?.glucose?.source || "manual"}
+                  onChange={(e) => updateGlucoseSource(e.target.value)}
+                  disabled={saving}
+                >
+                  <option value="manual">Manual</option>
+                  <option value="cgm">CGM</option>
+                </select>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-2">
+        <button
+          onClick={rerunOnboarding}
+          disabled={saving}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          Re-run onboarding on next launch
+        </button>
+      </div>
+    </div>
+  );
+}

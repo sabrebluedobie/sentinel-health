@@ -1,36 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from 'lucide-react';
-import NightscoutSettings from '../components/NightscoutSettings';
-// TODO: Re-add Dexcom integration later
-// import DexcomSettings from '../components/DexcomSettings';
+import React, { useState, useEffect } from "react";
+import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from "lucide-react";
+import NightscoutSettings from "../components/NightscoutSettings";
+import ModulesSettings from "../components/ModulesSettings";
 
 const HealthAppSettings = () => {
-  const [activeTab, setActiveTab] = useState('general');
-  const [loggingMethod, setLoggingMethod] = useState('manual');
+  const [activeTab, setActiveTab] = useState("general");
+  const [loggingMethod, setLoggingMethod] = useState("manual");
   const [saved, setSaved] = useState(false);
 
-  // Load saved preference on mount
   useEffect(() => {
-    const savedMethod = localStorage.getItem('loggingMethod');
-    if (savedMethod) {
-      setLoggingMethod(savedMethod);
-    }
+    const savedMethod = localStorage.getItem("loggingMethod");
+    if (savedMethod) setLoggingMethod(savedMethod);
   }, []);
 
-  // Save preference when it changes
   const handleToggle = (method) => {
     setLoggingMethod(method);
-    localStorage.setItem('loggingMethod', method);
-    
-    // Show saved confirmation
+    localStorage.setItem("loggingMethod", method);
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   const tabs = [
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'cgm', label: 'CGM Integration', icon: Activity },
-    { id: 'health', label: 'Health Connect', icon: Heart }
+    { id: "general", label: "General", icon: Settings },
+    { id: "cgm", label: "CGM Integration", icon: Activity },
+    { id: "health", label: "Health Connect", icon: Heart },
+    { id: "modules", label: "Modules", icon: Database },
   ];
 
   return (
@@ -52,8 +47,8 @@ const HealthAppSettings = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <IconComponent size={16} />
@@ -66,32 +61,34 @@ const HealthAppSettings = () => {
 
       {/* Tab Content */}
       <div className="space-y-6">
-        {activeTab === 'general' && (
+        {activeTab === "general" && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">General Settings</h2>
-            
+
             {/* Logging Method Section */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-4">Logging Method</h3>
               <p className="text-sm text-gray-600 mb-4">Choose how you want to log your health data</p>
-              
+
               <div className="space-y-3">
                 {/* Voice Logging Option */}
                 <button
-                  onClick={() => handleToggle('voice')}
+                  onClick={() => handleToggle("voice")}
                   className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                    loggingMethod === 'voice'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
+                    loggingMethod === "voice"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        loggingMethod === 'voice' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-gray-300 text-gray-600'
-                      }`}>
+                      <div
+                        className={`p-2 rounded-full ${
+                          loggingMethod === "voice"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-300 text-gray-600"
+                        }`}
+                      >
                         <Mic className="w-5 h-5" />
                       </div>
                       <div>
@@ -101,28 +98,28 @@ const HealthAppSettings = () => {
                         </div>
                       </div>
                     </div>
-                    {loggingMethod === 'voice' && (
-                      <Check className="w-5 h-5 text-blue-500" />
-                    )}
+                    {loggingMethod === "voice" && <Check className="w-5 h-5 text-blue-500" />}
                   </div>
                 </button>
 
                 {/* Manual Logging Option */}
                 <button
-                  onClick={() => handleToggle('manual')}
+                  onClick={() => handleToggle("manual")}
                   className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                    loggingMethod === 'manual'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
+                    loggingMethod === "manual"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        loggingMethod === 'manual' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-gray-300 text-gray-600'
-                      }`}>
+                      <div
+                        className={`p-2 rounded-full ${
+                          loggingMethod === "manual"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-300 text-gray-600"
+                        }`}
+                      >
                         <Edit3 className="w-5 h-5" />
                       </div>
                       <div>
@@ -132,9 +129,7 @@ const HealthAppSettings = () => {
                         </div>
                       </div>
                     </div>
-                    {loggingMethod === 'manual' && (
-                      <Check className="w-5 h-5 text-blue-500" />
-                    )}
+                    {loggingMethod === "manual" && <Check className="w-5 h-5 text-blue-500" />}
                   </div>
                 </button>
               </div>
@@ -151,15 +146,26 @@ const HealthAppSettings = () => {
               <h3 className="font-medium text-gray-900 mb-4">Notifications</h3>
               <div className="space-y-4">
                 <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" defaultChecked />
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                    defaultChecked
+                  />
                   <span className="ml-3 text-sm text-gray-700">Remind me to log glucose readings</span>
                 </label>
                 <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" defaultChecked />
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                    defaultChecked
+                  />
                   <span className="ml-3 text-sm text-gray-700">Remind me to log sleep data</span>
                 </label>
                 <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200" />
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                  />
                   <span className="ml-3 text-sm text-gray-700">Migraine episode alerts</span>
                 </label>
               </div>
@@ -187,18 +193,13 @@ const HealthAppSettings = () => {
           </div>
         )}
 
-        {activeTab === 'cgm' && (
+        {activeTab === "cgm" && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">CGM Integration</h2>
             <p className="text-gray-600 mb-6">
               Connect your continuous glucose monitor to automatically sync your glucose data.
             </p>
-            
-            {/* TODO: Re-add Dexcom Clarity integration
-            <DexcomSettings />
-            */}
-            
-            {/* Nightscout Pro */}
+
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Nightscout Pro</h3>
               <NightscoutSettings />
@@ -206,10 +207,10 @@ const HealthAppSettings = () => {
           </div>
         )}
 
-        {activeTab === 'health' && (
+        {activeTab === "health" && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Health Platform Integration</h2>
-            
+
             {/* Apple Health */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center justify-between mb-4">
@@ -224,7 +225,10 @@ const HealthAppSettings = () => {
                 </div>
                 <div className="flex items-center">
                   <span className="text-sm text-gray-500 mr-3">Coming Soon</span>
-                  <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed">
+                  <button
+                    disabled
+                    className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed"
+                  >
                     Connect
                   </button>
                 </div>
@@ -248,7 +252,10 @@ const HealthAppSettings = () => {
                 </div>
                 <div className="flex items-center">
                   <span className="text-sm text-gray-500 mr-3">Coming Soon</span>
-                  <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed">
+                  <button
+                    disabled
+                    className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed"
+                  >
                     Connect
                   </button>
                 </div>
@@ -259,6 +266,8 @@ const HealthAppSettings = () => {
             </div>
           </div>
         )}
+
+        {activeTab === "modules" && <ModulesSettings />}
       </div>
 
       {/* Data Management Section */}

@@ -102,6 +102,11 @@ export function useModuleProfile(user) {
     });
   }
 
+  async function setOnboardingComplete(value) {
+    const next = { ...profile, onboarding_complete: !!value };
+    await persist(next);
+    }
+
   async function setModuleEnabled(key, enabled) {
     const next = {
       ...profile,
@@ -142,6 +147,7 @@ export function useModuleProfile(user) {
     setModuleEnabled,
     setModuleOption,
     markOnboardingComplete,
+    setOnboardingComplete,
   };
 }
 
