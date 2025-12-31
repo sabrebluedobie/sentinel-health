@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import WeatherWidget from "@/components/WeatherWidget";
+import VoiceControls from "@/components/VoiceControls";
+import useVoiceInput from "@/hooks/useVoiceInput";
+import useVoiceOutput from "@/hooks/useVoiceOutput";
 
 function parseCSVToTextArray(input) {
   if (!input || !input.trim()) return [];
@@ -26,6 +29,18 @@ export default function LogMigraine() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [voiceMode, setVoiceMode] = useState(false); // Toggle for voice input
+
+  // Voice hooks
+  const voiceInput = useVoiceInput({
+    continuous: true,
+    lang: 'en-US',
+  });
+
+  const voiceOutput = useVoiceOutput({
+    lang: 'en-US',
+    rate: 0.9, // Calm, gentle voice
+  });
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -90,7 +105,16 @@ export default function LogMigraine() {
     if (insertErr) {
       console.error('Debug - Insert error:', insertErr);
       setError(insertErr.message);
+      // Speak error if in voice mode
+      if (voiceMode) {
+        voiceOutput.speakCalmly(`Sorry, there was an error saving your migraine entry. ${insertErr.message}`);
+      }
       return;
+    }
+
+    // Success - speak confirmation if in voice mode
+    if (voiceMode) {
+      voiceOutput.speakBriefly("Migraine entry saved successfully. You're all set.");
     }
 
     navigate("/");
@@ -217,16 +241,60 @@ export default function LogMigraine() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-800 mb-1">
-                Notes
-              </label>
-              <textarea
-                rows={4}
-                placeholder="Anything else to remember?"
-                className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-zinc-800">
+                  Notes
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setVoiceMode(!voiceMode)}
+                  className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                    voiceMode 
+                      ? 'bg-blue-100 text-blue-700 font-medium' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {voiceMode ? '🎤 Voice Mode' : '⌨️ Keyboard'}
+                </button>
+              </div>
+
+              {voiceMode ? (
+                <div className="space-y-3">
+                  {/* Voice Controls */}
+                  <VoiceControls
+                    voiceInput={voiceInput}
+                    onTranscriptChange={setNotes}
+                    placeholder="Tap microphone and describe your migraine..."
+                    showTranscript={true}
+                    autoApplyTranscript={true}
+                  />
+                  
+                  {/* Current notes preview */}
+                  {notes && (
+                    <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-gray-700">Your notes:</p>
+                        <button
+                          type="button"
+                          onClick={() => voiceOutput.speakCalmly(notes)}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          🔊 Read aloud
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-800">{notes}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <textarea
+                  rows={4}
+                  placeholder="Anything else to remember?"
+                  className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              )}
             </div>
 
             {error && <div className="text-sm text-red-600">{error}</div>}
