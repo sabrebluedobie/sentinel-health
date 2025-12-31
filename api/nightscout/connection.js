@@ -6,7 +6,8 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Missing Supabase environment variables");
+  // This is the #1 Vercel issue.
+  throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY on the server");
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -15,14 +16,10 @@ function normalizeUrl(input) {
   let url = String(input || "").trim();
   if (!url) return url;
 
-  // add scheme if missing
   if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-
-  // remove trailing slash
   url = url.replace(/\/$/, "");
 
-  // validate
-  // (will throw if invalid)
+  // throws if invalid
   new URL(url);
 
   return url;
@@ -39,7 +36,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { nightscout_url, api_secret, user_id } = req.body;
+    const { nightscout_url, api_secret, user_id } = req.body || {};
 
     if (!nightscout_url || !api_secret || !user_id) {
       return res.status(400).json({
@@ -51,18 +48,18 @@ export default async function handler(req, res) {
     let cleanUrl;
     try {
       cleanUrl = normalizeUrl(nightscout_url);
-    } catch {
+    } catch (e) {
       return res.status(400).json({
         success: false,
         error: "Nightscout URL is not valid. Include https:// and try again.",
       });
     }
 
-    // Nightscout requires SHA1(API_SECRET) in 'API-SECRET' header
     const hashedSecret = crypto.createHash("sha1").update(api_secret).digest("hex");
 
-    // Test connection first
-    const testResponse = await fetch(`${cleanUrl}/api/v1/status`, {
+    // 1) Test Nightscout connection
+    const testUrl = `${cleanUrl}/api/v1/status`;
+    const testResponse = await fetch(testUrl, {
       headers: {
         "API-SECRET": hashedSecret,
         Accept: "application/json",
@@ -71,57 +68,68 @@ export default async function handler(req, res) {
 
     if (!testResponse.ok) {
       const errorText = await testResponse.text().catch(() => "");
-      console.error("Nightscout test failed:", testResponse.status, errorText);
       return res.status(401).json({
         success: false,
         error: "Invalid Nightscout URL or API Secret. Please check your credentials.",
+        debug: {
+          testUrl,
+          status: testResponse.status,
+          body: errorText.slice(0, 300),
+        },
       });
     }
 
-    // Save to DB (url + api_secret)
-      const { data: savedConnection, error: saveError } = await supabase
-    .from("nightscout_connections")
-    .upsert(
-      {
-        user_id,
-        url: cleanUrl,
-        api_secret: hashedSecret,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    )
-    .select("id, url, updated_at")
-    .single();
+    // 2) Save to DB
+    const payload = {
+      user_id,
+      url: cleanUrl,
+      api_secret: hashedSecret,
+      updated_at: new Date().toISOString(),
+    };
 
-  if (saveError) {
-    console.error("Database save error:", saveError);
-    return res.status(500).json({
-      success: false,
-      error: `Failed to save connection: ${saveError.message}`,
-    });
-  }
+    const { data: savedConnection, error: saveError } = await supabase
+      .from("nightscout_connections")
+      .upsert(payload, { onConflict: "user_id" })
+      .select("id, url, updated_at")
+      .maybeSingle();
 
-  if (!savedConnection) {
-    return res.status(500).json({
-      success: false,
-      error: "Connection saved, but no row returned from database.",
-    });
-  }
+    if (saveError) {
+      return res.status(500).json({
+        success: false,
+        error: `Failed to save connection: ${saveError.message}`,
+        debug: saveError,
+      });
+    }
+
+    // If Supabase returns no row for some reason, don’t crash — re-fetch it.
+    let row = savedConnection;
+    if (!row) {
+      const { data: fetched, error: fetchError } = await supabase
+        .from("nightscout_connections")
+        .select("id, url, updated_at")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      if (fetchError || !fetched) {
+        return res.status(500).json({
+          success: false,
+          error: "Connection saved but could not be returned from database.",
+          debug: { fetchError, user_id },
+        });
+      }
+      row = fetched;
+    }
 
     return res.status(200).json({
       success: true,
       message: "Nightscout connection saved successfully",
-      data: {
-        id: savedConnection.id,
-        url: savedConnection.url,
-        updated_at: savedConnection.updated_at,
-      },
+      data: row,
     });
   } catch (error) {
-    console.error("Nightscout connection error:", error);
     return res.status(500).json({
       success: false,
-      error: error.message || "Failed to save Nightscout connection",
+      error: error?.message || "Failed to save Nightscout connection",
+      debug: error?.stack ? String(error.stack).slice(0, 800) : String(error),
     });
   }
 }
