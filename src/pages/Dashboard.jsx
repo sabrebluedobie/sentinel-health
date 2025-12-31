@@ -167,8 +167,16 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis allowDecimals={false} domain={[0, "auto"]} />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Date', position: 'insideBottom', offset: -5, fontSize: 12 }}
+                  />
+                  <YAxis 
+                    allowDecimals={false} 
+                    domain={[0, "auto"]} 
+                    label={{ value: 'Episodes', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                  />
                   <Tooltip />
                   <Line
                     type="monotone"
@@ -177,6 +185,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -303,28 +312,65 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
           )}
 
           <ChartCard title="Insights (beta)" subtitle="Correlation −1..1 (|0.5|≈moderate)">
-            <ul className="text-sm space-y-1">
+            <ul className="text-sm space-y-2">
               {hasGlucose && hasPain && (
-                <li>
-                  Glucose vs pain: <b>{fmt(corr.pain_vs_glucose)}</b>
+                <li className="flex items-center justify-between">
+                  <span>Glucose vs pain:</span>
+                  <span>
+                    <b>{fmtCorr(corr.pain_vs_glucose)}</b>
+                    {corr.pain_vs_glucose && (
+                      <span className={`ml-2 text-xs ${getConfidenceColor(corr.pain_vs_glucose.n)}`}>
+                        (n={corr.pain_vs_glucose.n})
+                      </span>
+                    )}
+                  </span>
                 </li>
               )}
               {hasSleep && hasPain && (
-                <li>
-                  Sleep vs pain: <b>{fmt(corr.pain_vs_sleep)}</b>
+                <li className="flex items-center justify-between">
+                  <span>Sleep vs pain:</span>
+                  <span>
+                    <b>{fmtCorr(corr.pain_vs_sleep)}</b>
+                    {corr.pain_vs_sleep && (
+                      <span className={`ml-2 text-xs ${getConfidenceColor(corr.pain_vs_sleep.n)}`}>
+                        (n={corr.pain_vs_sleep.n})
+                      </span>
+                    )}
+                  </span>
                 </li>
               )}
               {hasGlucose && hasPain && (
-                <li>
-                  Yday glucose → pain: <b>{fmt(corr.pain_vs_glucose_lag1)}</b>
+                <li className="flex items-center justify-between">
+                  <span>Yday glucose → pain:</span>
+                  <span>
+                    <b>{fmtCorr(corr.pain_vs_glucose_lag1)}</b>
+                    {corr.pain_vs_glucose_lag1 && (
+                      <span className={`ml-2 text-xs ${getConfidenceColor(corr.pain_vs_glucose_lag1.n)}`}>
+                        (n={corr.pain_vs_glucose_lag1.n})
+                      </span>
+                    )}
+                  </span>
                 </li>
               )}
               {hasSleep && hasPain && (
-                <li>
-                  Yday sleep → pain: <b>{fmt(corr.pain_vs_sleep_lag1)}</b>
+                <li className="flex items-center justify-between">
+                  <span>Yday sleep → pain:</span>
+                  <span>
+                    <b>{fmtCorr(corr.pain_vs_sleep_lag1)}</b>
+                    {corr.pain_vs_sleep_lag1 && (
+                      <span className={`ml-2 text-xs ${getConfidenceColor(corr.pain_vs_sleep_lag1.n)}`}>
+                        (n={corr.pain_vs_sleep_lag1.n})
+                      </span>
+                    )}
+                  </span>
                 </li>
               )}
             </ul>
+            {shouldShowWarning(corr) && (
+              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                ⚠️ Small sample size (n&lt;10). Log more data for reliable insights.
+              </div>
+            )}
           </ChartCard>
 
           {hasSleep && hasPain && (
@@ -366,4 +412,30 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
 
 function fmt(v) {
   return v === null || Number.isNaN(v) ? "—" : Number(v).toFixed(2);
+}
+
+// Format correlation with sample size
+function fmtCorr(corrObj) {
+  if (!corrObj || corrObj.r === null || Number.isNaN(corrObj.r)) return "—";
+  return Number(corrObj.r).toFixed(2);
+}
+
+// Color code based on sample size confidence
+function getConfidenceColor(n) {
+  if (n >= 30) return "text-green-600"; // Good sample size
+  if (n >= 10) return "text-yellow-600"; // Moderate
+  return "text-red-600"; // Too small
+}
+
+// Check if we should show a warning about sample size
+function shouldShowWarning(corr) {
+  const allCorrs = [
+    corr.pain_vs_glucose,
+    corr.pain_vs_sleep,
+    corr.pain_vs_glucose_lag1,
+    corr.pain_vs_sleep_lag1,
+  ];
+  
+  // Show warning if any correlation has n < 10 and isn't null
+  return allCorrs.some(c => c && c.n > 0 && c.n < 10);
 }
