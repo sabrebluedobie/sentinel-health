@@ -47,7 +47,10 @@ export function useModuleProfile(user) {
 
   // Load from Supabase on login
   useEffect(() => {
+    console.log('[useModuleProfile] loadProfile effect triggered, user?.id:', user?.id);
+    
     if (!user?.id) {
+      console.log('[useModuleProfile] No user, setting loading=false');
       setLoading(false);
       return;
     }
@@ -55,6 +58,7 @@ export function useModuleProfile(user) {
     let cancelled = false;
 
     async function loadProfile() {
+      console.log('[useModuleProfile] Starting loadProfile...');
       setLoading(true);
 
       const { data, error } = await supabase
@@ -63,9 +67,12 @@ export function useModuleProfile(user) {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      console.log('[useModuleProfile] Supabase response:', { data, error, cancelled });
+
       if (cancelled) return;
 
       if (error || !data || !isProfileValid(data)) {
+        console.log('[useModuleProfile] Invalid/missing data, upserting default profile');
         // missing or corrupted → force onboarding
         await supabase.from("user_module_profile").upsert({
           user_id: user.id,
@@ -76,6 +83,7 @@ export function useModuleProfile(user) {
         localStorage.setItem(LS_KEY, JSON.stringify(DEFAULT_MODULE_PROFILE));
         window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       } else {
+        console.log('[useModuleProfile] Valid data found, setting profile:', data);
         setProfile(data);
         localStorage.setItem(LS_KEY, JSON.stringify(data));
         window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
