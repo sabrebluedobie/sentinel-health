@@ -91,7 +91,7 @@ export default async function handler(req, res) {
         { onConflict: "user_id" }
       )
       .select()
-      .single();
+      .maybeSingle();
 
     if (saveError) {
       console.error("Database save error:", saveError);

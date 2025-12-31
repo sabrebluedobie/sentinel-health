@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       .from('nightscout_connections')
       .select('*')
       .eq('user_id', user_id)
-      .single();
+      .maybeSingle();
 
     if (queryError || !connection) {
       console.error('No connection found:', queryError);
