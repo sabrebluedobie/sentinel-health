@@ -71,7 +71,7 @@ export function useDexcom() {
       }
 
       // Call serverless function to get OAuth URL
-      const response = await fetch('/api/dexcom/oauth/authorize', {
+      const response = await fetch('/api/dexcom/authorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id }),
@@ -109,7 +109,7 @@ export function useDexcom() {
       }
 
       // Exchange code for tokens
-      const response = await fetch('/api/dexcom/oauth/callback', {
+      const response = await fetch('/api/dexcom/callback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
