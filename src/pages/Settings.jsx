@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from "lucide-react";
-import NightscoutSettings from "../components/NightscoutSettings";
+import CGMSettings from "./CGMSettings";
 import ModulesSettings from "./settings/ModulesSettings";
 
 const HealthAppSettings = () => {
@@ -193,19 +193,7 @@ const HealthAppSettings = () => {
           </div>
         )}
 
-        {activeTab === "cgm" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">CGM Integration</h2>
-            <p className="text-gray-600 mb-6">
-              Connect your continuous glucose monitor to automatically sync your glucose data.
-            </p>
-
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Nightscout Pro</h3>
-              <NightscoutSettings />
-            </div>
-          </div>
-        )}
+        {activeTab === "cgm" && <CGMSettings />}
 
         {activeTab === "health" && (
           <div className="space-y-6">
