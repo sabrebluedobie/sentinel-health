@@ -32,6 +32,12 @@ const MODULE_INFO = {
     recommended: "Useful for chronic pain management",
     example: "Identify pain patterns and triggers",
   },
+  medication: {
+    title: "Medication Tracking",
+    description: "Track medications and monitor adherence",
+    recommended: "Important for critical meds like Lithium, Insulin",
+    example: "Ensure you never miss critical doses",
+  },
   weather: {
     title: "Weather Correlation",
     description: "Automatically track weather conditions",

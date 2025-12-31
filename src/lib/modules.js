@@ -5,6 +5,7 @@ export const MODULE_KEYS = [
   "migraine",
   "sleep",
   "pain",
+  "medication",
   "weather",
 ];
 
@@ -14,6 +15,7 @@ export const DEFAULT_MODULE_PROFILE = {
     migraine: true,
     sleep: true,
     pain: true,
+    medication: false,
     weather: true,
   },
   module_options: {
