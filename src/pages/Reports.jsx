@@ -12,7 +12,8 @@ import {
   Printer,
   Mail,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Pill
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -54,7 +55,7 @@ export default function Reports() {
       }
 
       // Fetch all data
-      const [migraineRes, glucoseRes, sleepRes, painRes] = await Promise.all([
+      const [migraineRes, glucoseRes, sleepRes, painRes, medicationRes, medLogsRes] = await Promise.all([
         supabase
           .from('migraine_episodes')
           .select('*')
@@ -85,7 +86,22 @@ export default function Reports() {
           .eq('user_id', user.id)
           .gte('logged_at', startDate)
           .lte('logged_at', endDate)
-          .order('logged_at', { ascending: false })
+          .order('logged_at', { ascending: false }),
+        
+        supabase
+          .from('medications')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('name'),
+        
+        supabase
+          .from('medication_logs')
+          .select('*, medication_id')
+          .eq('user_id', user.id)
+          .gte('taken_at', startDate)
+          .lte('taken_at', endDate)
+          .order('taken_at', { ascending: false })
       ]);
 
       const data = {
@@ -95,6 +111,8 @@ export default function Reports() {
         glucose: glucoseRes.data || [],
         sleep: sleepRes.data || [],
         pain: painRes.data || [],
+        medications: medicationRes.data || [],
+        medLogs: medLogsRes.data || [],
       };
 
       setReportData(calculateMetrics(data));
@@ -108,7 +126,7 @@ export default function Reports() {
   }
 
   function calculateMetrics(data) {
-    const { migraines, glucose, sleep, pain, startDate, endDate } = data;
+    const { migraines, glucose, sleep, pain, medications, medLogs, startDate, endDate } = data;
 
     // Migraine metrics
     const migraineCount = migraines.length;
@@ -150,6 +168,35 @@ export default function Reports() {
       ? (pain.reduce((sum, p) => sum + (p.severity || 0), 0) / pain.length).toFixed(1)
       : 0;
 
+    // Medication metrics
+    const totalMeds = medications.length;
+    const criticalMeds = medications.filter(m => m.is_critical);
+    const takenDoses = medLogs.filter(log => log.status === 'taken').length;
+    const missedDoses = medLogs.filter(log => log.status === 'missed').length;
+    const skippedDoses = medLogs.filter(log => log.status === 'skipped').length;
+    
+    // Calculate adherence per medication
+    const medAdherence = medications.map(med => {
+      const medScheduledTimes = med.times ? JSON.parse(med.times).length : 1;
+      const periodDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+      const expectedDoses = medScheduledTimes * periodDays;
+      
+      const medTaken = medLogs.filter(log => 
+        log.medication_id === med.id && log.status === 'taken'
+      ).length;
+      
+      const adherenceRate = expectedDoses > 0 
+        ? ((medTaken / expectedDoses) * 100).toFixed(0)
+        : 0;
+      
+      return {
+        ...med,
+        expectedDoses,
+        takenDoses: medTaken,
+        adherenceRate,
+      };
+    });
+
     return {
       period: {
         start: new Date(startDate).toLocaleDateString(),
@@ -184,6 +231,15 @@ export default function Reports() {
         avgSeverity: avgPain,
         logCount: pain.length,
         data: pain.slice(0, 10),
+      },
+      medications: {
+        totalMeds,
+        criticalMeds,
+        takenDoses,
+        missedDoses,
+        skippedDoses,
+        adherence: medAdherence,
+        hasMissedCritical: medAdherence.some(m => m.is_critical && parseFloat(m.adherenceRate) < 90),
       },
     };
   }
@@ -558,6 +614,136 @@ export default function Reports() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* Medication Adherence */}
+            {reportData.medications.totalMeds > 0 && (
+              <div className="mb-8 break-inside-avoid">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Pill className="w-6 h-6 text-indigo-600" />
+                  Medication Adherence
+                </h2>
+
+                {/* Alert for missed critical meds */}
+                {reportData.medications.hasMissedCritical && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-800">
+                      <strong>Provider Note:</strong> Patient has &lt;90% adherence on one or more critical medications. 
+                      Please discuss medication management and barriers to adherence.
+                    </div>
+                  </div>
+                )}
+
+                {/* Medication List - Full list if any issues, otherwise just summary */}
+                {reportData.medications.hasMissedCritical || reportData.medications.adherence.some(m => parseFloat(m.adherenceRate) < 80) ? (
+                  <div className="mb-4">
+                    <h3 className="font-medium text-gray-900 mb-3">Current Medications (Full List)</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Medication</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Dosage</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Schedule</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Purpose</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Adherence</th>
+                            <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {reportData.medications.adherence.map((med, idx) => (
+                            <tr key={idx} className={`hover:bg-gray-50 ${
+                              med.is_critical && parseFloat(med.adherenceRate) < 90 ? 'bg-red-50' : ''
+                            }`}>
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-900">{med.name}</div>
+                                {med.prescriber && (
+                                  <div className="text-xs text-gray-500">Rx: {med.prescriber}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">{med.dosage}</td>
+                              <td className="px-4 py-3 text-gray-600">
+                                {med.times ? JSON.parse(med.times).join(', ') : 'As needed'}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">{med.purpose || '-'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">{med.adherenceRate}%</div>
+                                    <div className="text-xs text-gray-500">
+                                      {med.takenDoses}/{med.expectedDoses} doses
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {med.is_critical && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <AlertCircle className="w-3 h-3" />
+                                    Critical
+                                  </span>
+                                )}
+                                {parseFloat(med.adherenceRate) >= 90 && (
+                                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Good
+                                  </span>
+                                )}
+                                {parseFloat(med.adherenceRate) < 90 && parseFloat(med.adherenceRate) >= 70 && (
+                                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Fair
+                                  </span>
+                                )}
+                                {parseFloat(med.adherenceRate) < 70 && (
+                                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Poor
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Pill className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-green-800">
+                        <strong>Good Adherence:</strong> Patient is maintaining good adherence across all medications. 
+                        Current medication list: {reportData.medications.adherence.map(m => m.name).join(', ')}.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-600">Total Medications</div>
+                    <div className="text-2xl font-bold">{reportData.medications.totalMeds}</div>
+                    <div className="text-xs text-gray-500">
+                      {reportData.medications.criticalMeds.length} critical
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-600">Doses Taken</div>
+                    <div className="text-2xl font-bold">{reportData.medications.takenDoses}</div>
+                    <div className="text-xs text-gray-500">
+                      {reportData.medications.missedDoses} missed, {reportData.medications.skippedDoses} skipped
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-600">Overall Adherence</div>
+                    <div className="text-2xl font-bold">
+                      {reportData.medications.adherence.length > 0
+                        ? (reportData.medications.adherence.reduce((sum, m) => sum + parseFloat(m.adherenceRate), 0) / reportData.medications.adherence.length).toFixed(0)
+                        : 0}%
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
