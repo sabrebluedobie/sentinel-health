@@ -23,8 +23,6 @@ export default function ModuleOnboarding() {
     }
   }
 
-  if (loading || !profile) return <div className="p-6">Loading…</div>;
-
   return (
     <div>
       <h1>Set up what you want to track</h1>
