@@ -11,12 +11,13 @@ import { supabase } from "@/lib/supabase";
           // ✅ adjust path if needed
 import { useModuleProfile } from "@/hooks/useModuleProfile.js"; // ✅ adjust path if needed
 
-const Dashboard   = React.lazy(() => import("@/pages/Dashboard.jsx"));
-const LogGlucose  = React.lazy(() => import("@/pages/LogGlucose.jsx"));
-const LogSleep    = React.lazy(() => import("@/pages/LogSleep.jsx"));
-const LogMigraine = React.lazy(() => import("@/pages/LogMigraine.jsx"));
-const LogPain     = React.lazy(() => import("@/pages/LogPain.jsx"));
-const Education   = React.lazy(() => import("@/pages/Education.jsx"));
+const Dashboard     = React.lazy(() => import("@/pages/Dashboard.jsx"));
+const LogGlucose    = React.lazy(() => import("@/pages/LogGlucose.jsx"));
+const LogSleep      = React.lazy(() => import("@/pages/LogSleep.jsx"));
+const LogMigraine   = React.lazy(() => import("@/pages/LogMigraine.jsx"));
+const LogPain       = React.lazy(() => import("@/pages/LogPain.jsx"));
+const LogMedication = React.lazy(() => import("@/pages/LogMedication.jsx"));
+const Education     = React.lazy(() => import("@/pages/Education.jsx"));
 const Settings    = React.lazy(() => import("@/pages/Settings.jsx"));
 const Reports     = React.lazy(() => import("@/pages/Reports.jsx"));
 
@@ -158,6 +159,17 @@ export default function App() {
               <ProtectedRoute>
                 <ModuleEnabledGuard user={user} moduleKey="pain">
                   <LogPain />
+                </ModuleEnabledGuard>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/medication"
+            element={
+              <ProtectedRoute>
+                <ModuleEnabledGuard user={user} moduleKey="medication">
+                  <LogMedication />
                 </ModuleEnabledGuard>
               </ProtectedRoute>
             }

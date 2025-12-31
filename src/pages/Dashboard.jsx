@@ -27,6 +27,7 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
   const hasSleep = !!enabled.sleep;
   const hasMigraine = !!enabled.migraine;
   const hasPain = !!enabled.pain;
+  const hasMedication = !!enabled.medication;
 
   const dm =
     (typeof useDailyMetrics === "function" && useDailyMetrics(range, refreshKey)) || {
@@ -142,11 +143,22 @@ export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
             </Link>
           )}
 
+          {hasMedication && (
+            <Link
+              to="/medication"
+              className="rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50"
+            >
+              <div className="text-sm font-medium">Log Medication</div>
+              <div className="text-xs text-zinc-500">Track doses & adherence</div>
+            </Link>
+          )}
+
           {!moduleProfileLoading &&
             !hasGlucose &&
             !hasSleep &&
             !hasMigraine &&
-            !hasPain && (
+            !hasPain &&
+            !hasMedication && (
               <div className="rounded-lg border border-zinc-200 p-3 text-sm text-zinc-600 lg:col-span-4">
                 No tracking modules are enabled yet. Go to <Link className="underline" to="/settings">Settings</Link> to
                 turn on what you want to track.
