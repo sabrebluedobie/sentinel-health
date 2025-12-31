@@ -15,10 +15,15 @@ export default function ModulesSettings() {
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  const [error, setError] = useState(false);
 
-  function flash(msg) {
+  function flash(msg, isError = false) {
     setSavedMsg(msg);
-    setTimeout(() => setSavedMsg(""), 1800);
+    setError(isError);
+    setTimeout(() => {
+      setSavedMsg("");
+      setError(false);
+    }, 1800);
   }
 
   async function toggleModule(key, enabled) {
@@ -28,6 +33,9 @@ export default function ModulesSettings() {
       // if they change modules here, we consider onboarding done
       await setOnboardingComplete(true);
       flash("Module settings saved");
+    } catch (err) {
+      console.error('[ModulesSettings] toggleModule error:', err);
+      flash("Error saving: " + (err.message || 'Unknown error'), true);
     } finally {
       setSaving(false);
     }
@@ -39,6 +47,9 @@ export default function ModulesSettings() {
       await setModuleOption("glucose", { source });
       await setOnboardingComplete(true);
       flash("Glucose settings saved");
+    } catch (err) {
+      console.error('[ModulesSettings] updateGlucoseSource error:', err);
+      flash("Error saving: " + (err.message || 'Unknown error'), true);
     } finally {
       setSaving(false);
     }
@@ -49,6 +60,9 @@ export default function ModulesSettings() {
     try {
       await setOnboardingComplete(false);
       flash("Onboarding will run next time you open the app");
+    } catch (err) {
+      console.error('[ModulesSettings] rerunOnboarding error:', err);
+      flash("Error saving: " + (err.message || 'Unknown error'), true);
     } finally {
       setSaving(false);
     }
@@ -66,8 +80,12 @@ export default function ModulesSettings() {
       </div>
 
       {savedMsg && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm text-center">
-          ✓ {savedMsg}
+        <div className={`p-3 border rounded-lg text-sm text-center ${
+          error 
+            ? 'bg-red-50 border-red-200 text-red-800' 
+            : 'bg-green-50 border-green-200 text-green-800'
+        }`}>
+          {error ? '✗' : '✓'} {savedMsg}
         </div>
       )}
 

@@ -95,13 +95,23 @@ export function useModuleProfile(user) {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('[useModuleProfile] No user.id, skipping Supabase save');
+      return;
+    }
 
-    await supabase.from("user_module_profile").upsert({
+    console.log('[useModuleProfile] Saving to Supabase:', { user_id: user.id, next });
+    const { data, error } = await supabase.from("user_module_profile").upsert({
       user_id: user.id,
       ...next,
       updated_at: new Date().toISOString(),
     });
+
+    if (error) {
+      console.error('[useModuleProfile] Supabase upsert error:', error);
+      throw error;
+    }
+    console.log('[useModuleProfile] Supabase save successful:', data);
   }
 
   async function setOnboardingComplete(value) {
