@@ -156,7 +156,7 @@ export default function App() {
           <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
           <Route path="/settings"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-          <Route path="*" element={<SignIn />} />
+          <Route path="*" element={<Navigate to={user ? "/" : "/sign-in"} replace />} />
         </Routes>
       </main>
     </React.Suspense>
