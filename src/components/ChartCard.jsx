@@ -7,7 +7,9 @@ export default function ChartCard({ title, subtitle, children }) {
         <div className="text-sm font-medium text-zinc-900">{title}</div>
         {subtitle && <div className="text-xs text-zinc-500 mt-0.5">{subtitle}</div>}
       </div>
-      {children}
+      <div className="min-h-[14rem]">
+        {children}
+      </div>
     </div>
   );
 }
