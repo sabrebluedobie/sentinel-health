@@ -23,28 +23,29 @@ export function useDexcom() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { connected: false };
 
-      const { data, error: dbError } = await supabase
-        .from('dexcom_connections')
-        .select('last_sync_at, sync_enabled, token_expires_at')
-        .eq('user_id', user.id)
-        .single();
+      // inside checkConnection()
 
-      if (dbError && dbError.code !== 'PGRST116') {
-        throw dbError;
-      }
+  const { data, error: dbError } = await supabase
+    .from("dexcom_connections")
+    .select("last_sync_at, sync_enabled, token_expires_at")
+    .eq("user_id", user.id)
+    .maybeSingle(); // ✅ avoids 406 when missing
 
-      const isConnected = !!data;
-      setConnected(isConnected);
-      if (data?.last_sync_at) {
-        setLastSync(new Date(data.last_sync_at));
-      }
+  if (dbError) {
+    throw dbError;
+  }
 
-      return {
-        connected: isConnected,
-        lastSync: data?.last_sync_at,
-        syncEnabled: data?.sync_enabled,
-        tokenExpiresAt: data?.token_expires_at,
-      };
+  const isConnected = !!data;
+  setConnected(isConnected);
+  if (data?.last_sync_at) setLastSync(new Date(data.last_sync_at));
+
+  return {
+    connected: isConnected,
+    lastSync: data?.last_sync_at,
+    syncEnabled: data?.sync_enabled,
+    tokenExpiresAt: data?.token_expires_at,
+  };
+
     } catch (err) {
       console.error('[Dexcom] Error checking connection:', err);
       setError(err.message);

@@ -79,27 +79,34 @@ export default async function handler(req, res) {
     }
 
     // Save to DB (url + api_secret)
-    const { data: savedConnection, error: saveError } = await supabase
-      .from("nightscout_connections")
-      .upsert(
-        {
-          user_id,
-          url: cleanUrl,
-          api_secret: hashedSecret,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      )
-      .select()
-      .maybeSingle();
+      const { data: savedConnection, error: saveError } = await supabase
+    .from("nightscout_connections")
+    .upsert(
+      {
+        user_id,
+        url: cleanUrl,
+        api_secret: hashedSecret,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    )
+    .select("id, url, updated_at")
+    .single();
 
-    if (saveError) {
-      console.error("Database save error:", saveError);
-      return res.status(500).json({
-        success: false,
-        error: `Failed to save connection: ${saveError.message}`,
-      });
-    }
+  if (saveError) {
+    console.error("Database save error:", saveError);
+    return res.status(500).json({
+      success: false,
+      error: `Failed to save connection: ${saveError.message}`,
+    });
+  }
+
+  if (!savedConnection) {
+    return res.status(500).json({
+      success: false,
+      error: "Connection saved, but no row returned from database.",
+    });
+  }
 
     return res.status(200).json({
       success: true,

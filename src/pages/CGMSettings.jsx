@@ -5,7 +5,8 @@ import NightscoutSignin from '@/components/NightscoutSignin.jsx';
 import DexcomConnection from '@/components/DexcomConnection.jsx';
 
 export default function CGMSettings() {
-  const [activeTab, setActiveTab] = useState('dexcom'); // Start with Dexcom as primary
+  const [activeTab, setActiveTab] = useState("nightscout");
+ // Start with Nightscout as primary
 
   return (
     <div className="max-w-4xl mx-auto p-6">
