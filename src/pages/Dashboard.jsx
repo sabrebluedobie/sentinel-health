@@ -13,11 +13,23 @@ import useDailyMetrics from "@/hooks/useDailyMetrics";
 import useMigraineCorrelations from "@/hooks/useMigraineCorrelations";
 import ChartCard from "@/components/ChartCard.jsx";
 import DetailedGlucoseChart from "@/components/DetailedGlucoseChart";
+import ErrorButton from "../../sentryaTest"
+
 
 export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
   const [range, setRange] = useState(30);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const ErrorButton = () => (
+    <button
+      onClick={() => {
+        throw new Error('This is your first error!');
+      }}
+      className="px-4 py-2 bg-red-600 text-white rounded-md"
+    >
+      Break the world
+    </button>
+  );
   // If you ever use this, wire it to your log pages/components.
   // eslint-disable-next-line no-unused-vars
   const handleDataLogged = () => setRefreshKey((prev) => prev + 1);
