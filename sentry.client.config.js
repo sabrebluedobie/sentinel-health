@@ -5,4 +5,5 @@ Sentry.init({
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 1.0,
   sendDefaultPii: false,
+  enableLogs: true,
 });
