@@ -13,8 +13,6 @@ import useDailyMetrics from "@/hooks/useDailyMetrics";
 import useMigraineCorrelations from "@/hooks/useMigraineCorrelations";
 import ChartCard from "@/components/ChartCard.jsx";
 import DetailedGlucoseChart from "@/components/DetailedGlucoseChart";
-import ErrorButton from "../../sentryaTest"
-
 
 export default function Dashboard({ moduleProfile, moduleProfileLoading }) {
   const [range, setRange] = useState(30);
