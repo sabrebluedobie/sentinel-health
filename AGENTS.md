@@ -84,42 +84,49 @@ $END$
 - Explain your OBSERVATIONS clearly, then provide REASONING to identify the exact issue. Add console logs when needed to gather more information.
 
 
-The codebase implements a sophisticated health tracking system focused on migraine analysis and correlation with multiple health factors. The business logic is organized around five core components:
+Healthcare Monitoring System Architecture
 
-1. Migraine Correlation Engine (90/100)
-Path: src/pages/Dashboard.jsx
-- Multi-factor correlation analysis between:
-  - Glucose levels
-  - Sleep patterns
-  - Weather conditions
-  - Pain patterns
-- Custom visualization of trigger identification
+Core Health Tracking Modules:
 
-2. Sleep Quality Analysis (85/100)
-Path: src/pages/LogSleep.jsx
-- Sleep score calculation combining duration and physiological data
-- Body battery calculation from sleep quality indicators
-- Integration of bio-markers (HRV, SpO2, respiratory rate)
+1. Sleep Quality Management
+- Advanced sleep quality scoring combining deep sleep percentage, REM cycles, and awake time
+- Body battery recovery calculations from physiological metrics
+- Integration with heart rate, HRV, and SpO2 measurements
+Importance Score: 85/100
 
-3. Headache Classification (85/100)
-Path: src/components/hooks/useHeadacheTypes.js
-- Symptom-based analysis for migraine types
-- Probability calculations for headache classification
-- Pattern recognition for trigger identification
+2. Migraine Monitoring System
+- Weather condition correlation engine
+- Voice-enabled symptom logging with medical terminology support
+- Structured tracking of pain levels, triggers, and medication effectiveness
+Importance Score: 75/100
 
-4. Glucose Pattern Analysis (80/100)
-Path: src/components/DetailedGlucoseChart.jsx
-- Glucose trend analysis with migraine correlation
-- Integration with multiple data sources (CGM, Nightscout)
-- Pattern visualization during migraine episodes
+3. Analytics Engine
+- Medication adherence scoring
+- Glucose time-in-range analysis
+- Migraine pattern detection
+- Clinical report generation with healthcare provider markers
+Importance Score: 90/100
 
-5. Weather Impact Analysis (75/100)
-Path: src/components/WeatherWidget.jsx
-- Migraine-specific weather data processing
-- Barometric pressure change tracking
-- Multi-factor weather correlation
+4. Medication Management
+- Critical medication compliance tracking
+- Time-based adherence monitoring
+- Body battery integration for optimal timing
+- Multi-dose scheduling system
+Importance Score: 80/100
 
-The system's primary focus is on identifying correlations between different health metrics and migraine occurrences, with specialized handling of medical data streams and trigger identification.
+Integration Layer:
+- Unified health metric correlation engine
+- Clinical data visualization pipeline
+- Healthcare-specific authentication flows
+- Medical terminology processing system
+
+Domain Features:
+- Multi-source health data aggregation
+- Clinical-grade reporting system
+- Healthcare compliance enforcement
+- Medical device data integration
+
+System Importance Score: 85/100
 
 $END$
 

@@ -1,5 +1,5 @@
 ---
-description: Documents data models and relationships for health metrics tracking, focusing on sleep, glucose, and migraine data integration
+description: Data models and relationships for health tracking metrics (sleep, glucose, migraines) and medical system integrations
 ---
 
 # === USER INSTRUCTIONS ===
@@ -74,47 +74,53 @@ $END$
 
 # data-models-relationships
 
-Core Data Models and Relationships:
+## Core Health Data Models
 
-1. Glucose Monitoring Integration (Importance: 90/100)
-- Integration with multiple data sources (manual, CGM, Nightscout)
-- Specialized data models for glucose readings with timestamps
-- Relationships between glucose patterns and migraine episodes
-- Custom normalization for medical device data streams
+1. MIGRAINE EPISODES
+- Structured model for tracking migraine occurrences
+- Attributes: pain levels, triggers, medications, effectiveness
+- Weather correlation data points
+- Clinical symptom categorization
+Importance Score: 85
 
-2. Sleep Quality Metrics (Importance: 85/100)
-- Complex data model combining multiple bio-markers:
-  - Heart Rate Variability (HRV)
-  - Blood oxygen (SpO2)
-  - Respiratory rate
-  - Sleep phase classification
-- Direct relationships with migraine occurrence tracking
+2. SLEEP METRICS
+- Deep sleep percentage tracking (15-25% ideal range)
+- REM sleep monitoring (20-25% ideal range)
+- Body battery recovery calculations
+- Physiological rest indicators (heart rate, HRV, SpO2)
+Importance Score: 80
 
-3. Migraine Event Correlation (Importance: 95/100)
-- Central data model connecting:
-  - Glucose levels
-  - Sleep patterns
-  - Weather conditions
-  - Pain patterns
-- Multi-dimensional correlation tracking
-- Specialized event classification system
+3. GLUCOSE READINGS
+- Integration with Nightscout and Dexcom systems
+- Time-in-range calculations
+- Normalized glucose data format
+- Sync state tracking per user
+Importance Score: 90
 
-4. Weather Impact Data Model (Importance: 75/100)
-- Structured storage of migraine-relevant metrics
-- Relationship mapping between weather changes and health events
-- Focus on barometric pressure correlations
+## Data Relationships
 
-Key Relationships:
-- Glucose readings → Migraine events
-- Sleep quality indicators → Migraine probability
-- Weather metrics → Health impact tracking
-- Headache types → Symptom classifications
+HEALTH METRIC CORRELATIONS
+- Sleep quality impact on migraine frequency
+- Weather condition relationships to migraine triggers
+- Glucose level effects on sleep patterns
+- Medication timing optimization based on body metrics
+Importance Score: 85
 
-Data Integration Points:
-- Nightscout medical system integration
-- Dexcom device data synchronization
-- Weather API data correlation
-- Sleep tracking device integration
+EXTERNAL SYSTEM INTEGRATION
+- Bidirectional Nightscout data sync
+- Dexcom EGV format transformation
+- CGM data normalization
+- Cross-system deduplication
+Importance Score: 90
+
+## Data Storage Patterns
+
+CLIENT-SIDE HEALTH DATA
+- Namespaced storage with "sentinel:" prefix
+- Domain-specific timestamp sorting
+- Medical data filtering with range support
+- Health metric isolation patterns
+Importance Score: 75
 
 $END$
 

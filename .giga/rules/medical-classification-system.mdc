@@ -1,5 +1,5 @@
 ---
-description: Technical specifications for medical headache classification algorithms and symptom analysis systems
+description: Technical specification for headache/migraine classification and pattern recognition system
 ---
 
 # === USER INSTRUCTIONS ===
@@ -60,32 +60,35 @@ $END$
 
 # medical-classification-system
 
-The headache classification system implements specialized medical diagnosis and symptom analysis algorithms through the following components:
+The medical classification system implements structured categorization and analysis of headache conditions with the following key components:
 
-## Headache Type Classification Engine
-Path: src/components/hooks/useHeadacheTypes.js
-- Sophisticated classification algorithm for 9 distinct headache types
-- Symptom-based probability calculation for different migraine categories
-- Clinical symptoms mapping and characteristic analysis
-- Structured diagnostic support system
-Importance Score: 90/100
-
-## Symptom Analysis
+HEADACHE CLASSIFICATION ENGINE
 Path: src/data/migraineEducation.js
-- Comprehensive symptom mapping for migraine variants 
-- Clinical characteristics correlation engine
-- Diagnostic support data structures
-- Medical education content integration
-Importance Score: 85/100
+- Clinical categorization of migraine types with symptom mapping
+- Structured classification of migraine presentations and associated risks
+- Pattern matching for symptom combinations and trigger correlations
+Importance Score: 95
 
-## Key Classification Patterns:
-1. Clinical symptom mapping to headache types
-2. Probability distribution for diagnosis support
-3. Medical characteristic correlation
-4. Symptom severity calculations
-5. Pattern matching for migraine variants
+SYMPTOM TRACKING & ANALYSIS
+Path: src/pages/LogMigraine.jsx
+- Voice-enabled symptom logging with medical terminology recognition
+- Weather correlation analysis for migraine patterns
+- Structured data model mapping symptoms to clinical classifications
+Importance Score: 85
 
-The system provides structured medical classification focused on migraine and headache diagnosis through symptom analysis and pattern recognition, with strong emphasis on clinical accuracy and diagnostic support.
+VISUALIZATION & REPORTING
+Path: src/components/HeadacheTypesChart.jsx
+- Clinical visualization of headache type distributions
+- Pattern recognition for symptom frequency analysis
+- Medical trend visualization with clinical relevance markers
+Importance Score: 75
+
+Core Classification Logic:
+1. Symptom-based categorization of headache types
+2. Pattern matching for trigger identification
+3. Risk assessment based on symptom combinations
+4. Weather condition correlation analysis
+5. Clinical terminology mapping
 
 $END$
 

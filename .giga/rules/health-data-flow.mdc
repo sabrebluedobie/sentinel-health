@@ -1,5 +1,5 @@
 ---
-description: Defines data flow patterns and integrations between health tracking components and external systems
+description: Specifications for health data flows, integrations and processing pipelines between components
 ---
 
 # === USER INSTRUCTIONS ===
@@ -53,43 +53,43 @@ $END$
 
 # health-data-flow
 
-Core Data Flow Components:
+Key data flow components and integrations:
 
-1. Glucose Monitoring Pipeline
-Path: src/components/DetailedGlucoseChart.jsx
-- Integration of multiple glucose data sources (manual, CGM, Nightscout)
-- Custom glucose trend analysis correlated with migraine episodes
-- Specialized glucose pattern visualization during health events
-Importance Score: 80/100
+1. CGM Data Processing
+- Processes glucose readings through DexcomConnection component
+- Time-in-range calculations using clinical thresholds
+- Automated glucose reading import with validation
+- Connection state management for medical device data
+Importance Score: 90
 
 2. Sleep Analysis Pipeline
-Path: src/pages/LogSleep.jsx
-- Multi-source bio-marker data integration (HRV, SpO2, respiratory rate)
-- Sleep phase quality mapping and scoring
-- Body battery calculation from sleep indicators
-Importance Score: 85/100
+- Sleep quality scoring combines multiple health metrics
+- Deep sleep percentage analysis (15-25% ideal range)
+- REM sleep monitoring (20-25% ideal range)
+- Body battery recovery calculations incorporating sleep data
+- Integration of heart rate, HRV, and SpO2 data
+Importance Score: 85
 
 3. Weather Data Integration
-Path: src/components/WeatherWidget.jsx
-- Processing of migraine-relevant weather metrics
-- Barometric pressure change tracking
-- Multi-factor weather condition monitoring
-Importance Score: 75/100
+- Barometric pressure tracking for migraine correlation
+- Environmental trigger analysis pipeline
+- Weather condition impact assessment
+- Real-time weather data synchronization
+Importance Score: 75
 
-Data Flow Integration Points:
+4. Health Data Streams
+- Medication adherence scoring
+- Integration between glucose, sleep, and migraine data
+- Time-series health analytics
+- Healthcare provider report generation
+Importance Score: 80
 
-1. Medical Data Correlation Engine
-Path: src/pages/Dashboard.jsx
-- Cross-stream analysis between glucose, sleep, and weather data
-- Integration of pain pattern tracking with physiological metrics
-- Unified data visualization for trigger identification
-Importance Score: 90/100
-
-Key Data Flow Patterns:
-- Healthcare metric normalization across sources
-- Time-series alignment of multiple health data streams
-- Specialized medical event correlation
-- Multi-source health data aggregation
+Critical Data Flow Patterns:
+- Multi-source health metric correlation
+- Clinical data transformation pipelines
+- Healthcare-specific data visualization
+- Medical device connectivity management
+- Real-time health metric processing
 
 $END$
 
