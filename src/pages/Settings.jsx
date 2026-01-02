@@ -1,17 +1,39 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Database, Heart, Mic, Edit3, Check, Activity } from "lucide-react";
+import {
+  Settings,
+  Database,
+  Heart,
+  Mic,
+  Edit3,
+  Check,
+  Activity,
+  BookOpen,
+} from "lucide-react";
+
 import CGMSettings from "./CGMSettings";
 import ModulesSettings from "./settings/ModulesSettings";
+import QuickStartGuide from "./QuickStartGuide";
 
-const HealthAppSettings = () => {
+const HealthAppSettings = ({ moduleProfile }) => {
   const [activeTab, setActiveTab] = useState("general");
   const [loggingMethod, setLoggingMethod] = useState("manual");
   const [saved, setSaved] = useState(false);
+  const [showQuickStart, setShowQuickStart] = useState(false);
 
   useEffect(() => {
     const savedMethod = localStorage.getItem("loggingMethod");
     if (savedMethod) setLoggingMethod(savedMethod);
   }, []);
+
+  useEffect(() => {
+  const hasSeenQuickStart = localStorage.getItem("quickStartSeen") === "1";
+
+  if (!hasSeenQuickStart) {
+    setActiveTab("quickstart");
+    setShowQuickStart(true);
+  }
+}, []);
+
 
   const handleToggle = (method) => {
     setLoggingMethod(method);
@@ -26,6 +48,7 @@ const HealthAppSettings = () => {
     { id: "cgm", label: "CGM Integration", icon: Activity },
     { id: "health", label: "Health Connect", icon: Heart },
     { id: "modules", label: "Modules", icon: Database },
+    { id: "quickstart", label: "Quick Start Guide", icon: BookOpen },
   ];
 
   return (
@@ -63,12 +86,16 @@ const HealthAppSettings = () => {
       <div className="space-y-6">
         {activeTab === "general" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">General Settings</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              General Settings
+            </h2>
 
             {/* Logging Method Section */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-4">Logging Method</h3>
-              <p className="text-sm text-gray-600 mb-4">Choose how you want to log your health data</p>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose how you want to log your health data
+              </p>
 
               <div className="space-y-3">
                 {/* Voice Logging Option */}
@@ -98,7 +125,9 @@ const HealthAppSettings = () => {
                         </div>
                       </div>
                     </div>
-                    {loggingMethod === "voice" && <Check className="w-5 h-5 text-blue-500" />}
+                    {loggingMethod === "voice" && (
+                      <Check className="w-5 h-5 text-blue-500" />
+                    )}
                   </div>
                 </button>
 
@@ -129,7 +158,9 @@ const HealthAppSettings = () => {
                         </div>
                       </div>
                     </div>
-                    {loggingMethod === "manual" && <Check className="w-5 h-5 text-blue-500" />}
+                    {loggingMethod === "manual" && (
+                      <Check className="w-5 h-5 text-blue-500" />
+                    )}
                   </div>
                 </button>
               </div>
@@ -151,7 +182,9 @@ const HealthAppSettings = () => {
                     className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
                     defaultChecked
                   />
-                  <span className="ml-3 text-sm text-gray-700">Remind me to log glucose readings</span>
+                  <span className="ml-3 text-sm text-gray-700">
+                    Remind me to log glucose readings
+                  </span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -159,14 +192,18 @@ const HealthAppSettings = () => {
                     className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
                     defaultChecked
                   />
-                  <span className="ml-3 text-sm text-gray-700">Remind me to log sleep data</span>
+                  <span className="ml-3 text-sm text-gray-700">
+                    Remind me to log sleep data
+                  </span>
                 </label>
                 <label className="flex items-center">
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
                   />
-                  <span className="ml-3 text-sm text-gray-700">Migraine episode alerts</span>
+                  <span className="ml-3 text-sm text-gray-700">
+                    Migraine episode alerts
+                  </span>
                 </label>
               </div>
             </div>
@@ -175,14 +212,18 @@ const HealthAppSettings = () => {
               <h3 className="font-medium text-gray-900 mb-4">Units</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Glucose Units</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Glucose Units
+                  </label>
                   <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                     <option>mg/dL</option>
                     <option>mmol/L</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Time Format</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Time Format
+                  </label>
                   <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                     <option>12-hour</option>
                     <option>24-hour</option>
@@ -197,9 +238,10 @@ const HealthAppSettings = () => {
 
         {activeTab === "health" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Health Platform Integration</h2>
-
-            {/* Apple Health */}
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Health Platform Integration
+            </h2>
+            {/* ... your health section unchanged ... */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
@@ -226,7 +268,6 @@ const HealthAppSettings = () => {
               </div>
             </div>
 
-            {/* Google Health */}
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
@@ -256,6 +297,34 @@ const HealthAppSettings = () => {
         )}
 
         {activeTab === "modules" && <ModulesSettings />}
+
+        {activeTab === "quickstart" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Quick Start
+            </h2>
+
+            <div className="bg-gray-50 p-6 rounded-lg space-y-4">
+              <p className="text-sm text-gray-700">
+                Open the Quick Start Guide anytime for a refresher on logging and insights.
+              </p>
+
+              <button
+                onClick={() => setShowQuickStart(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                View Quick Start Guide
+              </button>
+            </div>
+
+            {showQuickStart && (
+              <QuickStartGuide
+                moduleProfile={moduleProfile || { enabled_modules: {} }}
+                onDismiss={() => {localStorage.setItem("quickStartSeen", "1"); setShowQuickStart(false)}}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Data Management Section */}
