@@ -1,5 +1,5 @@
 ---
-description: Data models and relationships for health tracking metrics (sleep, glucose, migraines) and medical system integrations
+description: Documents health metric data models and relationships between sleep, glucose, migraines and medical system integrations
 ---
 
 # === USER INSTRUCTIONS ===
@@ -74,53 +74,48 @@ $END$
 
 # data-models-relationships
 
-## Core Health Data Models
+Core Data Models and Relationships:
 
-1. MIGRAINE EPISODES
-- Structured model for tracking migraine occurrences
-- Attributes: pain levels, triggers, medications, effectiveness
-- Weather correlation data points
-- Clinical symptom categorization
+1. Sleep Metrics Model
+- Sleep stages data structure with deep, REM, light sleep percentages
+- Physiological correlations with heart rate, HRV, SpO2
+- Quality scoring attributes (0-100 scale)
 Importance Score: 85
 
-2. SLEEP METRICS
-- Deep sleep percentage tracking (15-25% ideal range)
-- REM sleep monitoring (20-25% ideal range)
-- Body battery recovery calculations
-- Physiological rest indicators (heart rate, HRV, SpO2)
+2. Glucose Monitoring Model
+- CGM reading timestamps and values
+- Integration mappings for Nightscout and Dexcom data formats
+- Bidirectional sync relationships with external systems
+Importance Score: 90
+
+3. Migraine Tracking Model
+- Symptom and trigger correlation structures
+- Weather condition relationships
+- Medication effectiveness tracking
+- Cross-reference to glucose and sleep metrics
 Importance Score: 80
 
-3. GLUCOSE READINGS
-- Integration with Nightscout and Dexcom systems
-- Time-in-range calculations
-- Normalized glucose data format
-- Sync state tracking per user
-Importance Score: 90
+Key Model Relationships:
 
-## Data Relationships
-
-HEALTH METRIC CORRELATIONS
-- Sleep quality impact on migraine frequency
-- Weather condition relationships to migraine triggers
-- Glucose level effects on sleep patterns
-- Medication timing optimization based on body metrics
+1. Health Metric Correlations
+- Sleep quality to migraine occurrence mapping
+- Glucose variability to migraine trigger relationships
+- Medication effectiveness to symptom severity links
 Importance Score: 85
 
-EXTERNAL SYSTEM INTEGRATION
-- Bidirectional Nightscout data sync
-- Dexcom EGV format transformation
-- CGM data normalization
-- Cross-system deduplication
-Importance Score: 90
-
-## Data Storage Patterns
-
-CLIENT-SIDE HEALTH DATA
-- Namespaced storage with "sentinel:" prefix
-- Domain-specific timestamp sorting
-- Medical data filtering with range support
-- Health metric isolation patterns
+2. External System Integration
+- Nightscout data transformation mappings
+- Dexcom EGV processing relationships
+- Weather data correlation structures
 Importance Score: 75
+
+Domain-Specific Relationships:
+- Glucose reading deduplication constraints
+- Sleep stage percentage normalization rules
+- Migraine-weather correlation patterns
+- Medication timing to effectiveness mappings
+
+The data model architecture emphasizes health metric correlations and medical system integration, with particular focus on maintaining data integrity across different health tracking domains.
 
 $END$
 

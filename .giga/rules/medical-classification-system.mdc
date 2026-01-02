@@ -1,5 +1,5 @@
 ---
-description: Technical specification for headache/migraine classification and pattern recognition system
+description: Medical condition classification and symptom tracking system specializing in headache/migraine patterns
 ---
 
 # === USER INSTRUCTIONS ===
@@ -60,35 +60,52 @@ $END$
 
 # medical-classification-system
 
-The medical classification system implements structured categorization and analysis of headache conditions with the following key components:
+The medical classification system implements specialized tracking and analysis for headache/migraine patterns with the following key components:
 
-HEADACHE CLASSIFICATION ENGINE
-Path: src/data/migraineEducation.js
-- Clinical categorization of migraine types with symptom mapping
-- Structured classification of migraine presentations and associated risks
-- Pattern matching for symptom combinations and trigger correlations
-Importance Score: 95
-
-SYMPTOM TRACKING & ANALYSIS
-Path: src/pages/LogMigraine.jsx
-- Voice-enabled symptom logging with medical terminology recognition
-- Weather correlation analysis for migraine patterns
-- Structured data model mapping symptoms to clinical classifications
+## Symptom Mapping System
+- Comprehensive migraine symptom tracking with:
+  * Intensity scaling (1-10)
+  * Location mapping
+  * Associated symptoms (nausea, aura, etc.)
+  * Duration tracking
 Importance Score: 85
 
-VISUALIZATION & REPORTING
-Path: src/components/HeadacheTypesChart.jsx
-- Clinical visualization of headache type distributions
-- Pattern recognition for symptom frequency analysis
-- Medical trend visualization with clinical relevance markers
+## Weather Correlation Engine
+Location: src/hooks/useMigraineCorrelations.js
+- Advanced correlation system tracking:
+  * Barometric pressure changes
+  * Temperature fluctuations
+  * Humidity levels
+  * Pattern matching with migraine occurrences
+Importance Score: 80
+
+## Trigger Analysis System
+Location: src/components/modals/MigraineLogModal.jsx
+- Structured trigger categorization:
+  * Environmental factors
+  * Dietary triggers
+  * Hormonal influences
+  * Sleep pattern correlations
+- Historical pattern recognition for trigger identification
+Importance Score: 90
+
+## Medication Effectiveness Tracking
+- Tracks response to different medication types
+- Records effectiveness duration
+- Monitors side effects
+- Calculates optimal timing for medication administration
 Importance Score: 75
 
-Core Classification Logic:
-1. Symptom-based categorization of headache types
-2. Pattern matching for trigger identification
-3. Risk assessment based on symptom combinations
-4. Weather condition correlation analysis
-5. Clinical terminology mapping
+## Pattern Recognition Algorithm
+- Identifies recurring migraine patterns based on:
+  * Time of day
+  * Day of week
+  * Monthly cycles
+  * Seasonal variations
+- Generates predictive alerts for high-risk periods
+Importance Score: 85
+
+Overall System Importance Score: 85
 
 $END$
 

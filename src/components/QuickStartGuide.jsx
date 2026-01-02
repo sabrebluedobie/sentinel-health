@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, CheckCircle, Target, TrendingUp, Calendar } from "lucide-react";
+import mobileFriendly from "../assets/mobile-friendly_1.webp";
 
 export default function QuickStartGuide({ moduleProfile, onDismiss }) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -22,7 +23,7 @@ export default function QuickStartGuide({ moduleProfile, onDismiss }) {
           {/* Hero Image */}
           <div className="rounded-xl overflow-hidden -mx-6 -mt-6 mb-6">
             <img 
-              src="/assets/mobile-friendly_1.webp" 
+              src={mobileFriendly} 
               alt="Person using health tracking app"
               className="w-full h-48 object-cover"
             />
