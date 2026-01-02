@@ -12,7 +12,7 @@ import {
 
 import CGMSettings from "./CGMSettings";
 import ModulesSettings from "./settings/ModulesSettings";
-import QuickStartGuide from "./QuickStartGuide";
+import QuickStartGuide from "../components/QuickStartGuide";
 
 const HealthAppSettings = ({ moduleProfile }) => {
   const [activeTab, setActiveTab] = useState("general");
