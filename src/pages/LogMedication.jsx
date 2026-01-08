@@ -1,17 +1,16 @@
 // src/pages/LogMedication.jsx
-import React, { useState, useEffect } from 'react';
-import { 
-  Pill, 
-  Plus, 
-  Check, 
-  X, 
-  Clock, 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Pill,
+  Plus,
+  Check,
+  X,
+  Clock,
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Edit,
   Trash2,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -71,7 +70,7 @@ export default function LogMedication() {
 
   async function loadTodayDoses() {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const { data, error } = await supabase
       .from('medication_logs')
       .select('*')
@@ -88,14 +87,17 @@ export default function LogMedication() {
 
   async function handleAddMedication(e) {
     e.preventDefault();
-    
+
+    const cleanedTimes = (formData.times || [])
+      .map((t) => (typeof t === 'string' ? t.trim() : ''))
+      .filter(Boolean);
+
     const { error } = await supabase
       .from('medications')
       .insert([{
         user_id: user.id,
         ...formData,
-        // times is already an array, Supabase will convert to JSONB
-        times: formData.times,
+        times: cleanedTimes.length ? cleanedTimes : ['08:00'],
         started_at: new Date().toISOString(),
       }]);
 
@@ -109,9 +111,78 @@ export default function LogMedication() {
     }
   }
 
-  async function handleLogDose(medication, status = 'taken') {
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function timeToMinutes(timeStr) {
+    const [h, m] = String(timeStr || '').split(':');
+    const hh = Number(h);
+    const mm = Number(m);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+    return hh * 60 + mm;
+  }
+
+  function minutesToTime(mins) {
+    const hh = Math.floor(mins / 60);
+    const mm = mins % 60;
+    return `${pad2(hh)}:${pad2(mm)}`;
+  }
+
+  function formatHHMMFromISO(isoString) {
+    if (!isoString) return null;
+    const d = new Date(isoString);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+
+  // Ensure consistent sorting + de-dupe times
+  function getSortedTimes(med) {
+    const times = Array.isArray(med?.times) ? med.times : [];
+    const unique = Array.from(new Set(times.map((t) => String(t).trim()).filter(Boolean)));
+    return unique
+      .map((t) => ({ t, m: timeToMinutes(t) }))
+      .filter((x) => x.m !== null)
+      .sort((a, b) => a.m - b.m)
+      .map((x) => x.t);
+  }
+
+  // Find the most recent log for a given medication+slot (by scheduled_time HH:MM)
+  function getDoseLogForSlot(medicationId, timeStr) {
+    const candidates = todayDoses
+      .filter((dose) => dose.medication_id === medicationId)
+      .filter((dose) => formatHHMMFromISO(dose.scheduled_time) === timeStr);
+
+    if (!candidates.length) return null;
+
+    // Most recent first (fallback to created_at if present)
+    return candidates.sort((a, b) => {
+      const aT = new Date(a.taken_at || a.created_at || 0).getTime();
+      const bT = new Date(b.taken_at || b.created_at || 0).getTime();
+      return bT - aT;
+    })[0];
+  }
+
+  function makeScheduledISOForToday(timeStr) {
+    const mins = timeToMinutes(timeStr);
+    if (mins === null) return null;
+
     const now = new Date();
-    const scheduledTime = getNextScheduledTime(medication);
+    const scheduled = new Date(now);
+    scheduled.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+
+    // Important: This is intentional. We set local hours, then store as ISO (UTC),
+    // which round-trips back to the same local HH:MM when read as Date().
+    return scheduled.toISOString();
+  }
+
+  async function handleLogDose(medication, timeStr, status = 'taken') {
+    const now = new Date();
+    const scheduledTime = makeScheduledISOForToday(timeStr);
+
+    if (!scheduledTime) {
+      alert('Invalid scheduled time');
+      return;
+    }
 
     const { error } = await supabase
       .from('medication_logs')
@@ -132,30 +203,34 @@ export default function LogMedication() {
     }
   }
 
-  function getNextScheduledTime(medication) {
-    if (!medication.times || !Array.isArray(medication.times)) return null;
-    
-    const times = medication.times; // Already an array from JSONB
-    const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    // Find closest scheduled time
-    const closestTime = times.reduce((prev, curr) => {
-      return Math.abs(curr.localeCompare(currentTime)) < Math.abs(prev.localeCompare(currentTime)) ? curr : prev;
-    });
+  // Optional convenience: determine if all scheduled slots are completed (taken)
+  const medDoseSummary = useMemo(() => {
+    const map = new Map();
 
-    const [hours, minutes] = closestTime.split(':');
-    const scheduled = new Date();
-    scheduled.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    
-    return scheduled.toISOString();
-  }
+    for (const med of medications) {
+      const times = getSortedTimes(med);
+      const slots = times.map((t) => {
+        const log = getDoseLogForSlot(med.id, t);
+        return { time: t, log };
+      });
 
-  function hasTakenToday(medicationId) {
-    return todayDoses.some(dose => 
-      dose.medication_id === medicationId && dose.status === 'taken'
-    );
-  }
+      const total = slots.length;
+      const takenCount = slots.filter((s) => s.log?.status === 'taken').length;
+      const loggedCount = slots.filter((s) => !!s.log).length;
+
+      map.set(med.id, {
+        times,
+        slots,
+        total,
+        takenCount,
+        loggedCount,
+        allTaken: total > 0 && takenCount === total,
+        anyLogged: loggedCount > 0,
+      });
+    }
+
+    return map;
+  }, [medications, todayDoses]);
 
   function resetForm() {
     setFormData({
@@ -175,14 +250,14 @@ export default function LogMedication() {
   function addTimeSlot() {
     setFormData({
       ...formData,
-      times: [...formData.times, '12:00']
+      times: [...formData.times, '12:00'],
     });
   }
 
   function removeTimeSlot(index) {
     setFormData({
       ...formData,
-      times: formData.times.filter((_, i) => i !== index)
+      times: formData.times.filter((_, i) => i !== index),
     });
   }
 
@@ -213,7 +288,7 @@ export default function LogMedication() {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-blue-600" />
-          Today's Medications
+          Today&apos;s Medications
         </h2>
 
         {medications.length === 0 ? (
@@ -229,87 +304,152 @@ export default function LogMedication() {
           </div>
         ) : (
           <div className="space-y-3">
-            {medications.map(med => {
-              const taken = hasTakenToday(med.id);
-              const times = Array.isArray(med.times) ? med.times : []; // Times come as JSONB array
-              
+            {medications.map((med) => {
+              const summary = medDoseSummary.get(med.id);
+              const times = summary?.times?.length ? summary.times : getSortedTimes(med);
+              const allTaken = summary?.allTaken ?? false;
+              const anyLogged = summary?.anyLogged ?? false;
+              const partial = anyLogged && !allTaken;
+
               return (
                 <div
                   key={med.id}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    taken 
-                      ? 'border-green-200 bg-green-50' 
+                    allTaken
+                      ? 'border-green-200 bg-green-50'
                       : med.is_critical
                         ? 'border-red-200 bg-red-50'
                         : 'border-gray-200 bg-white'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">{med.name}</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 truncate">{med.name}</h3>
+
                         {med.is_critical && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             <AlertTriangle className="w-3 h-3" />
                             Critical
                           </span>
                         )}
-                        {taken && (
+
+                        {allTaken && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             <Check className="w-3 h-3" />
-                            Taken
+                            All taken
+                          </span>
+                        )}
+
+                        {partial && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <Clock className="w-3 h-3" />
+                            Partial
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="text-sm text-gray-600 space-y-1">
                         <div className="flex items-center gap-2">
                           <Pill className="w-4 h-4" />
                           <span>{med.dosage} • {med.form}</span>
                         </div>
+
                         {times.length > 0 && (
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
                             <span>{times.join(', ')}</span>
                           </div>
                         )}
+
                         {med.purpose && (
                           <div className="text-gray-500 italic">{med.purpose}</div>
                         )}
                       </div>
-                    </div>
 
-                    <div className="flex gap-2">
-                      {!taken ? (
-                        <>
-                          <button
-                            onClick={() => handleLogDose(med, 'taken')}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 text-sm font-medium"
-                          >
-                            <Check className="w-4 h-4" />
-                            Taken
-                          </button>
-                          <button
-                            onClick={() => handleLogDose(med, 'skipped')}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-1 text-sm"
-                          >
-                            <X className="w-4 h-4" />
-                            Skip
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => setExpandedMed(expandedMed === med.id ? null : med.id)}
-                          className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                        >
-                          {expandedMed === med.id ? (
-                            <ChevronUp className="w-5 h-5" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5" />
-                          )}
-                        </button>
+                      {/* Dose slots */}
+                      {times.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {times.map((t) => {
+                            const log = getDoseLogForSlot(med.id, t);
+                            const isTaken = log?.status === 'taken';
+                            const isSkipped = log?.status === 'skipped';
+
+                            return (
+                              <div
+                                key={t}
+                                className="flex items-center justify-between gap-2 bg-white/70 rounded-md border border-gray-200 px-3 py-2"
+                              >
+                                <div className="flex items-center gap-2 text-sm text-gray-700">
+                                  <Clock className="w-4 h-4 text-gray-500" />
+                                  <span className="font-medium">{t}</span>
+
+                                  {isTaken && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      <Check className="w-3 h-3" />
+                                      Taken
+                                    </span>
+                                  )}
+
+                                  {isSkipped && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                      <X className="w-3 h-3" />
+                                      Skipped
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {!log ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleLogDose(med, t, 'taken')}
+                                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 text-sm font-medium"
+                                      >
+                                        <Check className="w-4 h-4" />
+                                        Taken
+                                      </button>
+                                      <button
+                                        onClick={() => handleLogDose(med, t, 'skipped')}
+                                        className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-1 text-sm"
+                                      >
+                                        <X className="w-4 h-4" />
+                                        Skip
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => setExpandedMed(expandedMed === med.id ? null : med.id)}
+                                      className="px-2 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
+                                      title="Details"
+                                    >
+                                      {expandedMed === med.id ? (
+                                        <ChevronUp className="w-5 h-5" />
+                                      ) : (
+                                        <ChevronDown className="w-5 h-5" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
+
+                    {/* Always allow expanding details */}
+                    <button
+                      onClick={() => setExpandedMed(expandedMed === med.id ? null : med.id)}
+                      className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                      title="More details"
+                    >
+                      {expandedMed === med.id ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Expanded details */}
@@ -357,7 +497,7 @@ export default function LogMedication() {
       {showAddMed && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4">Add Medication</h2>
-          
+
           <form onSubmit={handleAddMedication} className="space-y-4">
             {/* Medication Name */}
             <div>
