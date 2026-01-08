@@ -111,9 +111,9 @@ export default function Reports() {
       ? 'id,user_id,started_at,pain,symptoms,notes,weather_temp,weather_pressure,weather_humidity,weather_conditions,weather_location'
       : 'id,user_id,started_at,pain,symptoms,weather_temp,weather_pressure,weather_humidity,weather_conditions,weather_location';
 
-    const glucoseSelect = includeNotes
-      ? 'id,user_id,device_time,value_mgdl,trend,source,notes'
-      : 'id,user_id,device_time,value_mgdl,trend,source';
+    const glucoseSelect =
+       'id,user_id,device_time,value_mgdl,trend,source'
+       'id,user_id,device_time,value_mgdl,trend,source';
 
     const sleepSelect = includeNotes
       ? 'id,user_id,start_time,total_sleep_hours,efficiency,notes'
