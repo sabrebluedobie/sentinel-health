@@ -1,17 +1,41 @@
 // src/pages/Reports.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FileText,
   Download,
+  Activity,
+  Heart,
+  Moon,
+  Droplet,
   Printer,
   AlertCircle,
-  Activity,
-  Droplet,
-  Moon,
-  Heart,
-  Pill
+  Pill,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+
+const DEFAULT_SECTIONS = {
+  migraines: true,
+  glucose: true,
+  sleep: true,
+  pain: true,
+  medications: true,
+};
+
+function isoDayStart(dateStr) {
+  // dateStr: YYYY-MM-DD
+  return `${dateStr}T00:00:00.000Z`;
+}
+
+function isoDayEnd(dateStr) {
+  return `${dateStr}T23:59:59.999Z`;
+}
+
+function daysBetweenInclusive(startDateStr, endDateStr) {
+  const start = new Date(isoDayStart(startDateStr));
+  const end = new Date(isoDayEnd(endDateStr));
+  // inclusive-ish day count; avoids 0-day when same day
+  return Math.max(1, Math.ceil((end - start + 1) / (1000 * 60 * 60 * 24)));
+}
 
 export default function Reports() {
   const [user, setUser] = useState(null);
@@ -22,45 +46,27 @@ export default function Reports() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  // ✅ Share controls (allowlist)
-  const [include, setInclude] = useState({
-    migraines: true,
-    glucose: true,
-    sleep: true,
-    pain: true,
-    medications: true,
-  });
+  // What gets included in the report (promise: share only what you want)
+  const [sections, setSections] = useState(DEFAULT_SECTIONS);
 
-  // ✅ Privacy controls (sensitive fields)
-  const [privacy, setPrivacy] = useState({
-    includeNotes: false,     // default OFF
-    includeSymptoms: true,   // optional
-  });
+  // Extra privacy knobs
+  const [includeNotes, setIncludeNotes] = useState(false); // excludes free-text by default
 
   const [reportData, setReportData] = useState(null);
 
   useEffect(() => {
-    loadUser();
+    (async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) console.error('auth.getUser error:', error);
+      setUser(data?.user ?? null);
+      setLoading(false);
+    })();
   }, []);
 
-  async function loadUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-    setLoading(false);
-  }
-
-  function toggleInclude(key) {
-    setInclude(prev => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function togglePrivacy(key) {
-    setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function resolveDateRange() {
-    const endDate = (customEndDate || new Date().toISOString().split('T')[0]);
-
+  const computedRange = useMemo(() => {
+    const endDate = customEndDate || new Date().toISOString().split('T')[0];
     let startDate;
+
     if (dateRange === 'custom' && customStartDate) {
       startDate = customStartDate;
     } else {
@@ -70,134 +76,184 @@ export default function Reports() {
       startDate = start.toISOString().split('T')[0];
     }
 
-    return { startDate, endDate };
+    return {
+      startDate,
+      endDate,
+      startISO: isoDayStart(startDate),
+      endISO: isoDayEnd(endDate),
+      periodDays: daysBetweenInclusive(startDate, endDate),
+    };
+  }, [dateRange, customStartDate, customEndDate]);
+
+  function handlePrint() {
+    window.print();
+  }
+
+  function handleDownloadPDF() {
+    window.print();
+  }
+
+  function toggleSection(key) {
+    setSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   async function generateReport() {
     if (!user) return;
 
     setGenerating(true);
+    setReportData(null);
+
+    const { startDate, endDate, startISO, endISO, periodDays } = computedRange;
+
+    // Build select lists so "Include notes" truly excludes those fields.
+    // (We still use .select(...) instead of '*' to reduce exposure.)
+    const migraineSelect = includeNotes
+      ? 'id,user_id,started_at,pain,symptoms,notes,weather_temp,weather_pressure,weather_humidity,weather_conditions,weather_location'
+      : 'id,user_id,started_at,pain,symptoms,weather_temp,weather_pressure,weather_humidity,weather_conditions,weather_location';
+
+    const glucoseSelect = includeNotes
+      ? 'id,user_id,device_time,value_mgdl,trend,source,notes'
+      : 'id,user_id,device_time,value_mgdl,trend,source';
+
+    const sleepSelect = includeNotes
+      ? 'id,user_id,start_time,total_sleep_hours,efficiency,notes'
+      : 'id,user_id,start_time,total_sleep_hours,efficiency';
+
+    // pain_logs schema: logged_at, pain_location, pain_level, pain_type, notes, etc. :contentReference[oaicite:2]{index=2}
+    const painSelect = includeNotes
+      ? 'id,user_id,logged_at,pain_location,pain_side,pain_level,pain_type,related_to,injury_date,condition_name,medication_taken,medication_dose,notes'
+      : 'id,user_id,logged_at,pain_location,pain_side,pain_level,pain_type,related_to,injury_date,condition_name,medication_taken,medication_dose';
+
+    const medsSelect = includeNotes
+      ? 'id,user_id,name,dosage,times,is_active,is_critical,purpose,prescriber,notes'
+      : 'id,user_id,name,dosage,times,is_active,is_critical,purpose,prescriber';
+
+    const medLogsSelect = includeNotes
+      ? 'id,user_id,medication_id,taken_at,status,notes'
+      : 'id,user_id,medication_id,taken_at,status';
+
     try {
-      const { startDate, endDate } = resolveDateRange();
+      // Build query promises conditionally based on filters
+      const queries = [];
 
-      // Build SAFE select lists (no *), and only include notes if explicitly allowed
-      const migraineSelect = (() => {
-        const base = ['id', 'user_id', 'started_at', 'pain'];
-        if (privacy.includeSymptoms) base.push('symptoms');
-        if (privacy.includeNotes) base.push('notes');
-        return base.join(',');
-      })();
+      let migraineRes = { data: [], error: null };
+      let glucoseRes = { data: [], error: null };
+      let sleepRes = { data: [], error: null };
+      let painRes = { data: [], error: null };
+      let medicationRes = { data: [], error: null };
+      let medLogsRes = { data: [], error: null };
 
-      const sleepSelect = (() => {
-        const base = ['id', 'user_id', 'start_time', 'total_sleep_hours', 'efficiency'];
-        if (privacy.includeNotes) base.push('notes');
-        return base.join(',');
-      })();
-
-      const painSelect = (() => {
-        const base = ['id', 'user_id', 'logged_at', 'severity', 'location'];
-        if (privacy.includeNotes) base.push('notes');
-        return base.join(',');
-      })();
-
-      const jobs = [];
-
-      if (include.migraines) {
-        jobs.push(
+      if (sections.migraines) {
+        queries.push(
           supabase
             .from('migraine_episodes')
             .select(migraineSelect)
             .eq('user_id', user.id)
-            .gte('started_at', startDate)
-            .lte('started_at', endDate)
+            .gte('started_at', startISO)
+            .lte('started_at', endISO)
             .order('started_at', { ascending: false })
-            .then(r => ({ key: 'migraines', ...r }))
+            .then((res) => (migraineRes = res))
         );
       }
 
-      if (include.glucose) {
-        jobs.push(
+      if (sections.glucose) {
+        queries.push(
           supabase
             .from('glucose_readings')
-            .select('id,user_id,device_time,value_mgdl,trend,source')
+            .select(glucoseSelect)
             .eq('user_id', user.id)
-            .gte('device_time', startDate)
-            .lte('device_time', endDate)
+            .gte('device_time', startISO)
+            .lte('device_time', endISO)
             .order('device_time', { ascending: false })
-            .then(r => ({ key: 'glucose', ...r }))
+            .then((res) => (glucoseRes = res))
         );
       }
 
-      if (include.sleep) {
-        jobs.push(
+      if (sections.sleep) {
+        queries.push(
           supabase
             .from('sleep_data')
             .select(sleepSelect)
             .eq('user_id', user.id)
-            .gte('start_time', startDate)
-            .lte('start_time', endDate)
+            .gte('start_time', startISO)
+            .lte('start_time', endISO)
             .order('start_time', { ascending: false })
-            .then(r => ({ key: 'sleep', ...r }))
+            .then((res) => (sleepRes = res))
         );
       }
 
-      if (include.pain) {
-        jobs.push(
+      if (sections.pain) {
+        queries.push(
           supabase
             .from('pain_logs')
             .select(painSelect)
             .eq('user_id', user.id)
-            .gte('logged_at', startDate)
-            .lte('logged_at', endDate)
+            .gte('logged_at', startISO)
+            .lte('logged_at', endISO)
             .order('logged_at', { ascending: false })
-            .then(r => ({ key: 'pain', ...r }))
+            .then((res) => (painRes = res))
         );
       }
 
-      if (include.medications) {
-        jobs.push(
+      if (sections.medications) {
+        queries.push(
           supabase
             .from('medications')
-            .select('id,user_id,name,dosage,times,purpose,prescriber,is_critical,is_active')
+            .select(medsSelect)
             .eq('user_id', user.id)
             .eq('is_active', true)
             .order('name')
-            .then(r => ({ key: 'medications', ...r }))
+            .then((res) => (medicationRes = res))
         );
 
-        jobs.push(
+        queries.push(
           supabase
             .from('medication_logs')
-            .select('id,user_id,medication_id,taken_at,status')
+            .select(medLogsSelect)
             .eq('user_id', user.id)
-            .gte('taken_at', startDate)
-            .lte('taken_at', endDate)
+            .gte('taken_at', startISO)
+            .lte('taken_at', endISO)
             .order('taken_at', { ascending: false })
-            .then(r => ({ key: 'medLogs', ...r }))
+            .then((res) => (medLogsRes = res))
         );
       }
 
-      const results = await Promise.all(jobs);
+      await Promise.all(queries);
 
-      const data = {
-        startDate,
-        endDate,
-        migraines: [],
-        glucose: [],
-        sleep: [],
-        pain: [],
-        medications: [],
-        medLogs: [],
-      };
+      // Surface specific errors (this is *gold* for debugging)
+      const errors = [
+        ['migraine_episodes', migraineRes.error],
+        ['glucose_readings', glucoseRes.error],
+        ['sleep_data', sleepRes.error],
+        ['pain_logs', painRes.error],
+        ['medications', medicationRes.error],
+        ['medication_logs', medLogsRes.error],
+      ].filter(([, err]) => err);
 
-      for (const res of results) {
-        if (res.error) throw res.error;
-        data[res.key] = res.data || [];
+      if (errors.length) {
+        console.error('Report query errors:', errors);
+        const readable = errors
+          .map(([table, err]) => `${table}: ${err?.message || 'Unknown error'}`)
+          .join('\n');
+        alert(`Failed to generate report.\n\n${readable}`);
+        return;
       }
 
-      setReportData(calculateMetrics(data));
+      const raw = {
+        startDate,
+        endDate,
+        periodDays,
+        migraines: migraineRes.data || [],
+        glucose: glucoseRes.data || [],
+        sleep: sleepRes.data || [],
+        pain: painRes.data || [],
+        medications: medicationRes.data || [],
+        medLogs: medLogsRes.data || [],
+      };
+
+      setReportData(calculateMetrics(raw));
     } catch (error) {
-      console.error('Error generating report:', error);
+      console.error('Error generating report (catch):', error);
       alert('Failed to generate report. Please try again.');
     } finally {
       setGenerating(false);
@@ -206,29 +262,29 @@ export default function Reports() {
 
   function calculateMetrics(data) {
     const {
-      migraines = [],
-      glucose = [],
-      sleep = [],
-      pain = [],
-      medications = [],
-      medLogs = [],
+      migraines,
+      glucose,
+      sleep,
+      pain,
+      medications,
+      medLogs,
       startDate,
-      endDate
+      endDate,
+      periodDays,
     } = data;
-
-    const periodDaysRaw = Math.ceil(
-      (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)
-    );
-    const periodDays = Math.max(1, periodDaysRaw);
 
     // Migraine metrics
     const migraineCount = migraines.length;
-    const avgMigraineSeverity = migraines.length > 0
-      ? (migraines.reduce((sum, m) => sum + (m.pain || 0), 0) / migraines.length).toFixed(1)
-      : 0;
+    const avgMigraineSeverity =
+      migraines.length > 0
+        ? (
+            migraines.reduce((sum, m) => sum + (Number(m.pain) || 0), 0) /
+            migraines.length
+          ).toFixed(1)
+        : '0.0';
 
     const migrainesByDay = {};
-    migraines.forEach(m => {
+    migraines.forEach((m) => {
       const day = new Date(m.started_at).toLocaleDateString();
       migrainesByDay[day] = (migrainesByDay[day] || 0) + 1;
     });
@@ -236,50 +292,59 @@ export default function Reports() {
 
     // Glucose metrics
     const glucoseReadings = glucose.length;
-    const avgGlucose = glucose.length > 0
-      ? (glucose.reduce((sum, g) => sum + parseFloat(g.value_mgdl), 0) / glucose.length).toFixed(0)
-      : 0;
+    const avgGlucose =
+      glucose.length > 0
+        ? (
+            glucose.reduce((sum, g) => sum + Number(g.value_mgdl || 0), 0) /
+            glucose.length
+          ).toFixed(0)
+        : '0';
 
-    const highGlucose = glucose.filter(g => parseFloat(g.value_mgdl) > 180).length;
-    const lowGlucose = glucose.filter(g => parseFloat(g.value_mgdl) < 70).length;
+    const highGlucose = glucose.filter((g) => Number(g.value_mgdl) > 180).length;
+    const lowGlucose = glucose.filter((g) => Number(g.value_mgdl) < 70).length;
     const inRangeGlucose = glucose.length - highGlucose - lowGlucose;
-
-    const timeInRange = glucose.length > 0
-      ? ((inRangeGlucose / glucose.length) * 100).toFixed(1)
-      : 0;
+    const timeInRange =
+      glucose.length > 0 ? ((inRangeGlucose / glucose.length) * 100).toFixed(1) : '0.0';
 
     // Sleep metrics
-    const avgSleep = sleep.length > 0
-      ? (sleep.reduce((sum, s) => sum + parseFloat(s.total_sleep_hours), 0) / sleep.length).toFixed(1)
-      : 0;
+    const avgSleep =
+      sleep.length > 0
+        ? (
+            sleep.reduce((sum, s) => sum + Number(s.total_sleep_hours || 0), 0) /
+            sleep.length
+          ).toFixed(1)
+        : '0.0';
 
-    const avgEfficiency = sleep.length > 0
-      ? (sleep.reduce((sum, s) => sum + (parseFloat(s.efficiency) || 0), 0) / sleep.length).toFixed(0)
-      : 0;
+    const avgEfficiency =
+      sleep.length > 0
+        ? (
+            sleep.reduce((sum, s) => sum + Number(s.efficiency || 0), 0) / sleep.length
+          ).toFixed(0)
+        : '0';
 
-    // Pain metrics
-    const avgPain = pain.length > 0
-      ? (pain.reduce((sum, p) => sum + (p.severity || 0), 0) / pain.length).toFixed(1)
-      : 0;
+    // Pain metrics (schema uses pain_level) :contentReference[oaicite:3]{index=3}
+    const avgPain =
+      pain.length > 0
+        ? (pain.reduce((sum, p) => sum + Number(p.pain_level || 0), 0) / pain.length).toFixed(1)
+        : '0.0';
 
     // Medication metrics
     const totalMeds = medications.length;
-    const criticalMeds = medications.filter(m => m.is_critical);
-    const takenDoses = medLogs.filter(log => log.status === 'taken').length;
-    const missedDoses = medLogs.filter(log => log.status === 'missed').length;
-    const skippedDoses = medLogs.filter(log => log.status === 'skipped').length;
+    const criticalMeds = medications.filter((m) => m.is_critical);
 
-    const medAdherence = medications.map(med => {
+    const takenDoses = medLogs.filter((log) => log.status === 'taken').length;
+    const missedDoses = medLogs.filter((log) => log.status === 'missed').length;
+    const skippedDoses = medLogs.filter((log) => log.status === 'skipped').length;
+
+    const medAdherence = medications.map((med) => {
       const medScheduledTimes = Array.isArray(med.times) ? med.times.length : 1;
       const expectedDoses = medScheduledTimes * periodDays;
 
-      const medTaken = medLogs.filter(log =>
-        log.medication_id === med.id && log.status === 'taken'
+      const medTaken = medLogs.filter(
+        (log) => log.medication_id === med.id && log.status === 'taken'
       ).length;
 
-      const adherenceRate = expectedDoses > 0
-        ? ((medTaken / expectedDoses) * 100).toFixed(0)
-        : 0;
+      const adherenceRate = expectedDoses > 0 ? ((medTaken / expectedDoses) * 100).toFixed(0) : '0';
 
       return {
         ...med,
@@ -295,13 +360,14 @@ export default function Reports() {
         end: new Date(endDate).toLocaleDateString(),
         days: periodDays,
       },
+      sectionsUsed: { ...sections },
+      privacy: { includeNotes },
       migraines: {
         count: migraineCount,
         avgSeverity: avgMigraineSeverity,
         migraineDays,
-        frequency: migraineCount > 0
-          ? `${(migraineCount / periodDays * 30).toFixed(1)} per month`
-          : '0 per month',
+        frequency:
+          migraineCount > 0 ? `${((migraineCount / periodDays) * 30).toFixed(1)} per month` : '0 per month',
         data: migraines,
       },
       glucose: {
@@ -331,30 +397,14 @@ export default function Reports() {
         missedDoses,
         skippedDoses,
         adherence: medAdherence,
-        hasMissedCritical: medAdherence.some(m => m.is_critical && parseFloat(m.adherenceRate) < 90),
+        hasMissedCritical: medAdherence.some(
+          (m) => m.is_critical && Number(m.adherenceRate) < 90
+        ),
       },
     };
   }
 
-  function handlePrint() {
-    window.print();
-  }
-
-  function handleDownloadPDF() {
-    window.print();
-  }
-
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
-
-  const includedLabels = [
-    include.migraines ? 'Migraines' : null,
-    include.glucose ? 'Glucose' : null,
-    include.sleep ? 'Sleep' : null,
-    include.pain ? 'Pain' : null,
-    include.medications ? 'Medications' : null,
-  ].filter(Boolean);
+  if (loading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -362,7 +412,7 @@ export default function Reports() {
       <div className="mb-8 print:hidden">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Health Reports</h1>
         <p className="text-gray-600">
-          Generate curated health reports to share with your healthcare provider
+          Generate a shareable health report — and include only what you want.
         </p>
       </div>
 
@@ -370,12 +420,83 @@ export default function Reports() {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 print:hidden">
         <h2 className="text-lg font-semibold mb-4">Report Settings</h2>
 
-        {/* Time period */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time Period
+        {/* Share Filters */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Report Share Filters</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            These control what gets pulled and what appears in the PDF/printout.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={sections.migraines}
+                onChange={() => toggleSection('migraines')}
+              />
+              <Activity className="w-4 h-4" />
+              <span className="text-sm font-medium">Migraines</span>
             </label>
+
+            <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={sections.glucose}
+                onChange={() => toggleSection('glucose')}
+              />
+              <Droplet className="w-4 h-4" />
+              <span className="text-sm font-medium">Glucose</span>
+            </label>
+
+            <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={sections.sleep}
+                onChange={() => toggleSection('sleep')}
+              />
+              <Moon className="w-4 h-4" />
+              <span className="text-sm font-medium">Sleep</span>
+            </label>
+
+            <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={sections.pain}
+                onChange={() => toggleSection('pain')}
+              />
+              <Heart className="w-4 h-4" />
+              <span className="text-sm font-medium">Pain</span>
+            </label>
+
+            <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={sections.medications}
+                onChange={() => toggleSection('medications')}
+              />
+              <Pill className="w-4 h-4" />
+              <span className="text-sm font-medium">Medications</span>
+            </label>
+          </div>
+
+          <div className="mt-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includeNotes}
+                onChange={(e) => setIncludeNotes(e.target.checked)}
+              />
+              <span className="text-sm text-gray-700">
+                Include notes / free-text fields (more detail, less privacy)
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Time Period</label>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
@@ -393,9 +514,7 @@ export default function Reports() {
           {dateRange === 'custom' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Start Date
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                 <input
                   type="date"
                   value={customStartDate}
@@ -404,9 +523,7 @@ export default function Reports() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  End Date
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
                 <input
                   type="date"
                   value={customEndDate}
@@ -419,82 +536,20 @@ export default function Reports() {
           )}
         </div>
 
-        {/* Include / Privacy controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="border border-gray-200 rounded-lg p-4">
-            <div className="font-medium text-gray-900 mb-3">Include in report</div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={include.migraines} onChange={() => toggleInclude('migraines')} />
-                Migraine episodes
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={include.glucose} onChange={() => toggleInclude('glucose')} />
-                Glucose readings
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={include.sleep} onChange={() => toggleInclude('sleep')} />
-                Sleep data
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={include.pain} onChange={() => toggleInclude('pain')} />
-                Pain logs
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={include.medications} onChange={() => toggleInclude('medications')} />
-                Medications & adherence
-              </label>
-            </div>
-          </div>
-
-          <div className="border border-gray-200 rounded-lg p-4">
-            <div className="font-medium text-gray-900 mb-3">Privacy controls</div>
-            <div className="space-y-3">
-              <label className="flex items-start gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={privacy.includeNotes}
-                  onChange={() => togglePrivacy('includeNotes')}
-                  className="mt-0.5"
-                />
-                <span>
-                  Include free-text notes
-                  <div className="text-xs text-gray-500">
-                    Off by default (recommended). Notes often contain sensitive details.
-                  </div>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={privacy.includeSymptoms}
-                  onChange={() => togglePrivacy('includeSymptoms')}
-                  className="mt-0.5"
-                />
-                <span>
-                  Include symptoms fields (when available)
-                  <div className="text-xs text-gray-500">
-                    If unchecked, symptom lists are excluded from the report.
-                  </div>
-                </span>
-              </label>
-
-              <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-                Report pulls only the selected categories and only the allowed fields (no wildcard selects).
-              </div>
-            </div>
-          </div>
-        </div>
-
         <button
           onClick={generateReport}
-          disabled={generating || includedLabels.length === 0}
+          disabled={generating || Object.values(sections).every((v) => !v)}
           className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
         >
           <FileText className="w-5 h-5" />
-          {includedLabels.length === 0 ? 'Select at least one category' : (generating ? 'Generating Report...' : 'Generate Report')}
+          {generating ? 'Generating Report...' : 'Generate Report'}
         </button>
+
+        {Object.values(sections).every((v) => !v) && (
+          <p className="text-sm text-red-600 mt-2">
+            Select at least one section to generate a report.
+          </p>
+        )}
       </div>
 
       {/* Generated Report */}
@@ -524,23 +579,14 @@ export default function Reports() {
             <div className="mb-8 pb-6 border-b border-gray-200">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Sentrya Health Report
-                  </h1>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Sentrya Health Report</h1>
+                  <p className="text-gray-600">Patient: {user?.email}</p>
                   <p className="text-gray-600">
-                    Patient: {user?.email}
+                    Report Period: {reportData.period.start} - {reportData.period.end} ({reportData.period.days} days)
                   </p>
-                  <p className="text-gray-600">
-                    Report Period: {reportData.period.start} - {reportData.period.end}
-                  </p>
+                  <p className="text-sm text-gray-500">Generated: {new Date().toLocaleString()}</p>
                   <p className="text-sm text-gray-500">
-                    Included: {includedLabels.join(', ') || 'None'}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Notes: {privacy.includeNotes ? 'Included' : 'Excluded'}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Generated: {new Date().toLocaleString()}
+                    Notes included: {reportData.privacy.includeNotes ? 'Yes' : 'No'}
                   </p>
                 </div>
                 <div className="text-right">
@@ -555,7 +601,7 @@ export default function Reports() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-yellow-800">
-                  <strong>For Healthcare Provider Review:</strong> This report contains patient-generated health data.
+                  <strong>For Healthcare Provider Review:</strong> This report contains patient-generated tracking data.
                   Please review in context of clinical findings and patient history.
                 </div>
               </div>
@@ -564,9 +610,8 @@ export default function Reports() {
             {/* Executive Summary */}
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Executive Summary</h2>
-
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {include.migraines && (
+                {sections.migraines && (
                   <div className="bg-red-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Activity className="w-5 h-5 text-red-600" />
@@ -577,7 +622,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {include.glucose && (
+                {sections.glucose && (
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Droplet className="w-5 h-5 text-blue-600" />
@@ -590,7 +635,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {include.sleep && (
+                {sections.sleep && (
                   <div className="bg-purple-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Moon className="w-5 h-5 text-purple-600" />
@@ -603,7 +648,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {include.pain && (
+                {sections.pain && (
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Heart className="w-5 h-5 text-orange-600" />
@@ -619,7 +664,7 @@ export default function Reports() {
             </div>
 
             {/* Migraine Details */}
-            {include.migraines && (
+            {sections.migraines && (
               <div className="mb-8 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Activity className="w-6 h-6 text-red-600" />
@@ -652,10 +697,8 @@ export default function Reports() {
                         <tr>
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Date/Time</th>
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Severity</th>
-                          {privacy.includeSymptoms && (
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Symptoms</th>
-                          )}
-                          {privacy.includeNotes && (
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Symptoms</th>
+                          {includeNotes && (
                             <th className="px-4 py-2 text-left font-medium text-gray-700">Notes</th>
                           )}
                         </tr>
@@ -663,27 +706,13 @@ export default function Reports() {
                       <tbody className="divide-y divide-gray-200">
                         {reportData.migraines.data.slice(0, 10).map((migraine, idx) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">
-                              {new Date(migraine.started_at).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                migraine.pain >= 7 ? 'bg-red-100 text-red-800' :
-                                migraine.pain >= 4 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {migraine.pain || 'N/A'} / 10
-                              </span>
-                            </td>
-                            {privacy.includeSymptoms && (
+                            <td className="px-4 py-3">{new Date(migraine.started_at).toLocaleString()}</td>
+                            <td className="px-4 py-3">{migraine.pain ?? 'N/A'} / 10</td>
+                            <td className="px-4 py-3 text-gray-600">{migraine.symptoms || '-'}</td>
+                            {includeNotes && (
                               <td className="px-4 py-3 text-gray-600">
-                                {migraine.symptoms || '-'}
-                              </td>
-                            )}
-                            {privacy.includeNotes && (
-                              <td className="px-4 py-3 text-gray-600">
-                                {migraine.notes?.substring(0, 50) || '-'}
-                                {migraine.notes?.length > 50 && '...'}
+                                {(migraine.notes || '-').toString().slice(0, 80)}
+                                {(migraine.notes || '').toString().length > 80 ? '…' : ''}
                               </td>
                             )}
                           </tr>
@@ -692,15 +721,11 @@ export default function Reports() {
                     </table>
                   </div>
                 )}
-
-                {reportData.migraines.data.length === 0 && (
-                  <div className="text-sm text-gray-500">No migraine episodes logged in this period.</div>
-                )}
               </div>
             )}
 
             {/* Glucose Details */}
-            {include.glucose && reportData.glucose.readingCount > 0 && (
+            {sections.glucose && reportData.glucose.readingCount > 0 && (
               <div className="mb-8 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Droplet className="w-6 h-6 text-blue-600" />
@@ -739,26 +764,10 @@ export default function Reports() {
                     <tbody className="divide-y divide-gray-200">
                       {reportData.glucose.data.map((reading, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            {new Date(reading.device_time).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`font-medium ${
-                              reading.value_mgdl > 180 ? 'text-red-600' :
-                              reading.value_mgdl < 70 ? 'text-orange-600' :
-                              'text-green-600'
-                            }`}>
-                              {reading.value_mgdl}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {reading.trend || '-'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                              {reading.source}
-                            </span>
-                          </td>
+                          <td className="px-4 py-3">{new Date(reading.device_time).toLocaleString()}</td>
+                          <td className="px-4 py-3">{reading.value_mgdl}</td>
+                          <td className="px-4 py-3 text-gray-600">{reading.trend || '-'}</td>
+                          <td className="px-4 py-3">{reading.source || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -767,12 +776,8 @@ export default function Reports() {
               </div>
             )}
 
-            {include.glucose && reportData.glucose.readingCount === 0 && (
-              <div className="mb-8 text-sm text-gray-500">No glucose readings logged in this period.</div>
-            )}
-
             {/* Sleep Details */}
-            {include.sleep && reportData.sleep.nightsTracked > 0 && (
+            {sections.sleep && reportData.sleep.nightsTracked > 0 && (
               <div className="mb-8 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Moon className="w-6 h-6 text-purple-600" />
@@ -801,7 +806,7 @@ export default function Reports() {
                         <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
                         <th className="px-4 py-2 text-left font-medium text-gray-700">Duration</th>
                         <th className="px-4 py-2 text-left font-medium text-gray-700">Efficiency</th>
-                        {privacy.includeNotes && (
+                        {includeNotes && (
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Notes</th>
                         )}
                       </tr>
@@ -809,19 +814,13 @@ export default function Reports() {
                     <tbody className="divide-y divide-gray-200">
                       {reportData.sleep.data.map((s, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            {new Date(s.start_time).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 font-medium">
-                            {s.total_sleep_hours} hours
-                          </td>
-                          <td className="px-4 py-3">
-                            {s.efficiency ? `${s.efficiency}%` : '-'}
-                          </td>
-                          {privacy.includeNotes && (
+                          <td className="px-4 py-3">{new Date(s.start_time).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 font-medium">{s.total_sleep_hours} hours</td>
+                          <td className="px-4 py-3">{s.efficiency ? `${s.efficiency}%` : '-'}</td>
+                          {includeNotes && (
                             <td className="px-4 py-3 text-gray-600">
-                              {s.notes?.substring(0, 30) || '-'}
-                              {s.notes?.length > 30 && '...'}
+                              {(s.notes || '-').toString().slice(0, 80)}
+                              {(s.notes || '').toString().length > 80 ? '…' : ''}
                             </td>
                           )}
                         </tr>
@@ -832,12 +831,8 @@ export default function Reports() {
               </div>
             )}
 
-            {include.sleep && reportData.sleep.nightsTracked === 0 && (
-              <div className="mb-8 text-sm text-gray-500">No sleep data logged in this period.</div>
-            )}
-
-            {/* Pain Details (simple table, since you already fetch it) */}
-            {include.pain && reportData.pain.logCount > 0 && (
+            {/* Pain Details */}
+            {sections.pain && reportData.pain.logCount > 0 && (
               <div className="mb-8 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Heart className="w-6 h-6 text-orange-600" />
@@ -846,12 +841,12 @@ export default function Reports() {
 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Average Severity</div>
-                    <div className="text-2xl font-bold">{reportData.pain.avgSeverity} / 10</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-600">Logs</div>
                     <div className="text-2xl font-bold">{reportData.pain.logCount}</div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-600">Average Pain Level</div>
+                    <div className="text-2xl font-bold">{reportData.pain.avgSeverity} / 10</div>
                   </div>
                 </div>
 
@@ -860,9 +855,10 @@ export default function Reports() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2 text-left font-medium text-gray-700">Date/Time</th>
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">Severity</th>
                         <th className="px-4 py-2 text-left font-medium text-gray-700">Location</th>
-                        {privacy.includeNotes && (
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Level</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
+                        {includeNotes && (
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Notes</th>
                         )}
                       </tr>
@@ -870,19 +866,16 @@ export default function Reports() {
                     <tbody className="divide-y divide-gray-200">
                       {reportData.pain.data.map((p, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            {new Date(p.logged_at).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 font-medium">
-                            {p.severity ?? '-'} / 10
-                          </td>
+                          <td className="px-4 py-3">{new Date(p.logged_at).toLocaleString()}</td>
+                          <td className="px-4 py-3">{p.pain_location || '-'}</td>
+                          <td className="px-4 py-3">{p.pain_level ?? '-'} / 10</td>
                           <td className="px-4 py-3 text-gray-600">
-                            {p.location || '-'}
+                            {Array.isArray(p.pain_type) ? p.pain_type.join(', ') : '-'}
                           </td>
-                          {privacy.includeNotes && (
+                          {includeNotes && (
                             <td className="px-4 py-3 text-gray-600">
-                              {p.notes?.substring(0, 40) || '-'}
-                              {p.notes?.length > 40 && '...'}
+                              {(p.notes || '-').toString().slice(0, 80)}
+                              {(p.notes || '').toString().length > 80 ? '…' : ''}
                             </td>
                           )}
                         </tr>
@@ -893,12 +886,8 @@ export default function Reports() {
               </div>
             )}
 
-            {include.pain && reportData.pain.logCount === 0 && (
-              <div className="mb-8 text-sm text-gray-500">No pain logs in this period.</div>
-            )}
-
             {/* Medication Adherence */}
-            {include.medications && reportData.medications.totalMeds > 0 && (
+            {sections.medications && reportData.medications.totalMeds > 0 && (
               <div className="mb-8 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Pill className="w-6 h-6 text-indigo-600" />
@@ -915,93 +904,60 @@ export default function Reports() {
                   </div>
                 )}
 
-                {reportData.medications.hasMissedCritical || reportData.medications.adherence.some(m => parseFloat(m.adherenceRate) < 80) ? (
-                  <div className="mb-4">
-                    <h3 className="font-medium text-gray-900 mb-3">Current Medications (Full List)</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Medication</th>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Dosage</th>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Schedule</th>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Purpose</th>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Adherence</th>
-                            <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {reportData.medications.adherence.map((med, idx) => (
-                            <tr key={idx} className={`hover:bg-gray-50 ${
-                              med.is_critical && parseFloat(med.adherenceRate) < 90 ? 'bg-red-50' : ''
-                            }`}>
-                              <td className="px-4 py-3">
-                                <div className="font-medium text-gray-900">{med.name}</div>
-                                {med.prescriber && (
-                                  <div className="text-xs text-gray-500">Rx: {med.prescriber}</div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">{med.dosage}</td>
-                              <td className="px-4 py-3 text-gray-600">
-                                {Array.isArray(med.times) ? med.times.join(', ') : 'As needed'}
-                              </td>
-                              <td className="px-4 py-3 text-gray-600">{med.purpose || '-'}</td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm font-medium">{med.adherenceRate}%</div>
-                                <div className="text-xs text-gray-500">
-                                  {med.takenDoses}/{med.expectedDoses} doses
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex flex-col gap-1">
-                                  {med.is_critical && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
-                                      <AlertCircle className="w-3 h-3" />
-                                      Critical
-                                    </span>
-                                  )}
-                                  {parseFloat(med.adherenceRate) >= 90 && (
-                                    <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
-                                      Good
-                                    </span>
-                                  )}
-                                  {parseFloat(med.adherenceRate) < 90 && parseFloat(med.adherenceRate) >= 70 && (
-                                    <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 w-fit">
-                                      Fair
-                                    </span>
-                                  )}
-                                  {parseFloat(med.adherenceRate) < 70 && (
-                                    <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
-                                      Poor
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Pill className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-green-800">
-                        <strong>Good Adherence:</strong> Patient is maintaining good adherence across all medications.
-                        Current medication list: {reportData.medications.adherence.map(m => m.name).join(', ')}.
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Medication</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Dosage</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Schedule</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Purpose</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Adherence</th>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Flags</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {reportData.medications.adherence.map((med, idx) => (
+                        <tr
+                          key={idx}
+                          className={`hover:bg-gray-50 ${
+                            med.is_critical && Number(med.adherenceRate) < 90 ? 'bg-red-50' : ''
+                          }`}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{med.name}</div>
+                            {med.prescriber && <div className="text-xs text-gray-500">Rx: {med.prescriber}</div>}
+                          </td>
+                          <td className="px-4 py-3">{med.dosage || '-'}</td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {Array.isArray(med.times) ? med.times.join(', ') : 'As needed'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">{med.purpose || '-'}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium">{med.adherenceRate}%</div>
+                            <div className="text-xs text-gray-500">
+                              {med.takenDoses}/{med.expectedDoses} doses
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {med.is_critical && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <AlertCircle className="w-3 h-3" />
+                                Critical
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-600">Total Medications</div>
                     <div className="text-2xl font-bold">{reportData.medications.totalMeds}</div>
-                    <div className="text-xs text-gray-500">
-                      {reportData.medications.criticalMeds.length} critical
-                    </div>
+                    <div className="text-xs text-gray-500">{reportData.medications.criticalMeds.length} critical</div>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-600">Doses Taken</div>
@@ -1014,16 +970,18 @@ export default function Reports() {
                     <div className="text-sm text-gray-600">Overall Adherence</div>
                     <div className="text-2xl font-bold">
                       {reportData.medications.adherence.length > 0
-                        ? (reportData.medications.adherence.reduce((sum, m) => sum + parseFloat(m.adherenceRate), 0) / reportData.medications.adherence.length).toFixed(0)
-                        : 0}%
+                        ? (
+                            reportData.medications.adherence.reduce(
+                              (sum, m) => sum + Number(m.adherenceRate || 0),
+                              0
+                            ) / reportData.medications.adherence.length
+                          ).toFixed(0)
+                        : 0}
+                      %
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-
-            {include.medications && reportData.medications.totalMeds === 0 && (
-              <div className="mb-8 text-sm text-gray-500">No active medications found for this patient.</div>
             )}
 
             {/* Footer */}
@@ -1032,12 +990,10 @@ export default function Reports() {
                 <strong>Data Source:</strong> Patient self-reported via Sentrya Whole Health platform
               </p>
               <p className="mb-2">
-                <strong>Disclaimer:</strong> This report contains patient-generated health data and should be reviewed
-                in conjunction with clinical assessments. Data accuracy depends on consistent patient logging.
+                <strong>Disclaimer:</strong> This report contains patient-generated data and should be reviewed in
+                conjunction with clinical assessments. Data accuracy depends on consistent patient logging.
               </p>
-              <p>
-                For questions about this report, contact: support@sentrya.com
-              </p>
+              <p>For questions about this report, contact: support@sentrya.com</p>
             </div>
           </div>
         </>
@@ -1049,7 +1005,7 @@ export default function Reports() {
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Report Generated</h3>
           <p className="text-gray-600 mb-4">
-            Select what you want to include and click "Generate Report" to create a curated health summary
+            Select a time period and what you want to include, then click “Generate Report”.
           </p>
         </div>
       )}
