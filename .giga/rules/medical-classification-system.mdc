@@ -1,5 +1,5 @@
 ---
-description: Medical condition classification and symptom tracking system specializing in headache/migraine patterns
+description: Specifications for medical classification algorithms, symptom mapping, and severity calculations for headache/migraine classification
 ---
 
 # === USER INSTRUCTIONS ===
@@ -60,52 +60,40 @@ $END$
 
 # medical-classification-system
 
-The medical classification system implements specialized tracking and analysis for headache/migraine patterns with the following key components:
+The medical classification system implements a sophisticated headache/migraine diagnostic pattern matching system with several key components:
 
-## Symptom Mapping System
-- Comprehensive migraine symptom tracking with:
-  * Intensity scaling (1-10)
-  * Location mapping
-  * Associated symptoms (nausea, aura, etc.)
-  * Duration tracking
-Importance Score: 85
+1. Diagnostic Pattern Matching (Importance Score: 95)
+src/hooks/useHeadacheTypes.js
+- Symptom-based probability calculation for classifying headache types:
+  - Migraine with aura
+  - Migraine without aura
+  - Tension headache
+  - Cluster headache
+- Pattern recognition based on symptom combinations and severity
+- Weighted scoring system for diagnostic confidence levels
 
-## Weather Correlation Engine
-Location: src/hooks/useMigraineCorrelations.js
-- Advanced correlation system tracking:
-  * Barometric pressure changes
-  * Temperature fluctuations
-  * Humidity levels
-  * Pattern matching with migraine occurrences
-Importance Score: 80
+2. Severity Assessment Engine (Importance Score: 90)
+src/services/migraines.js
+- Multi-factor severity calculation incorporating:
+  - Pain intensity (1-10 scale)
+  - Associated symptoms presence/severity
+  - Duration of episode
+  - Impact on daily activities
+- Automated classification based on severity thresholds
 
-## Trigger Analysis System
-Location: src/components/modals/MigraineLogModal.jsx
-- Structured trigger categorization:
-  * Environmental factors
-  * Dietary triggers
-  * Hormonal influences
-  * Sleep pattern correlations
-- Historical pattern recognition for trigger identification
-Importance Score: 90
+3. Symptom Pattern Recognition (Importance Score: 85)
+src/components/modals/MigraineLogModal.jsx
+- Structured symptom mapping for classification
+- Temporal relationship tracking between symptoms
+- Recognition of aura patterns and progression
+- Impact weighting based on symptom combinations
 
-## Medication Effectiveness Tracking
-- Tracks response to different medication types
-- Records effectiveness duration
-- Monitors side effects
-- Calculates optimal timing for medication administration
-Importance Score: 75
-
-## Pattern Recognition Algorithm
-- Identifies recurring migraine patterns based on:
-  * Time of day
-  * Day of week
-  * Monthly cycles
-  * Seasonal variations
-- Generates predictive alerts for high-risk periods
-Importance Score: 85
-
-Overall System Importance Score: 85
+Core Classification Rules:
+- Primary symptom combinations determine initial classification
+- Secondary symptoms adjust classification confidence
+- Severity thresholds influence final categorization
+- Temporal patterns affect classification reliability
+- Minimum symptom requirements for each headache type
 
 $END$
 

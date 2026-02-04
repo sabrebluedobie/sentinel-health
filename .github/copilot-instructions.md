@@ -84,52 +84,45 @@ $END$
 - Explain your OBSERVATIONS clearly, then provide REASONING to identify the exact issue. Add console logs when needed to gather more information.
 
 
-SYSTEM IMPORTANCE: 85/100
+## Health Tracking Core System
 
-Core Business Domain Components:
+Integrated health management platform focused on three primary domains:
 
-1. Sleep Quality Analytics (src/pages/LogSleep.jsx)
-- Sophisticated sleep scoring (0-100) incorporating:
-  * Duration analysis with 10-hour maximum threshold
-  * Sleep stage quality assessment (deep, REM, light)
-  * Physiological metrics (heart rate, HRV, SpO2)
-Importance: 85
-
-2. Migraine Management System (src/pages/LogMigraine.jsx)
-- Environmental correlation tracking
+1. Migraine Episode Management (Score: 85)
+- Custom migraine tracking with environmental correlation
 - Voice-enabled symptom logging
-- Structured trigger identification
-- Medication efficacy monitoring
-Importance: 80
+- Weather data integration for trigger analysis
+- Symptom pattern recognition and classification
 
-3. Medical Compliance System (src/pages/LogMedication.jsx)
-- Critical medication flagging
-- Time-based dosing management
-- Adherence calculations
-- Severity-based missed dose tracking
-Importance: 75
+2. Sleep Analysis Engine (Score: 80)
+- Sleep quality scoring incorporating:
+  * Sleep stage distribution
+  * Physiological metrics (HRV, SpO2, respiratory)
+  * Recovery assessment
+- Body battery calculation system
 
-4. Health Analytics Engine (src/pages/Reports.jsx)
-- Multi-factor correlation analysis
-- Pattern recognition for migraines
-- Sleep quality trending
-- Medication compliance reporting
-Importance: 90
+3. Medication Management System (Score: 75)
+- Critical medication adherence tracking
+- Multi-dose scheduling 
+- Automated status monitoring
+- Adherence rate calculations
 
-5. Health Module Configuration (src/pages/onboarding/Modules.jsx)
-- Condition-based module recommendations
-- Data source integration setup
-- Tracking module customization
-Importance: 70
+4. Health Correlation Engine (Score: 90)
+- Multi-factor health metric correlation analysis
+- Glucose-migraine relationship tracking
+- Sleep pattern impact assessment
+- Weather condition symptom correlation
+- Privacy-aware reporting system
 
-Domain-Specific Features:
-- Glucose range analysis
-- Multi-parameter sleep quality assessment
-- Critical medication prioritization
-- Weather-migraine correlation tracking
-- Cross-metric health analysis
+## Module Integration
 
-The system implements a comprehensive health tracking platform with sophisticated correlation analysis between sleep patterns, migraine occurrences, and medication compliance. Core strength lies in the integration of multiple health metrics for pattern identification and health outcome prediction.
+Module Profile System (Score: 70)
+- Configurable health tracking modules
+- Condition-based feature activation
+- Health metric integration rules
+- Custom data source handlers
+
+The system's core value proposition lies in sophisticated correlation analysis between health metrics and customized scoring algorithms for sleep and medication adherence monitoring.
 
 $END$
 

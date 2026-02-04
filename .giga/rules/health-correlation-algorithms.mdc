@@ -1,5 +1,5 @@
 ---
-description: Documents the health data correlation algorithms used for analyzing relationships between migraines and various health/environmental factors
+description: Technical specification for health-related data correlation and analysis algorithms, focusing on migraine, sleep, and environmental factors
 ---
 
 # === USER INSTRUCTIONS ===
@@ -73,49 +73,39 @@ $END$
 
 # health-correlation-algorithms
 
-## Core Correlation Systems
+Health Correlation Analysis System (Importance Score: 90)
 
-### Sleep-Migraine Correlation (Importance: 85)
-- Sleep quality scoring algorithm incorporating:
-  * Sleep duration with 10-hour maximum threshold
-  * Sleep stage percentages (deep, REM, light)
-  * Restfulness metrics from heart rate, HRV, SpO2
-- Domain-specific sleep efficiency calculations
+1. Migraine-Weather Correlation Algorithm
+- Tracks relationship between barometric pressure changes and migraine onset
+- Calculates correlation coefficients between weather conditions and symptom severity
+- Implements time-lagged analysis for predictive insights
+- Maintains statistical significance validation for correlations
 
-### Weather Impact Analysis (Importance: 80)
-- Weather correlation tracking for migraine incidents
-- Environmental factor monitoring including:
-  * Barometric pressure changes
-  * Weather condition patterns
-  * Temperature variations
+2. Sleep Quality Scoring Engine
+- Calculates composite sleep quality score using:
+  * Sleep stage distribution analysis (REM/deep/light percentages)
+  * Physiological metrics integration (HRV, SpO2, respiratory rate)
+  * Custom restfulness assessment
+- Generates body battery recovery scores from sleep metrics
 
-### Glucose Pattern Analysis (Importance: 90)
-- Cross-correlation between glucose variability and migraine occurrence
-- Metrics include:
-  * Time-in-range calculations
-  * Glucose variability analysis
-  * Pattern detection for glucose-related triggers
+3. Glucose Impact Analysis
+- Monitors glucose level fluctuations against migraine episodes
+- Implements statistical correlation between blood sugar trends and symptom onset
+- Calculates time-based relationships between glucose spikes and health events
 
-## Analysis Components
+4. Multi-Factor Health Correlation System
+- Processes aggregated health metrics for pattern detection
+- Analyzes relationships between:
+  * Sleep patterns and pain levels
+  * Weather conditions and symptoms
+  * Glucose levels and migraine episodes
+- Implements privacy-aware data filtering for report generation
 
-### Health Metric Cross-Correlation (Importance: 85)
-- Comprehensive correlation system between:
-  * Sleep quality metrics
-  * Glucose measurements
-  * Weather conditions
-  * Migraine occurrences
-
-### Pattern Recognition (Importance: 80)
-- Multi-factor trigger identification
-- Health event pattern analysis
-- Correlation strength calculations between different health metrics
-
-## Integration Points
-
-### Data Normalization (Importance: 75)
-- Health metric standardization for correlation analysis
-- Custom calculation of correlation coefficients
-- Integration of multiple data sources for comprehensive analysis
+Core Correlation Rules:
+- Temporal analysis window: 14-day lookback period
+- Statistical significance thresholds for correlation reporting
+- Multi-factor weighting system for impact scoring
+- Automated outlier detection and filtering
 
 $END$
 

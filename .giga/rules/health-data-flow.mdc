@@ -1,5 +1,5 @@
 ---
-description: Specification for data flow patterns between health monitoring components and external data sources
+description: Documents data flows between health monitoring components, focusing on CGM, sleep, and weather data processing
 ---
 
 # === USER INSTRUCTIONS ===
@@ -53,44 +53,42 @@ $END$
 
 # health-data-flow
 
-Primary data flow components handling specialized health metric processing:
+Health Data Flow Architecture (Importance Score: 85)
 
-1. CGM Data Processing Pipeline (Importance: 90)
-- Continuous glucose monitoring data ingestion from multiple sources
-- Bidirectional sync with Nightscout and Dexcom APIs
-- Custom glucose reading normalization and deduplication
-- Time-window based data aggregation and transformation
+1. Glucose Data Pipeline
+- Integration with CGM providers (Nightscout, Dexcom) 
+- Complex glucose reading normalization across multiple data sources
+- Time-window safety mechanisms with 14-day lookback periods
+- Deduplication based on user_id/device_time combinations
 
-2. Sleep Analysis Pipeline (Importance: 85)
-- Multi-stage sleep data processing incorporating:
-  * Sleep stage classification (REM, deep, light)
-  * Quality metrics calculation using physiological parameters
-  * Cross-correlation with glucose patterns
-- Sleep efficiency scoring using domain-specific algorithms
+2. Sleep Analysis Pipeline
+- Sleep stage percentage calculations
+- Integration of physiological metrics:
+  - Heart rate variability (HRV)
+  - Blood oxygen levels (SpO2) 
+  - Respiratory rate
+- Custom quality scoring incorporating multiple sleep factors
+- Body battery recovery calculations
 
-3. Weather Integration Flow (Importance: 75)
-- Environmental data correlation system for:
-  * Barometric pressure tracking
-  * Weather condition monitoring
-  * Temperature and humidity metrics
-- Integration with migraine occurrence tracking
+3. Weather Data Integration
+- Barometric pressure tracking for migraine correlation
+- Environmental factor collection during health event logging
+- Automated weather condition association with symptoms
 
-4. Health Metric Correlation Engine (Importance: 85)
+4. Health Metrics Correlation Engine
 - Cross-analysis between:
-  * Glucose variability
-  * Sleep quality metrics
-  * Weather conditions
-  * Migraine episodes
-- Lag analysis for trigger identification
-- Pattern recognition for health event correlations
+  - Glucose levels and migraine episodes
+  - Sleep patterns and pain levels
+  - Weather conditions and symptom occurrence
+- Time-range based health data aggregation
+- Multi-factor correlation analysis
 
-Data Flow Integration Points:
-- CGM data processing connects with sleep analysis for overnight glucose pattern detection
-- Weather data feeds into migraine correlation system
-- Sleep quality metrics integrate with migraine tracking
-- Cross-component correlation analysis for pattern detection
+Primary Data Flows:
+- CGM → Glucose Normalization → Storage → Correlation Engine
+- Sleep Metrics → Quality Analysis → Recovery Calculation → Correlation Engine
+- Weather Data → Environmental Tracking → Symptom Association → Correlation Engine
 
-The system implements specialized health data workflows with emphasis on real-time processing and multi-source correlation analysis, particularly focused on glucose monitoring and migraine pattern detection.
+Each pipeline maintains dedicated validation rules and data transformation logic specific to its health domain, with the correlation engine serving as the central integration point.
 
 $END$
 
