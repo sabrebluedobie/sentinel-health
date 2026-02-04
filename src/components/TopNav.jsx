@@ -14,6 +14,7 @@ export default function TopNav({ showTabs = true, moduleProfile, moduleProfileLo
   const tabs = [
     { to: "/", label: "Dashboard" },
     { to: "/reports", label: "Reports" },
+    { to: "/insights", label: "Insights" },
     { to: "/settings", label: "Settings" },
   ];
 

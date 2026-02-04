@@ -17,6 +17,7 @@ const LogSleep      = React.lazy(() => import("@/pages/LogSleep.jsx"));
 const LogMigraine   = React.lazy(() => import("@/pages/LogMigraine.jsx"));
 const LogPain       = React.lazy(() => import("@/pages/LogPain.jsx"));
 const LogMedication = React.lazy(() => import("@/pages/LogMedication.jsx"));
+const Insights     = React.lazy(() => import("@/pages/insights.jsx"));
 const Education     = React.lazy(() => import("@/pages/Education.jsx"));
 const Settings    = React.lazy(() => import("@/pages/Settings.jsx"));
 const Reports     = React.lazy(() => import("@/pages/Reports.jsx"));
@@ -171,6 +172,14 @@ export default function App() {
                 <ModuleEnabledGuard user={user} moduleKey="medication">
                   <LogMedication />
                 </ModuleEnabledGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <ProtectedRoute>
+                <InsightsPage />
               </ProtectedRoute>
             }
           />
