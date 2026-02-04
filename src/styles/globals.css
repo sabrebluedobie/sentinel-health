@@ -82,4 +82,123 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Panel layout */
+.insight-panel {
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.insight-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.insight-panel-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.insight-panel-subtitle {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.insight-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Card */
+.insight-card {
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.insight-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.insight-confidence {
+  font-size: 12px;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
+/* Priority vs Risk (visual distinction) */
+.insight-priority {
+  border-left: 6px solid rgba(0,0,0,0.4);
+}
+
+.insight-risk {
+  border-left: 6px solid rgba(0,0,0,0.7);
+}
+
+.badge-priority {
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.18);
+}
+
+.badge-risk {
+  background: rgba(0,0,0,0.10);
+  border: 1px solid rgba(0,0,0,0.28);
+}
+
+/* Content */
+.insight-summary {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.insight-rationale {
+  font-size: 13px;
+  opacity: 0.85;
+  line-height: 1.35;
+}
+
+.insight-footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.insight-posture {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+/* Posture variants (kept neutral) */
+.posture-ignore { opacity: 0.55; }
+.posture-monitor { opacity: 0.8; }
+.posture-prepare { opacity: 0.9; }
+.posture-act { opacity: 1; }
+
+.posture-mitigate { opacity: 0.95; }
+.posture-escalate { opacity: 1; }
+
 }
