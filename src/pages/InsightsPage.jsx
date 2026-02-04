@@ -4,8 +4,9 @@ import { useAuth } from "@/hooks/useAuth.js";
 import InsightPanel from "@/components/insights/InsightPanel";
 import { runInsightModes } from "@/lib/insights/runInsightModes.js";
 import { mapDailyMetricsToSignals } from "@/lib/insights/mapDailyMetricsToSignals";
-import { getGlucoseTodSummary } from "@/lib/glucose/getGlucoseTodSummary.js";
+import { getGlucoseTodSummary } from "@/lib/insights/getGlucoseTodSummary.js";
 import { mapTodToSignals } from "@/lib/insights/mapTodToSignals.js";
+
 export default function InsightsPage() {
   const { user, loading } = useAuth();
 
