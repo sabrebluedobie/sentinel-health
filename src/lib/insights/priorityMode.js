@@ -14,23 +14,28 @@ import { PRIORITY_POSTURES } from "./insightContract";
  * @param {number} [opts.materialThreshold=3] - Minimum score to declare a priority
  * @returns {Object|null}
  */
-export function runPriorityMode(signals, opts = {}) {
-  const materialThreshold = Number.isFinite(opts.materialThreshold)
-    ? opts.materialThreshold
-    : 3;
+export function runPriorityMode({ signals, activeModule, materialThreshold = 3 }) {
+  let candidates = signals;
 
-  if (!Array.isArray(signals) || signals.length === 0) return null;
+  if (activeModule) {
+    const moduleSignals = signals.filter(
+      s => s.category === activeModule
+    );
 
-  // Convert raw signals to a comparable scored form.
-  const scored = signals
+    if (moduleSignals.length > 0) {
+      candidates = moduleSignals;
+    }
+  }
+
+  const scored = candidates
     .map(toPriorityCandidate)
     .filter(Boolean);
-
-  if (scored.length === 0) return null;
 
   // Choose the single highest-scoring candidate.
   scored.sort((a, b) => b.score - a.score);
   const top = scored[0];
+
+  if (!top) return null;
 
   // Silence rule: if nothing is materially significant, return null.
   if (top.score < materialThreshold) return null;
