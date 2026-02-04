@@ -11,6 +11,50 @@ export default function InsightsPage() {
   const { user, loading } = useAuth();
   const [signals, setSignals] = useState([]);
 
+  // ✅ hooks must be called unconditionally, so useEffect goes here:
+  useEffect(() => {
+    if (loading || !user?.id || !user?.hasInsightAccess) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("daily_metrics")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("day", { ascending: false })
+        .limit(14);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("daily_metrics load failed:", error);
+        setSignals([]);
+        return;
+      }
+
+      const baseSignals = mapDailyMetricsToSignals(Array.isArray(data) ? data : []);
+
+      let todSignals = [];
+      try {
+        const todRows = await getGlucoseTodSummary({
+          userId: user.id,
+          tz: user.timezone || "UTC",
+        });
+        todSignals = mapTodToSignals(Array.isArray(todRows) ? todRows : []);
+      } catch (e) {
+        console.error("TOD summary failed:", e);
+      }
+
+      setSignals([...baseSignals, ...todSignals]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, user?.id, user?.hasInsightAccess, user?.timezone]);
+
+  // ✅ now do your early returns
   if (loading) return <main>Loading…</main>;
 
   if (!user?.hasInsightAccess) {
@@ -22,51 +66,12 @@ export default function InsightsPage() {
     );
   }
 
-  useEffect(() => {
-    if (!user?.id) return;
-
-    async function load() {
-      const { data, error } = await supabase
-        .from("daily_metrics")
-        .select("*")
-        .order("day", { ascending: false })
-        .limit(14);
-
-      if (error) {
-        console.error("daily_metrics load failed:", error);
-        setSignals([]);
-        return;
-      }
-
-      const baseSignals = mapDailyMetricsToSignals(data);
-
-      // TOD episodes (glucose)
-      let todSignals = [];
-      try {
-        const todRows = await getGlucoseTodSummary({
-          userId: user.id,
-          tz: user.timezone, // make sure this is a real tz string
-        });
-        todSignals = mapTodToSignals(todRows);
-      } catch (e) {
-        console.error("TOD summary failed:", e);
-      }
-
-      setSignals([...baseSignals, ...todSignals]);
-    }
-
-    load();
-  }, [user?.id, user?.timezone]);
-
-  // ✅ interpret AFTER gating + after signals exist
-  const insights = useMemo(() => {
-    return runInsightModes({ signals, user });
-  }, [signals, user]);
+  const insights = runInsightModes({ signals, user });
 
   return (
     <main>
       <h1>Insights</h1>
-      <InsightPanel insights={insights} />
+      <InsightPanel insights={insights} user={user} />
     </main>
   );
 }
