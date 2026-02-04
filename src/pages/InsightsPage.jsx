@@ -8,18 +8,12 @@ import { getGlucoseTodSummary } from "@/lib/insights/getGlucoseTodSummary.js";
 import { mapTodToSignals } from "@/lib/insights/mapTodToSignals.js";
 
 export default function InsightsPage() {
-  const { user, loading } = useAuth();
-  const [signals, setSignals] = useState([]);
-  
-  // ✅ hooks must be called unconditionally, so useEffect goes here:
   useEffect(() => {
-    if (loading || !user?.id || !user?.hasInsightAccess) return;
-
     let cancelled = false;
 
     (async () => {
       const { data, error } = await supabase
-        .from("daily_metrics")
+        .from("daily_metrics, glucose_readings")
         .select("*")
         .eq("user_id", user.id)
         .order("day", { ascending: false })
