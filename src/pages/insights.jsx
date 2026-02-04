@@ -3,6 +3,7 @@ import InsightPanel from "../components/insights/InsightPanel";
 import { runInsightModes } from "../lib/insights/runInsightModes";
 import { useAuth } from "../hooks/useAuth";
 import { useSignals } from "../hooks/useSignals";
+import { Route, Navigate } from "react-router-dom";
 
 export default function InsightsPage() {
   const { user, loading } = useAuth();

@@ -23,6 +23,7 @@ export default function TopNav({ showTabs = true, moduleProfile, moduleProfileLo
     { to: "/migraine", label: "Migraine", moduleKey: "migraine" },
     { to: "/pain",     label: "Pain",     moduleKey: "pain" },
     { to: "/medication", label: "Medication", moduleKey: "medication" },
+    { to: "/insights", label: "Insights", moduleKey: "insights" },
   ];
 
   const healthOptions = healthOptionsAll.filter((o) => !!enabled[o.moduleKey]);

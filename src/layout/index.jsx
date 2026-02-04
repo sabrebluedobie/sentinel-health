@@ -33,7 +33,9 @@ export default function Layout({ children }) {
               <Link className="btn-ghost" to="/log-sleep">Sleep</Link>
               <Link className="btn-ghost" to="/log-migraine">Migraine</Link>
               <Link className="btn-ghost" to="/nightscout-settings">Nightscout</Link>
+              <Link className="btn-ghost" to="/insights">Insights</Link>
             </nav>
+
             <div className="ml-auto flex items-center gap-2">
               <span className="text-xs text-zinc-500">{user?.email}</span>
               <button onClick={signOut} className="btn-primary">Sign out</button>
