@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth.js";
-import InsightPanel from "@/components/InsightPanel.jsx";
+import InsightPanel from "@/components/insights/InsightPanel";
 import { runInsightModes } from "@/insights/runInsightModes.js";
 export default function InsightsPage() {
   const { user, loading } = useAuth();
