@@ -8,43 +8,75 @@ import { getGlucoseTodSummary } from "@/lib/insights/getGlucoseTodSummary.js";
 import { mapTodToSignals } from "@/lib/insights/mapTodToSignals.js";
 
 export default function InsightsPage() {
+  const { user, loading } = useAuth();
+  const [signals, setSignals] = useState([]);
+  const [todSignals, setTodSignals] = useState([]);
+
   useEffect(() => {
+  if (!user?.id) return;
+
+  let cancelled = false;
+
+  (async () => {
+    const { data, error } = await supabase
+      .from("daily_metrics")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("day", { ascending: false })
+      .limit(14);
+
+    if (cancelled) return;
+
+    if (error) {
+      console.error("daily_metrics load failed:", error);
+      setSignals([]);
+      return;
+    }
+
+    const baseSignals = mapDailyMetricsToSignals(Array.isArray(data) ? data : []);
+    setSignals(baseSignals);
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [user?.id]);
+
+
+  useEffect(() => {
+    if (!user?.id) return;
+
     let cancelled = false;
 
-    (async () => {
-      const { data, error } = await supabase
-        .from("daily_metrics, glucose_readings")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("day", { ascending: false })
-        .limit(14);
+    async function loadTodSignals() {
+      let nextTodSignals = [];
 
-      if (cancelled) return;
-
-      if (error) {
-        console.error("daily_metrics load failed:", error);
-        setSignals([]);
-        return;
-      }
-
-      const baseSignals = mapDailyMetricsToSignals(Array.isArray(data) ? data : []);
-
-      let todSignals = [];
       try {
-        const todRows = await getGlucoseTodSummary({ userId: user.id, tz: user.timezone });
-        todSignals = mapTodToSignals(Array.isArray(todRows) ? todRows : []);
+        const todRows = await getGlucoseTodSummary({
+          userId: user.id,
+          tz: user.timezone,
+        });
+
+        if (cancelled) return;
+
+        nextTodSignals = mapTodToSignals(Array.isArray(todRows) ? todRows : []);
+        setTodSignals(nextTodSignals);
       } catch (e) {
         console.error("TOD summary failed:", e);
+        setTodSignals([]);
       }
+    }
 
-
-      setSignals([...baseSignals, ...todSignals]);
-    })();
+    loadTodSignals();
 
     return () => {
       cancelled = true;
     };
-  }, [loading, user?.id, user?.hasInsightAccess, user?.timezone]);
+  }, [user?.id, user?.timezone]);
+
+  const mergedSignals = useMemo(() => {
+    return [...signals, ...todSignals];
+  }, [signals, todSignals]);
 
   // ✅ now do your early returns
   if (loading) return <main>Loading…</main>;
@@ -58,7 +90,7 @@ export default function InsightsPage() {
     );
   }
 
-  const insights = runInsightModes({ signals, user });
+  const insights = runInsightModes({ signals: mergedSignals, user });
 
   return (
     <main>
