@@ -1,25 +1,24 @@
-export function mapTodToSignals(todRows) {
-  if (!Array.isArray(todRows) || todRows.length === 0) return [];
+export function mapTodToSignals(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
 
-  // Find peak hour
-  const top = [...todRows].sort((a, b) => (b.episode_starts ?? 0) - (a.episode_starts ?? 0))[0];
-  if (!top || !Number.isFinite(top.episode_starts)) return [];
+  // expecting: [{ time_of_day: "afternoon", episode_starts: 2 }, ...]
+  const top = [...rows].sort((a, b) => (b.episode_starts ?? 0) - (a.episode_starts ?? 0))[0];
+  if (!top?.time_of_day) return [];
 
-  const hour = top.hour_of_day;
-  const count = top.episode_starts;
-
-  // Severity heuristic (tweak whenever)
-  const severity = count >= 4 ? "high" : count >= 2 ? "medium" : "low";
+  const severity = (top.episode_starts ?? 0) >= 5 ? "high"
+                 : (top.episode_starts ?? 0) >= 2 ? "medium"
+                 : "low";
 
   return [{
-    label: `High glucose episodes most often start around ${formatHour(hour)}`,
+    label: `High glucose episodes most often begin in the ${top.time_of_day}`,
     severity,
-    delta: count,              // “how many starts” in window
-    actionable: true,          // helps Priority mode
-    timeSensitive: true,       // helps Risk mode
-    informational: false,
+    delta: top.episode_starts ?? 0,
+    category: "glucose",
+    actionable: true,
+    timeSensitive: true,
   }];
 }
+
 
 function formatHour(h) {
   const hour = ((h % 24) + 24) % 24;

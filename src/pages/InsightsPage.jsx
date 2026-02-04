@@ -10,7 +10,7 @@ import { mapTodToSignals } from "@/lib/insights/mapTodToSignals.js";
 export default function InsightsPage() {
   const { user, loading } = useAuth();
   const [signals, setSignals] = useState([]);
-
+  
   // ✅ hooks must be called unconditionally, so useEffect goes here:
   useEffect(() => {
     if (loading || !user?.id || !user?.hasInsightAccess) return;
@@ -37,14 +37,12 @@ export default function InsightsPage() {
 
       let todSignals = [];
       try {
-        const todRows = await getGlucoseTodSummary({
-          userId: user.id,
-          tz: user.timezone || "UTC",
-        });
+        const todRows = await getGlucoseTodSummary({ userId: user.id, tz: user.timezone });
         todSignals = mapTodToSignals(Array.isArray(todRows) ? todRows : []);
       } catch (e) {
         console.error("TOD summary failed:", e);
       }
+
 
       setSignals([...baseSignals, ...todSignals]);
     })();

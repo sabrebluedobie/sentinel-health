@@ -1,12 +1,13 @@
+// getGlucoseTodSummary.js
 import { supabase } from "@/lib/supabase";
 
-export async function getGlucoseTodSummary({ userId, tz = "America/New_York", days = 14 }) {
-  const { data, error } = await supabase.rpc("glucose_high_episode_starts_by_tod", {
+const todRows = await getGlucoseTodSummary({ userId: user.id, days: 7 });
+
+export async function getGlucoseTodSummary({ userId, days = 7 }) {
+  const { data, error } = await supabase.rpc("glucose_high_episode_starts_by_hour", {
     p_user_id: userId,
-    p_tz: tz,
     p_days: days,
   });
-
   if (error) throw error;
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
