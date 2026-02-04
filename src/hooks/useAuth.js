@@ -7,8 +7,9 @@ function withEntitlements(supabaseUser) {
 
   // TEMP DEV GATE: allow only specific emails (replace with yours)
   const allowedEmails = [
-    "mbrown0300@att.net",
+    "mbrown9702@gmail.com",
     "melanie.brown@bluedobiedev.com",
+    "wicklesschick39@gmail.com"
   ];
 
   return {
