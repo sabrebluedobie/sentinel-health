@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth.js";
 import InsightPanel from "@/components/insights/InsightPanel";
 import { runInsightModes } from "@/lib/insights/runInsightModes.js";
+import { mapDailyMetricsToSignals } from "@/lib/insights/mapDailyMetricsToSignals";
 export default function InsightsPage() {
   const { user, loading } = useAuth();
 
@@ -38,20 +39,30 @@ export default function InsightsPage() {
         return;
       }
 
-      setSignals(mapDailyMetricsToSignals(data));
+      const baseSignals = mapDailyMetricsToSignals(data);
+
+      // New: TOD episodes
+      let todSignals = [];
+      try {
+        const todRows = await getGlucoseTodSummary({
+          userId: user.id,
+          tz: user.timezone,
+        });
+        todSignals = mapTodToSignals(todRows);
+      } catch (e) {
+        console.error("TOD summary failed:", e);
+      }
+
+      setSignals([...baseSignals, ...todSignals]);
     }
 
     load();
   }, []);
 
-  // 4️⃣ 🔑 RUN INSIGHT MODES HERE (pure computation)
-  const insights = runInsightModes({ signals, user });
-
-  // 5️⃣ Render
   return (
     <main>
       <h1>Insights</h1>
-      <InsightPanel insights={insights} />
+      <InsightPanel signals={signals} user={user} runInsightModes={runInsightModes} />
     </main>
   );
 }
