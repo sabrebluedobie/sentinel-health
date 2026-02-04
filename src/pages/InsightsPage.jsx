@@ -1,20 +1,14 @@
-// /pages/InsightsPage.jsx
-import InsightPanel from "../components/insights/InsightPanel";
-import { runInsightModes } from "../lib/insights/runInsightModes";
-import { useAuth } from "../hooks/useAuth";
-import { useSignals } from "../hooks/useSignals";
-
-
 export default function InsightsPage() {
   const { user, loading } = useAuth();
-  const signals = useSignals(user);
 
-  // Don’t render anything until auth state is known
+  const [signals, setSignals] = useState([]);
+
+  // 1️⃣ Wait for auth
   if (loading) {
     return <main>Loading…</main>;
   }
 
-  // Gate BEFORE computing insights
+  // 2️⃣ Gate access BEFORE any interpretation
   if (!user?.hasInsightAccess) {
     return (
       <main>
@@ -24,8 +18,31 @@ export default function InsightsPage() {
     );
   }
 
-  const insights = runInsightModes({ signals: signals || [], user });
+  // 3️⃣ Load raw data → signals (side effect)
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from("daily_metrics")
+        .select("*")
+        .order("day", { ascending: false })
+        .limit(14);
 
+      if (error) {
+        console.error(error);
+        setSignals([]);
+        return;
+      }
+
+      setSignals(mapDailyMetricsToSignals(data));
+    }
+
+    load();
+  }, []);
+
+  // 4️⃣ 🔑 RUN INSIGHT MODES HERE (pure computation)
+  const insights = runInsightModes({ signals, user });
+
+  // 5️⃣ Render
   return (
     <main>
       <h1>Insights</h1>
