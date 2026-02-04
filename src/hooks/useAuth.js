@@ -1,6 +1,21 @@
-// src/hooks/useAuth.js
+// /src/hooks/useAuth.js
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+function withEntitlements(supabaseUser) {
+  if (!supabaseUser) return null;
+
+  // TEMP DEV GATE: allow only specific emails (replace with yours)
+  const allowedEmails = [
+    "mbrown0300@att.net",
+    "melanie.brown@bluedobiedev.com",
+  ];
+
+  return {
+    ...supabaseUser,
+    hasInsightAccess: allowedEmails.includes(supabaseUser.email),
+  };
+}
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -19,7 +34,7 @@ export function useAuth() {
       }
 
       setSession(data?.session || null);
-      setUser(data?.session?.user || null);
+      setUser(withEntitlements(data?.session?.user || null));
       setLoading(false);
     }
 
@@ -27,7 +42,7 @@ export function useAuth() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession || null);
-      setUser(newSession?.user || null);
+      setUser(withEntitlements(newSession?.user || null));
       setLoading(false);
     });
 

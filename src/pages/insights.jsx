@@ -1,16 +1,19 @@
+// /pages/InsightsPage.jsx
 import InsightPanel from "../components/insights/InsightPanel";
 import { runInsightModes } from "../lib/insights/runInsightModes";
-import { getUser } from "../lib/auth/getUser";
-import { getSignals } from "../lib/signals/getSignals";
+import { useAuth } from "../hooks/useAuth";
+import { useSignals } from "../hooks/useSignals";
 
-export async function getServerSideProps(ctx) {
-  const user = await getUser(ctx);
-  const signals = await getSignals({ user });
+export default function InsightsPage() {
+  const { user, loading } = useAuth();
+  const signals = useSignals(user);
 
-  return { props: { user, signals } };
-}
+  // Don’t render anything until auth state is known
+  if (loading) {
+    return <main>Loading…</main>;
+  }
 
-export default function InsightsPage({ user, signals }) {
+  // Gate BEFORE computing insights
   if (!user?.hasInsightAccess) {
     return (
       <main>
@@ -20,7 +23,7 @@ export default function InsightsPage({ user, signals }) {
     );
   }
 
-  const insights = runInsightModes({ signals, user });
+  const insights = runInsightModes({ signals: signals || [], user });
 
   return (
     <main>
