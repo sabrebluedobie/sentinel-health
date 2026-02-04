@@ -1,8 +1,6 @@
-// getGlucoseTodSummary.js
 import { supabase } from "@/lib/supabase";
 
-const todRows = await getGlucoseTodSummary({ userId: user.id, days: 7 });
-
+// ✅ keep this as a function, don't run it at module scope
 export async function getGlucoseTodSummary({ userId, days = 7 }) {
   const { data, error } = await supabase.rpc("glucose_high_episode_starts_by_hour", {
     p_user_id: userId,
@@ -10,4 +8,9 @@ export async function getGlucoseTodSummary({ userId, days = 7 }) {
   });
   if (error) throw error;
   return Array.isArray(data) ? data : [];
+}
+
+// ✅ optional convenience wrapper if you want the rows name
+export async function loadTodRows(userId, days = 7) {
+  return getGlucoseTodSummary({ userId, days });
 }
