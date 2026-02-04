@@ -178,9 +178,9 @@ export default function App() {
           <Route
             path="/insights"
             element={
-              <Suspense fallback={<div>Loading…</div>}>
+              <ProtectedRoute>
                 <InsightsPage />
-              </Suspense>
+              </ProtectedRoute>
             }
           />
 
