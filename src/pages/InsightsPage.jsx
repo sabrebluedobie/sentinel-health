@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useSignals } from "../hooks/useSignals";
 
 
-export default function insights() {
+export default function InsightsPage() {
   const { user, loading } = useAuth();
   const signals = useSignals(user);
 
