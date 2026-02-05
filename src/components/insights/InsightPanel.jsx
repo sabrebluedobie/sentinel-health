@@ -1,25 +1,30 @@
 // /components/insights/InsightPanel.jsx
 import InsightCard from "./InsightCard";
 
-export default function InsightPanel({ insights }) {
-  // insights is expected to be either:
-  // - null (free user OR nothing material), or
-  // - { priority: Insight|null, risk: Insight|null }
+export default function InsightPanel({ insights, isPro = true }) {
   if (!insights) return null;
 
   const { priority, risk } = insights;
-
-  // If both are empty, render nothing.
   if (!priority && !risk) return null;
 
   return (
     <section className="insight-panel" aria-label="Insights">
-      <div className="insight-panel-header">
-        <h3 className="insight-panel-title">Insights</h3>
+      <header className="insight-panel-header">
+        <div className="insight-panel-heading-row">
+          <h2 className="insight-panel-title">Insights</h2>
+
+
+          {isPro && (
+            <span className="insight-access-pill" aria-label="Pro feature">
+              Pro
+            </span>
+          )}
+        </div>
+
         <p className="insight-panel-subtitle">
-          Interpreted signals (paid).
+          A quick read on what stands out today.
         </p>
-      </div>
+      </header>
 
       <div className="insight-panel-grid">
         {priority && <InsightCard insight={priority} />}

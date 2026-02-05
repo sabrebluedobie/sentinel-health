@@ -201,4 +201,24 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
 .posture-mitigate { opacity: 0.95; }
 .posture-escalate { opacity: 1; }
 
+.insight-panel-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.insight-access-pill {
+  font-size: 0.85rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  opacity: 0.8;
+}
+
+.insight-panel-subtitle {
+  margin-top: 0.25rem;
+  opacity: 0.8;
+}
+
+
 }
