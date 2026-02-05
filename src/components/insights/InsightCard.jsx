@@ -71,7 +71,7 @@ export default function InsightCard({ insight }) {
       )}
 
       <footer className="insight-footer">
-        <span className="insight-nextstep-label">Next step:</span>
+        <span className="insight-nextstep-label">Next step: </span>
         <span className={`insight-posture posture-${insight.posture}`}>{nextStep}</span>
       </footer>
     </article>

@@ -105,8 +105,9 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
 
 .insight-panel-subtitle {
   margin: 0;
+  margin-top: 0.25rem;
   font-size: 13px;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
 .insight-panel-grid {
@@ -141,10 +142,18 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 .insight-confidence {
-  font-size: 12px;
-  opacity: 0.75;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.04);
+  opacity: 0.9;
+  text-transform: none;
 }
+
 
 /* Priority vs Risk (visual distinction) */
 .insight-priority {
@@ -166,8 +175,10 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* Content */
-.insight-summary {
-  font-weight: 700;
+.insight-title {
+  font-family:'Times New Roman', Times, serif;
+  font-size: 16px;
+  line-height: 1.3;
   margin-bottom: 6px;
 }
 
@@ -214,11 +225,5 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   border: 1px solid currentColor;
   opacity: 0.8;
 }
-
-.insight-panel-subtitle {
-  margin-top: 0.25rem;
-  opacity: 0.8;
-}
-
 
 }
