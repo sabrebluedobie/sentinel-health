@@ -1,3 +1,5 @@
+import { InsightCard } from "@/components/insights/InsightCard";
+
 export default function InsightPanel({ insights }) {
   if (!insights) return null;
 
@@ -19,7 +21,7 @@ export default function InsightPanel({ insights }) {
 
       {merged?.mergedRisk && (
         <div className="insight-meta">
-          <span className="insight-meta-item">Risk: {formatLevel(merged.mergedRiskLevel)}</span>
+          <span className="insight-meta-item">Risk: {formatLevel(merged.mergedRisk)}</span>
         </div>
       )}
 
