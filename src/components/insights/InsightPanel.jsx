@@ -14,11 +14,7 @@ export default function InsightPanel({ insights, isPro = true }) {
           
 
 
-          {isPro && (
-            <span className="insight-access-pill" aria-label="Pro feature">
-              Insights+
-            </span>
-          )}
+          <h2 className="insight-panel-title">Today's Insights</h2>
         </div>
 
         <p className="insight-panel-subtitle">

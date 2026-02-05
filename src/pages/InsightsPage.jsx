@@ -14,7 +14,7 @@ export default function InsightsPage() {
   if (!user?.hasInsightAccess) {
     return (
       <main>
-        <h1>Insights</h1>
+        <h1>Insight Mode</h1>
         <p>Insight Modes are part of the paid tier.</p>
       </main>
     );

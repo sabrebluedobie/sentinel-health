@@ -32,6 +32,10 @@ function formatLevel(level) {
 export default function InsightCard({ insight }) {
   if (!insight) return null;
 
+  const cleanedSummary = insight.summary
+        ?.replace(/^Priority:\s*/i, "")
+        ?.replace(/^Risk:\s*/i, "");
+
   // Mode label (Priority / Risk)
   const modeLabel = MODE_LABELS[insight.mode] || insight.mode;
 
@@ -49,13 +53,15 @@ export default function InsightCard({ insight }) {
         <span className={`insight-badge badge-${insight.mode}`}>{modeLabel}</span>
 
         {confidenceText && (
-          <span className="insight-level" aria-label="Confidence level">{" "}{confidenceText}
+          <span className="insight-level" aria-label="Confidence level">
+            {" "}
+            {confidenceText}
           </span>
         )}
       </header>
 
       {/* Summary becomes a real heading */}
-      <h2 className="insight-title">{insight.summary}</h2>
+      <h2 className="insight-title">{cleanedSummary}</h2>
 
       {/* Rationale becomes “Why it matters” */}
       {insight.rationale && (
