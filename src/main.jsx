@@ -1,5 +1,5 @@
 import "./index.css";
-import "./styles/global.css";
+import "./styles/globals.css";
 import "./styles/dashboard.css";
 import "./styles/theme.css";
 import { StrictMode } from "react";
