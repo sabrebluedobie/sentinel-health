@@ -9,6 +9,16 @@ export default function InsightsPage() {
   const { user, loading } = useAuth();
   const { signals, loading: signalsLoading } = useSignals(user);
 
+  // ✅ Hook must be called every render, so put it before any return
+  const insights = useMemo(() => {
+    if (!user?.hasInsightAccess) return null;
+
+    return runInsightModes({
+      signals: Array.isArray(signals) ? signals : [],
+      user,
+    });
+  }, [signals, user]);
+
   if (loading || signalsLoading) return <main>Loading…</main>;
 
   if (!user?.hasInsightAccess) {
@@ -19,13 +29,6 @@ export default function InsightsPage() {
       </main>
     );
   }
-
-  const insights = useMemo(() => {
-    return runInsightModes({
-      signals: Array.isArray(signals) ? signals : [],
-      user,
-    });
-  }, [signals, user]);
 
   return (
     <main>
