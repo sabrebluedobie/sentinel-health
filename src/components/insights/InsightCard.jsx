@@ -53,7 +53,7 @@ export default function InsightCard({ insight }) {
         <span className={`insight-badge badge-${insight.mode}`}>{modeLabel}</span>
 
         {confidenceText && (
-          <span className="insight-level" aria-label="Confidence level">
+          <span className="insight-confidence" aria-label="Confidence level">
             {" "}
             {confidenceText}
           </span>
