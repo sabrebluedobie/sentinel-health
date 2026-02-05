@@ -11,12 +11,12 @@ export default function InsightPanel({ insights, isPro = true }) {
     <section className="insight-panel" aria-label="Insights">
       <header className="insight-panel-header">
         <div className="insight-panel-heading-row">
-          <h2 className="insight-panel-title">Insights</h2>
+          
 
 
           {isPro && (
             <span className="insight-access-pill" aria-label="Pro feature">
-              Pro
+              Insights+
             </span>
           )}
         </div>
