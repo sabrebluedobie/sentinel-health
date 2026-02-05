@@ -1,4 +1,4 @@
-// /lib/insights/runInsightModes.js
+// src/lib/insights/runInsightModes.js
 import { runPriorityMode } from "./priorityMode";
 import { runRiskMode } from "./riskMode";
 
@@ -15,17 +15,12 @@ import { runRiskMode } from "./riskMode";
  * @returns {{ priority: Object|null, risk: Object|null }|null}
  */
 export function runInsightModes({ signals, user, opts = {} }) {
-  // Gate BEFORE doing any analysis (no bleed-through, no accidental caching).
-  if (!user || user.hasInsightAccess !== true) {
-    return null;
-  }
+  if (!user || user.hasInsightAccess !== true) return null;
 
-  // Run modes (each returns an Insight object or null).
-  const priority = runPriorityMode(signals, opts.priority);
-  const risk = runRiskMode(signals, opts.risk);
+  const safeSignals = Array.isArray(signals) ? signals : [];
+  const priority = runPriorityMode(safeSignals, opts.priority);
+  const risk = runRiskMode(safeSignals, opts.risk);
 
-  // If both are null, return null (keeps UI logic simpler).
   if (!priority && !risk) return null;
-
   return { priority, risk };
 }

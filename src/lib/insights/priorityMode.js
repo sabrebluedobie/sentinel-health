@@ -1,48 +1,44 @@
-// /lib/insights/priorityMode.js
+// src/lib/insights/priorityMode.js
 import { PRIORITY_POSTURES } from "./insightContract";
 
 /**
  * Priority Mode
  * Answers: "What matters most right now?"
  *
- * Returns:
- * - an Insight object (contract shape), OR
- * - null if there is no material priority.
- *
- * @param {Array<Object>} signals - Free-tier signals (raw, unsynthesized)
+ * @param {Array<Object>} signals
  * @param {Object} [opts]
- * @param {number} [opts.materialThreshold=3] - Minimum score to declare a priority
+ * @param {string} [opts.activeModule] - optional module/category filter
+ * @param {number} [opts.materialThreshold=3]
  * @returns {Object|null}
  */
-export function runPriorityMode({ signals, activeModule, materialThreshold = 3 }) {
+export function runPriorityMode(signals, opts = {}) {
+  const materialThreshold = Number.isFinite(opts.materialThreshold)
+    ? opts.materialThreshold
+    : 3;
+
+  const activeModule =
+    typeof opts.activeModule === "string" ? opts.activeModule : null;
+
+  if (!Array.isArray(signals) || signals.length === 0) return null;
+
+  // Start with all signals; optionally narrow to active module/category
   let candidates = signals;
 
   if (activeModule) {
-    const moduleSignals = signals.filter(
-      s => s.category === activeModule
-    );
-
-    if (moduleSignals.length > 0) {
-      candidates = moduleSignals;
-    }
+    const moduleSignals = signals.filter((s) => s?.category === activeModule);
+    if (moduleSignals.length > 0) candidates = moduleSignals;
   }
 
-  const scored = candidates
-    .map(toPriorityCandidate)
-    .filter(Boolean);
+  const scored = candidates.map(toPriorityCandidate).filter(Boolean);
 
   // Choose the single highest-scoring candidate.
   scored.sort((a, b) => b.score - a.score);
   const top = scored[0];
 
   if (!top) return null;
-
-  // Silence rule: if nothing is materially significant, return null.
   if (top.score < materialThreshold) return null;
 
   const posture = postureFromScore(top.score);
-
-  // Guardrail: posture must be one of the allowed enums
   if (!PRIORITY_POSTURES.includes(posture)) return null;
 
   return {
@@ -50,45 +46,24 @@ export function runPriorityMode({ signals, activeModule, materialThreshold = 3 }
     summary: top.summary,
     rationale: top.rationale,
     posture,
-    // optional: keep this bounded + non-numeric
     confidence: top.confidence || "medium",
   };
 }
 
-/**
- * Adapter: turns a raw signal into a Priority candidate.
- * This is intentionally conservative until your signal taxonomy is finalized.
- *
- * Expected (optional) fields on a signal:
- * - type: string
- * - label/title: string
- * - severity: "low" | "medium" | "high" (or numeric)
- * - delta: number (deviation from baseline, if available)
- * - actionable: boolean (if you already tag this)
- * - source: string
- */
 function toPriorityCandidate(signal) {
   if (!signal || typeof signal !== "object") return null;
 
-  // Basic sanity: if there's no description, we can't turn it into a priority.
   const label =
-    safeStr(signal.label) ||
-    safeStr(signal.title) ||
-    safeStr(signal.type);
+    safeStr(signal.label) || safeStr(signal.title) || safeStr(signal.type);
 
   if (!label) return null;
 
-  // Compute a conservative score from whatever metadata is available.
   const severityScore = scoreSeverity(signal.severity);
   const deltaScore = scoreDelta(signal.delta);
-
-  // If you have an explicit actionable flag, reward it slightly.
   const actionableBoost = signal.actionable === true ? 1 : 0;
 
   const score = severityScore + deltaScore + actionableBoost;
 
-  // Disqualification rule: purely informational signals should not win.
-  // If your data has a "kind" or "category", you can strengthen this later.
   if (signal.informational === true && score < 5) return null;
 
   const summary = `Priority: ${label}.`;
@@ -103,16 +78,10 @@ function toPriorityCandidate(signal) {
       ? `This stands out due to ${rationaleParts.join(", ")}.`
       : "This stands out relative to other recent signals.";
 
-  return {
-    score,
-    summary,
-    rationale,
-    confidence: confidenceFromScore(score),
-  };
+  return { score, summary, rationale, confidence: confidenceFromScore(score) };
 }
 
 function postureFromScore(score) {
-  // Keep simple and bounded.
   if (score >= 7) return "act";
   if (score >= 5) return "prepare";
   if (score >= 3) return "monitor";
@@ -126,9 +95,7 @@ function confidenceFromScore(score) {
 }
 
 function scoreSeverity(severity) {
-  // Accept either normalized strings or numeric input.
   if (typeof severity === "number" && Number.isFinite(severity)) {
-    // Clamp loosely to 0..5
     return Math.max(0, Math.min(5, Math.round(severity)));
   }
   const s = safeStr(severity).toLowerCase();
@@ -139,7 +106,6 @@ function scoreSeverity(severity) {
 }
 
 function scoreDelta(delta) {
-  // Delta is optional; treat modest deviations gently.
   if (typeof delta !== "number" || !Number.isFinite(delta)) return 0;
   const abs = Math.abs(delta);
   if (abs >= 3) return 3;
