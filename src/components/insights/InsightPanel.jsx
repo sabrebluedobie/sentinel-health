@@ -1,5 +1,9 @@
 import { InsightCard } from "@/components/insights/InsightCard";
 
+const formatLevel = (level) =>
+  level ? level.charAt(0).toUpperCase() + level.slice(1) : "";
+
+
 export default function InsightPanel({ insights }) {
   if (!insights) return null;
 
