@@ -234,3 +234,10 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   opacity: 0.9;
 }
 
+header, nav {
+  display: block;
+}
+
+button {
+  appearance: auto;
+}
