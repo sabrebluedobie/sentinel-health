@@ -61,7 +61,7 @@ export default function TopNav({ showTabs = true, moduleProfile, moduleProfileLo
         {showTabs && (
           <>
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex ml-auto items-center gap-2">
+            <nav className="lg:flex ml-auto items-center gap-2">
               {tabs.map((t) => (
                 <NavLink
                   key={t.to}
@@ -155,7 +155,7 @@ export default function TopNav({ showTabs = true, moduleProfile, moduleProfileLo
 
       {/* Mobile Menu */}
       {showTabs && isMobileMenuOpen && (
-        <nav className="lg:hidden border-t bg-white">
+        <nav className="border-t bg-white">
           <div className="mx-auto max-w-6xl px-3 py-3 space-y-1">
             {/* Main tabs */}
             {tabs.map((t) => (
