@@ -115,6 +115,8 @@ export function useSignals(user) {
     let mounted = true;
 
     async function load() {
+      setLoading(true);
+      
       if (!user?.id) {
         if (mounted) {
           setSignals([]);
@@ -123,7 +125,7 @@ export function useSignals(user) {
         return;
       }
 
-      setLoading(true);
+      
 
       // Pull both sources in parallel
       const [dailyRes, glucoseRes] = await Promise.all([
@@ -167,6 +169,8 @@ export function useSignals(user) {
           }
       
           load();
+
+          setLoading(false);
       
           return () => {
             mounted = false;

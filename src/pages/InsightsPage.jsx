@@ -1,5 +1,5 @@
 // src/pages/InsightsPage.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import InsightPanel from "@/components/insights/InsightPanel";
 import { useAuth } from "@/hooks/useAuth.js";
 import { useSignals } from "@/hooks/useSignals";
@@ -20,10 +20,12 @@ export default function InsightsPage() {
     );
   }
 
-  const insights = runInsightModes({
-    signals: Array.isArray(signals) ? signals : [],
-    user,
-  });
+  const insights = useMemo(() => {
+    return runInsightModes({
+      signals: Array.isArray(signals) ? signals : [],
+      user,
+    });
+  }, [signals, user]);
 
   return (
     <main>

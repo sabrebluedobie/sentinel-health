@@ -18,9 +18,11 @@ export function runInsightModes({ signals, user, opts = {} }) {
   if (!user || user.hasInsightAccess !== true) return null;
 
   const safeSignals = Array.isArray(signals) ? signals : [];
-  const priority = runPriorityMode(safeSignals, opts.priority);
-  const risk = runRiskMode(safeSignals, opts.risk);
+  const priority = runPriorityMode(safeSignals, opts?.priority ?? {});
+  const risk = runRiskMode(safeSignals, opts?.risk ?? {});
 
-  if (!priority && !risk) return null;
-  return { priority, risk };
+  return {
+    priority: priority ?? null,
+    risk: risk ?? null,
+  };
 }
