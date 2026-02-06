@@ -130,6 +130,7 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
+  background-color: #ececec
 }
 
 .insight-badge {
