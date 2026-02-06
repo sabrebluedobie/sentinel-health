@@ -1,30 +1,15 @@
 // src/pages/InsightsPage.jsx
 import React, { useMemo } from "react";
-import InsightPanel from "@/components/insights/InsightPanel";
 import { useAuth } from "@/hooks/useAuth.js";
 import { useSignals } from "@/hooks/useSignals";
 import { runInsightModes } from "@/lib/insights/runInsightModes.js";
 import InsightsTabs from "@/components/insights/InsightsTabs";
 
-const elementInsights = {
-  migraines: null,
-  glucose: null,
-  sleep: null,
-  pain: null,
-};
-
-return (
-  <div>
-    <InsightsTabs elementInsights={elementInsights} />
-  </div>
-);
-
-
 export default function InsightsPage() {
   const { user, loading } = useAuth();
   const { signals, loading: signalsLoading } = useSignals(user);
 
-  // ✅ Hook must be called every render, so put it before any return
+  // ✅ Hook must be called every render, so keep this before conditional returns
   const insights = useMemo(() => {
     if (!user?.hasInsightAccess) return null;
 
@@ -45,10 +30,23 @@ export default function InsightsPage() {
     );
   }
 
+  // ✅ TEMP: stub element insights so tabs render
+  const elementInsights = {
+    migraines: null,
+    glucose: null,
+    sleep: null,
+    pain: null,
+  };
+
   return (
     <main>
       <h1>Insights</h1>
-      <InsightPanel insights={insights} />
+      <InsightsTabs elementInsights={elementInsights} />
+
+      {/* Optional while transitioning: keep the old panel visible for comparison */}
+      {/* <div className="mt-8">
+        <InsightPanel insights={insights} />
+      </div> */}
     </main>
   );
 }
