@@ -1,14 +1,8 @@
+import { InsightCard } from "@/components/insights/InsightCard";
 import NoInsightsAvailable from "../NoInsightsAvailable";
 
 export default function SleepInsightsTab({ insight }) {
   if (!insight) return <NoInsightsAvailable />;
 
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-2">Sleep Insight</h2>
-      <pre className="bg-black/20 p-4 rounded-xl text-sm overflow-auto">
-        {JSON.stringify(insight, null, 2)}
-      </pre>
-    </div>
-  );
+  return <InsightCard insight={insight} />;
 }
