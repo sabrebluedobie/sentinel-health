@@ -116,6 +116,7 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+  background-color: #ececec;
 }
 
 /* Card */
