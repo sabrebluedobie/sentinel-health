@@ -15,6 +15,7 @@ function mapGlucoseReadingsToSignals(rows) {
   const getValue = (r) => {
     const v =
       r?.value ??
+      r?.value_mgdl ??
       r?.mg_dl ??
       r?.glucose ??
       r?.reading ??
@@ -27,6 +28,7 @@ function mapGlucoseReadingsToSignals(rows) {
 
   const getTime = (r) => {
     const t =
+      r?.device_time ??
       r?.taken_at ??
       r?.measured_at ??
       r?.reading_time ??
