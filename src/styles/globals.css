@@ -89,6 +89,7 @@ a:hover, a:focus { text-decoration: underline; text-underline-offset: 2px; }
   border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
+  background-color: #ececec;
 }
 
 .insight-panel-header {
