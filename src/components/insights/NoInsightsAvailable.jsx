@@ -1,7 +1,10 @@
 export default function NoInsightsAvailable() {
   return (
-    <div className="text-center text-gray-400 py-10">
-      No Insights Available
+    <div className="text-center py-10">
+      <p className="text-gray-200 font-medium">No Insights Available</p>
+      <p className="text-gray-400 text-sm mt-1">
+        Keep tracking — insights generate as patterns appear.
+      </p>
     </div>
   );
 }
