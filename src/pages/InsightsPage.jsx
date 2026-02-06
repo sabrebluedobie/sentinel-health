@@ -4,6 +4,21 @@ import InsightPanel from "@/components/insights/InsightPanel";
 import { useAuth } from "@/hooks/useAuth.js";
 import { useSignals } from "@/hooks/useSignals";
 import { runInsightModes } from "@/lib/insights/runInsightModes.js";
+import InsightsTabs from "@/components/insights/InsightsTabs";
+
+const elementInsights = {
+  migraines: null,
+  glucose: null,
+  sleep: null,
+  pain: null,
+};
+
+return (
+  <div>
+    <InsightsTabs elementInsights={elementInsights} />
+  </div>
+);
+
 
 export default function InsightsPage() {
   const { user, loading } = useAuth();
