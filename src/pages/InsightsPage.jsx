@@ -20,6 +20,15 @@ function buildElementInsights({ signals, user }) {
   const sleep = runInsightModes({ signals: byCategory("sleep"), user });
   const pain = runInsightModes({ signals: byCategory("pain"), user });
 
+  console.log("Signals total:", safeSignals.length);
+  console.log("Migraine signals:", byCategory("migraines").length);
+  console.log("Glucose signals:", byCategory("glucose").length);
+  console.log("Sleep signals:", byCategory("sleep").length);
+  console.log("Pain signals:", byCategory("pain").length);
+  console.log("Categories:", [...new Set(safeSignals.map(s => s?.category))]);
+
+
+
   return {
     migraines: pickMostRelevant(migraines),
     glucose: pickMostRelevant(glucose),
