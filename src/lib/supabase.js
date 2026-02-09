@@ -12,4 +12,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create Supabase client with anon key (for frontend)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// IMPORTANT: Ensure session persistence through OAuth redirects
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // Store session in localStorage so it persists through redirects
+    persistSession: true,
+    // Automatically refresh tokens
+    autoRefreshToken: true,
+    // Detect session from URL on page load (important for OAuth callbacks)
+    detectSessionInUrl: true,
+    // Use localStorage (default, but being explicit)
+    storage: window.localStorage,
+    // Where to redirect after OAuth (if needed)
+    // flowType: 'pkce', // Use PKCE flow for better security
+  },
+});

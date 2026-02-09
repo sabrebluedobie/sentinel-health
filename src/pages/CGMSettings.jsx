@@ -1,15 +1,89 @@
 // src/pages/CGMSettings.jsx
-import React, { useState } from 'react';
-import { Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Activity, X } from 'lucide-react';
 import NightscoutSignin from '@/components/NightscoutSignin.jsx';
 import DexcomConnection from '@/components/DexcomConnection.jsx';
 
 export default function CGMSettings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("nightscout");
- // Start with Nightscout as primary
+  const [showMessage, setShowMessage] = useState(true);
+  
+  // Check for Dexcom connection status from URL
+  const dexcomStatus = searchParams.get('dexcom');
+  
+  // Clear URL params after showing message
+  useEffect(() => {
+    if (dexcomStatus && showMessage) {
+      // Auto-hide message after 10 seconds
+      const timer = setTimeout(() => {
+        setShowMessage(false);
+        // Clean up URL
+        searchParams.delete('dexcom');
+        setSearchParams(searchParams);
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [dexcomStatus, showMessage, searchParams, setSearchParams]);
+
+  const handleDismissMessage = () => {
+    setShowMessage(false);
+    searchParams.delete('dexcom');
+    setSearchParams(searchParams);
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Success Message */}
+      {dexcomStatus === 'connected' && showMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="text-green-800 font-medium">
+                Dexcom connected successfully!
+              </p>
+              <p className="text-sm text-green-700 mt-1">
+                Your glucose data will sync automatically every hour. The first sync may take a few minutes.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleDismissMessage}
+            className="text-green-600 hover:text-green-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {dexcomStatus === 'error' && showMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">❌</span>
+            <div>
+              <p className="text-red-800 font-medium">
+                Failed to connect to Dexcom
+              </p>
+              <p className="text-sm text-red-700 mt-1">
+                {searchParams.get('reason') 
+                  ? `Error: ${searchParams.get('reason').replace(/_/g, ' ')}`
+                  : 'Please try again. If the problem persists, check that you have the correct Dexcom credentials.'}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleDismissMessage}
+            className="text-red-600 hover:text-red-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -97,19 +171,7 @@ export default function CGMSettings() {
               <span className="text-green-600 mt-0.5">✓</span>
               <span><strong>Better insights:</strong> See glucose-migraine correlations</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-600 mt-0.5">✓</span>
-              <span><strong>120-day retention:</strong> Historical data for pattern analysis</span>
-            </li>
           </ul>
-        </div>
-
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="font-medium text-yellow-900 mb-2">🔐 Privacy & Security</h3>
-          <p className="text-sm text-yellow-800">
-            Your CGM data is encrypted and stored securely. We never share your health data with 
-            third parties. You can disconnect and delete your data at any time.
-          </p>
         </div>
       </div>
     </div>
